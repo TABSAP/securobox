@@ -1,4 +1,4 @@
 class AppOpenAdUnitId {
-  static const String id = "ca-app-pub-7834432463737651/4455152613";
+  static const String id = "ca-app-pub-7834432463737656~1234567890";
 // ↑ TEST ID (Safe)
 }

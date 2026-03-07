@@ -1,0 +1,123 @@
+import 'package:flutter/material.dart';
+
+class MediaHelper {
+  static const List<String> mediaCategories = [
+    "All",
+    "Videos",
+    "Photos",
+    "Audio",
+    "Documents",
+    "Educational",
+    "Personal",
+    "Work",
+    "Sports",
+    "Travel",
+    "Others"
+  ];
+
+  static IconData getMediaIcon(String type) {
+    switch (type) {
+      case 'video':
+        return Icons.video_library_rounded;
+      case 'image':
+        return Icons.image_rounded;
+      case 'audio':
+        return Icons.music_note_rounded;
+      case 'document':
+        return Icons.description_rounded;
+      default:
+        return Icons.insert_drive_file_rounded;
+    }
+  }
+
+  static Color getMediaColor(String type) {
+    switch (type) {
+      case 'video':
+        return const Color(0xFF4788FF);
+      case 'image':
+        return const Color(0xFF00C853);
+      case 'audio':
+        return const Color(0xFF9C27B0);
+      case 'document':
+        return const Color(0xFFFF9800);
+      default:
+        return const Color(0xFF607D8B);
+    }
+  }
+
+  static String getFileTypeLabel(String path) {
+    final ext = path.split('.').last.toLowerCase();
+
+    // Video extensions
+    if ([
+      'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', 'mpg', 'mpeg', '3gp',
+      'webm', 'ts', 'mts', 'm2ts'
+    ].contains(ext)) {
+      return 'Video';
+    }
+    // Audio extensions
+    else if ([
+      'mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma', 'aiff', 'alac', 'opus',
+      'mid', 'midi', 'amr', 'ape', 'ra', 'rm', 'mka', 'm4b', 'm4p', 'ac3', 'dts'
+    ].contains(ext)) {
+      return 'Audio';
+    }
+    // Image extensions
+    else if ([
+      'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif', 'svg', 'ico',
+      'heic', 'heif', 'raw', 'cr2', 'nef', 'arw', 'dng'
+    ].contains(ext)) {
+      return 'Image';
+    }
+    // Document extensions
+    else if ([
+      'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'ppt', 'pptx', 'xls', 'xlsx',
+      'csv', 'md', 'markdown', 'html', 'htm', 'epub', 'mobi', 'azw3', 'tex',
+      'latex', 'xml', 'json', 'yaml', 'yml'
+    ].contains(ext)) {
+      return 'Document';
+    }
+    // Archive files
+    else if ([
+      'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso', 'dmg', 'pkg',
+      'deb', 'rpm', 'cab'
+    ].contains(ext)) {
+      return 'Archive';
+    }
+    // Executable files
+    else if (['exe', 'msi', 'apk', 'dmg', 'app', 'bat', 'sh', 'bash'].contains(ext)) {
+      return 'Executable';
+    }
+    // Code files
+    else if ([
+      'dart', 'java', 'cpp', 'c', 'h', 'py', 'js', 'ts', 'php', 'rb', 'go',
+      'rs', 'swift', 'kt', 'cs'
+    ].contains(ext)) {
+      return 'Code';
+    } else {
+      return 'File';
+    }
+  }
+
+  static String formatDate(String timestamp) {
+    try {
+      final date = DateTime.fromMillisecondsSinceEpoch(int.parse(timestamp));
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays > 365) {
+        return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      } else if (difference.inDays > 7) {
+        return '${date.month}/${date.day}/${date.year}';
+      } else if (difference.inDays > 0) {
+        return '${difference.inDays}d ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours}h ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return 'Unknown date';
+    }
+  }
+}

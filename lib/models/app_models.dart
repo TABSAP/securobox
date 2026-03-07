@@ -29,8 +29,8 @@ class DownloadItem {
 
 class VideoItem {
   final String id;
-  final String title;
-  final String path;
+   String title;
+   String path;
   final String type;
   bool isLocked;
   final String category;

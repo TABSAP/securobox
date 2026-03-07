@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
@@ -26,11 +28,36 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
   double _zoomLevel = 1.0;
   bool _isDarkMode = true;
 
+  // Search related variables
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  bool _isSearching = false;
+  String _searchText = '';
+  int _currentSearchIndex = 0;
+  int _totalSearchResults = 0;
+  final GlobalKey _searchFieldKey = GlobalKey();
+  Timer? _searchDebounceTimer;
+  bool _isSearchInProgress = false;
+
+  // Book reading preferences
+  bool _isDoubleTapped = false;
+  PdfPageLayoutMode _pageLayoutMode = PdfPageLayoutMode.continuous;
+  PdfScrollDirection _scrollDirection = PdfScrollDirection.vertical;
+
   @override
   void initState() {
     super.initState();
     _pdfViewerController = PdfViewerController();
     _checkFileAndLoadPDF();
+  }
+
+  @override
+  void dispose() {
+    _searchDebounceTimer?.cancel();
+    _pdfViewerController.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   Future<void> _checkFileAndLoadPDF() async {
@@ -98,6 +125,113 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
     });
   }
 
+  void _toggleLayoutMode() {
+    setState(() {
+      if (_pageLayoutMode == PdfPageLayoutMode.continuous) {
+        _pageLayoutMode = PdfPageLayoutMode.single;
+      } else {
+        _pageLayoutMode = PdfPageLayoutMode.continuous;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_pageLayoutMode == PdfPageLayoutMode.continuous
+            ? 'Continuous scroll mode'
+            : 'Single page mode'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: const Color(0xFF4788FF),
+      ),
+    );
+  }
+
+  void _toggleScrollDirection() {
+    setState(() {
+      if (_scrollDirection == PdfScrollDirection.vertical) {
+        _scrollDirection = PdfScrollDirection.horizontal;
+      } else {
+        _scrollDirection = PdfScrollDirection.vertical;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_scrollDirection == PdfScrollDirection.vertical
+            ? 'Vertical scrolling'
+            : 'Horizontal scrolling'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: const Color(0xFF4788FF),
+      ),
+    );
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _clearSearch();
+      } else {
+        _searchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    _searchText = '';
+    _currentSearchIndex = 0;
+    _totalSearchResults = 0;
+    _isSearchInProgress = false;
+    _pdfViewerController.clearSelection();
+  }
+
+  void _performSearchWithDebounce() {
+    _searchDebounceTimer?.cancel();
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (_searchController.text.trim().isEmpty) {
+        _clearSearch();
+        return;
+      }
+
+      setState(() {
+        _searchText = _searchController.text.trim();
+        _isSearchInProgress = true;
+      });
+
+      // Perform search using the PDF viewer controller
+      _pdfViewerController.searchText(_searchText);
+    });
+  }
+
+  void _performSearch() {
+    if (_searchController.text.trim().isEmpty) {
+      _clearSearch();
+      return;
+    }
+
+    setState(() {
+      _searchText = _searchController.text.trim();
+      _isSearchInProgress = true;
+    });
+
+    // Perform search using the PDF viewer controller
+    _pdfViewerController.searchText(_searchText);
+  }
+
+  void _goToNextSearchResult() {
+    if (_totalSearchResults > 0) {
+      // Simply perform search again to go to next result
+      _pdfViewerController.searchText(_searchText);
+    }
+  }
+
+  void _goToPreviousSearchResult() {
+    if (_totalSearchResults > 0) {
+      // Simply perform search again to go to previous result
+      _pdfViewerController.searchText(_searchText);
+    }
+  }
+
   void _goToPage() {
     showDialog(
       context: context,
@@ -106,7 +240,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: _isDarkMode ? Colors.white.withValues(alpha: .1) : Colors.grey.shade300,
+            color: _isDarkMode ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
             width: 1,
           ),
         ),
@@ -192,7 +326,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Implementation would need a controller
                         Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
@@ -232,7 +365,9 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
+        title: _isSearching
+            ? _buildSearchBar()
+            : Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -257,118 +392,212 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.search,
-              color: _isDarkMode ? Colors.white : Colors.black,
+          if (_isSearching) ...[
+            if (_isSearchInProgress)
+              const Padding(
+                padding: EdgeInsets.only(right: 8),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4788FF)),
+                  ),
+                ),
+              )
+            else if (_totalSearchResults > 0)
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4788FF).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$_currentSearchIndex/$_totalSearchResults',
+                  style: TextStyle(
+                    color: const Color(0xFF4788FF),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            IconButton(
+              icon: Icon(
+                Icons.arrow_upward,
+                color: _totalSearchResults > 0
+                    ? (_isDarkMode ? Colors.white : Colors.black)
+                    : Colors.grey,
+                size: 20,
+              ),
+              onPressed: _totalSearchResults > 0 ? _goToPreviousSearchResult : null,
+              tooltip: 'Previous Result',
             ),
-            onPressed: () {
-              // Search functionality
-            },
-          ),
-          IconButton(
-            icon: Icon(
-              _isDarkMode ? Icons.light_mode : Icons.dark_mode,
-              color: _isDarkMode ? Colors.amber : Colors.black,
+            IconButton(
+              icon: Icon(
+                Icons.arrow_downward,
+                color: _totalSearchResults > 0
+                    ? (_isDarkMode ? Colors.white : Colors.black)
+                    : Colors.grey,
+                size: 20,
+              ),
+              onPressed: _totalSearchResults > 0 ? _goToNextSearchResult : null,
+              tooltip: 'Next Result',
             ),
-            onPressed: _toggleTheme,
-          ),
-          // PopupMenuButton<String>(
-          //
-          //   icon: Icon(
-          //     Icons.more_vert,
-          //     color: _isDarkMode ? Colors.white : Colors.black,
-          //   ),
-          //   onSelected: (value) {
-          //     _handleMenuSelection(value);
-          //   },
-          //   itemBuilder: (context) => [
-          //     PopupMenuItem(
-          //       textStyle: TextStyle(
-          //         //backgroundColor: _isDarkMode ? Colors.white : Colors.black,
-          //         //color: _isDarkMode ? Colors.white : Colors.black,
-          //       ),
-          //       value: 'bookmark',
-          //       child: Row(
-          //         children: [
-          //           Icon(
-          //             Icons.bookmark_border,
-          //             size: 20,
-          //             //color: _isDarkMode ? Colors.white : Colors.black,
-          //           ),
-          //           const SizedBox(width: 8),
-          //           Text(
-          //             'Add Bookmark',
-          //             style: TextStyle(
-          //               //color: _isDarkMode ? Colors.white : Colors.black,
-          //             ),
-          //           ),
-          //         ],
-          //       ),
-          //     ),
-          //     PopupMenuItem(
-          //       value: 'print',
-          //       child: Row(
-          //         children: [
-          //           Icon(
-          //             Icons.print,
-          //             size: 20,
-          //             //color: _isDarkMode ? Colors.white : Colors.black,
-          //           ),
-          //           const SizedBox(width: 8),
-          //           Text(
-          //             'Print',
-          //             style: TextStyle(
-          //               //color: _isDarkMode ? Colors.white : Colors.black,
-          //             ),
-          //           ),
-          //         ],
-          //       ),
-          //     ),
-          //     PopupMenuItem(
-          //       value: 'share',
-          //       child: Row(
-          //         children: [
-          //           Icon(
-          //             Icons.share,
-          //             size: 20,
-          //             //color: _isDarkMode ? Colors.white : Colors.black,
-          //           ),
-          //           const SizedBox(width: 8),
-          //           Text(
-          //             'Share PDF',
-          //             style: TextStyle(
-          //               //color: _isDarkMode ? Colors.white : Colors.black,
-          //             ),
-          //           ),
-          //         ],
-          //       ),
-          //     ),
-          //     PopupMenuItem(
-          //       value: 'info',
-          //       child: Row(
-          //         children: [
-          //           Icon(
-          //             Icons.info_outline,
-          //             size: 20,
-          //             //color: _isDarkMode ? Colors.white : Colors.black,
-          //           ),
-          //           const SizedBox(width: 8),
-          //           Text(
-          //             'File Info',
-          //             style: TextStyle(
-          //               //color: _isDarkMode ? Colors.white : Colors.black,
-          //             ),
-          //           ),
-          //         ],
-          //       ),
-          //     ),
-          //   ],
-          // ),
+            IconButton(
+              icon: Icon(
+                Icons.close,
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
+              onPressed: _toggleSearch,
+              tooltip: 'Close Search',
+            ),
+          ] else ...[
+            IconButton(
+              icon: Icon(
+                Icons.search,
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
+              onPressed: _toggleSearch,
+              tooltip: 'Search in PDF',
+            ),
+            IconButton(
+              icon: Icon(
+                _pageLayoutMode == PdfPageLayoutMode.continuous
+                    ? Icons.view_stream
+                    : Icons.view_compact,
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
+              onPressed: _toggleLayoutMode,
+              tooltip: 'Toggle Layout',
+            ),
+            IconButton(
+              icon: Icon(
+                _scrollDirection == PdfScrollDirection.vertical
+                    ? Icons.swap_vert
+                    : Icons.swap_horiz,
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
+              onPressed: _toggleScrollDirection,
+              tooltip: 'Toggle Scroll Direction',
+            ),
+            IconButton(
+              icon: Icon(
+                _isDarkMode ? Icons.light_mode : Icons.dark_mode,
+                color: _isDarkMode ? Colors.amber : Colors.black,
+              ),
+              onPressed: _toggleTheme,
+              tooltip: 'Toggle Theme',
+            ),
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert,
+                color: _isDarkMode ? Colors.white : Colors.black,
+              ),
+              onSelected: (value) => _handleMenuSelection(value),
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'info',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 20,
+                        color: _isDarkMode ? Colors.white : Colors.black,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'File Info',
+                        style: TextStyle(
+                          color: _isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
-      body: _buildBody(),
+      body: GestureDetector(
+        onDoubleTap: () {
+          setState(() {
+            _isDoubleTapped = !_isDoubleTapped;
+            if (_isDoubleTapped) {
+              _pageLayoutMode = PdfPageLayoutMode.single;
+            } else {
+              _pageLayoutMode = PdfPageLayoutMode.continuous;
+            }
+          });
+        },
+        child: _buildBody(),
+      ),
       bottomNavigationBar: _isLoading || _hasError ? null : _buildBottomBar(),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      key: _searchFieldKey,
+      height: 45,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: _isDarkMode ? const Color(0xFF141432) : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(
+          color: const Color(0xFF4788FF).withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 12),
+          const Icon(Icons.search, color: Color(0xFF4788FF), size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              style: TextStyle(
+                color: _isDarkMode ? Colors.white : Colors.black,
+                fontSize: 14,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search in document...',
+                hintStyle: TextStyle(
+                  color: _isDarkMode ? Colors.grey.shade500 : Colors.grey.shade400,
+                  fontSize: 14,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+              onChanged: (value) {
+                if (value.isEmpty) {
+                  _clearSearch();
+                } else {
+                  _performSearchWithDebounce();
+                }
+              },
+              onSubmitted: (value) => _performSearch(),
+            ),
+          ),
+          if (_searchController.text.isNotEmpty)
+            IconButton(
+              icon: Icon(
+                Icons.clear,
+                size: 18,
+                color: _isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+              ),
+              onPressed: () {
+                _searchController.clear();
+                _clearSearch();
+                _searchFocusNode.requestFocus();
+              },
+              padding: EdgeInsets.zero,
+            ),
+        ],
+      ),
     );
   }
 
@@ -428,10 +657,10 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: .1),
+                  color: Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(40),
                   border: Border.all(
-                    color: Colors.red.withValues(alpha: .3),
+                    color: Colors.red.withOpacity(0.3),
                     width: 2,
                   ),
                 ),
@@ -506,14 +735,25 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
       return SfPdfViewer.file(
         File(widget.filePath),
         controller: _pdfViewerController,
-        pageLayoutMode: PdfPageLayoutMode.single,
-        scrollDirection: PdfScrollDirection.vertical,
+        pageLayoutMode: _pageLayoutMode,
+        scrollDirection: _scrollDirection,
         canShowPaginationDialog: true,
         canShowScrollHead: true,
+        enableDoubleTapZooming: true,
+        enableTextSelection: true,
+        maxZoomLevel: 5.0,
+        initialZoomLevel: 1.0,
         onDocumentLoaded: (PdfDocumentLoadedDetails details) {
           if (mounted) {
             setState(() {
               _totalPages = details.document.pages.count;
+            });
+
+            // Smooth initial animation
+            Future.delayed(const Duration(milliseconds: 300), () {
+              if (mounted) {
+                _pdfViewerController.jumpToPage(1);
+              }
             });
           }
         },
@@ -532,6 +772,9 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
             });
           }
         },
+        onTextSelectionChanged: (PdfTextSelectionChangedDetails details) {
+          // Handle text selection if needed
+        },
       );
     } catch (e) {
       return Center(
@@ -542,10 +785,10 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: .1),
+                color: Colors.red.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(40),
                 border: Border.all(
-                  color: Colors.red.withValues(alpha: .3),
+                  color: Colors.red.withOpacity(0.3),
                   width: 2,
                 ),
               ),
@@ -592,12 +835,12 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         color: _isDarkMode ? const Color(0xFF1A1A3E) : Colors.white,
         border: Border(
           top: BorderSide(
-            color: _isDarkMode ? Colors.white.withValues(alpha: .1) : Colors.grey.shade300,
+            color: _isDarkMode ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -741,7 +984,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF4788FF).withValues(alpha: .3),
+                          color: const Color(0xFF4788FF).withOpacity(0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -810,24 +1053,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
 
   void _handleMenuSelection(String value) {
     switch (value) {
-      case 'bookmark':
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Bookmark added for page $_currentPage'),
-            backgroundColor: const Color(0xFF4788FF),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
-        break;
-      case 'print':
-      // Print functionality would go here
-        break;
-      case 'share':
-      // Share functionality would go here
-        break;
       case 'info':
         _showFileInfo();
         break;
@@ -848,7 +1073,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: _isDarkMode ? Colors.white.withValues(alpha: .1) : Colors.grey.shade300,
+              color: _isDarkMode ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
               width: 1,
             ),
           ),
@@ -864,10 +1089,10 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: .1),
+                        color: Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.red.withValues(alpha: .3),
+                          color: Colors.red.withOpacity(0.3),
                           width: 1,
                         ),
                       ),

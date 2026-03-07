@@ -1,6 +1,7 @@
 // services/shared_prefs_service.dart
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_models.dart';
 
@@ -74,7 +75,7 @@ class SharedPrefsService {
         videos[index] = deletedVideo;
         await saveVideos(videos);
 
-        // Also backup deleted video
+        // Also backup database video
         await _backupDeletedVideo(deletedVideo);
       }
     } catch (e) {
@@ -102,18 +103,18 @@ class SharedPrefsService {
     }
   }
 
-  // Get deleted videos only
+  // Get database videos only
   Future<List<VideoItem>> getDeletedVideos() async {
     try {
       final videos = await getVideos();
       return videos.where((video) => video.isDeleted).toList();
     } catch (e) {
-      print('Error getting deleted videos: $e');
+      print('Error getting database videos: $e');
       return [];
     }
   }
 
-  // Get active (not deleted) videos
+  // Get active (not database) videos
   Future<List<VideoItem>> getActiveVideos() async {
     try {
       final videos = await getVideos();
@@ -135,18 +136,18 @@ class SharedPrefsService {
     }
   }
 
-  // Clear all deleted videos
+  // Clear all database videos
   Future<void> clearAllDeleted() async {
     try {
       final videos = await getVideos();
       final activeVideos = videos.where((v) => !v.isDeleted).toList();
       await saveVideos(activeVideos);
     } catch (e) {
-      print('Error clearing deleted videos: $e');
+      print('Error clearing database videos: $e');
     }
   }
 
-  // Backup deleted video (optional - for recovery)
+  // Backup database video (optional - for recovery)
   Future<void> _backupDeletedVideo(VideoItem video) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -156,7 +157,7 @@ class SharedPrefsService {
       backupList.add(video.toJson());
       await prefs.setString(_deletedVideosKey, json.encode(backupList));
     } catch (e) {
-      print('Error backing up deleted video: $e');
+      print('Error backing up database video: $e');
     }
   }
 
@@ -263,10 +264,14 @@ class SharedPrefsService {
         ];
 
         await saveVideos(sampleVideos);
-        print('Sample data initialized with ${sampleVideos.length} videos');
+        if (kDebugMode) {
+          print('Sample data initialized with ${sampleVideos.length} videos');
+        }
       }
     } catch (e) {
-      print('Error initializing sample data: $e');
+      if (kDebugMode) {
+        print('Error initializing sample data: $e');
+      }
     }
   }
 
@@ -279,7 +284,7 @@ class SharedPrefsService {
 
       return {
         'total': videos.length,
-        'deleted': deletedVideos.length,
+        'database': deletedVideos.length,
         'active': videos.length - deletedVideos.length,
         'locked': lockedVideos.length,
         'local': videos.where((v) => v.type == 'local').length,

@@ -1,0 +1,554 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:photo_manager/photo_manager.dart';
+import 'package:local_auth/local_auth.dart';
+
+import '../models/app_models.dart';
+
+class MediaService {
+  static const String _storageKey = 'videoLibrary';
+  static const String _downloadHistoryKey = 'downloadHistory';
+
+  final LocalAuthentication _localAuth = LocalAuthentication();
+  List<VideoItem> _mediaList = [];
+
+  List<VideoItem> get mediaList => _mediaList;
+
+  // Load all media from storage
+  Future<List<VideoItem>> loadMedia() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      final loadedList = mediaList
+          .map((data) => VideoItem.fromStorageString(data))
+          .where((item) => !item.isDeleted) // Filter out database items
+          .toList()
+        ..sort((a, b) => b.id.compareTo(a.id)); // Sort by newest first
+
+      _mediaList = loadedList;
+      return loadedList;
+    } catch (e) {
+      print('Error loading media: $e');
+      return [];
+    }
+  }
+
+  // Save media list to storage
+  Future<bool> saveMedia(List<VideoItem> mediaList) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mediaStrings = mediaList.map((v) => v.toStorageString()).toList();
+      await prefs.setStringList(_storageKey, mediaStrings);
+      _mediaList = mediaList;
+      return true;
+    } catch (e) {
+      print('Error saving media: $e');
+      return false;
+    }
+  }
+
+  // Update media category
+  Future<bool> updateMediaCategory(VideoItem media, String newCategory) async {
+    try {
+      final updatedMedia = media.copyWith(category: newCategory);
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      final index = mediaList.indexWhere((item) => item.startsWith(media.id));
+      if (index != -1) {
+        mediaList[index] = updatedMedia.toStorageString();
+        await prefs.setStringList(_storageKey, mediaList);
+
+        // Update local list
+        final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
+        if (localIndex != -1) {
+          _mediaList[localIndex] = updatedMedia;
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error updating category: $e');
+      return false;
+    }
+  }
+
+  // Toggle media lock status
+  Future<bool> toggleMediaLock(VideoItem media) async {
+    try {
+      final updatedMedia = media.copyWith(isLocked: !media.isLocked);
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      final index = mediaList.indexWhere((item) => item.startsWith(media.id));
+      if (index != -1) {
+        mediaList[index] = updatedMedia.toStorageString();
+        await prefs.setStringList(_storageKey, mediaList);
+
+        // Update local list
+        final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
+        if (localIndex != -1) {
+          _mediaList[localIndex] = updatedMedia;
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error toggling lock: $e');
+      return false;
+    }
+  }
+
+  // Soft delete media
+  Future<bool> softDeleteMedia(VideoItem media) async {
+    try {
+      final deletedMedia = media.copyWith(
+        isDeleted: true,
+        deletedDate: DateTime.now(),
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      final index = mediaList.indexWhere((item) => item.startsWith(media.id));
+      if (index != -1) {
+        mediaList[index] = deletedMedia.toStorageString();
+        await prefs.setStringList(_storageKey, mediaList);
+
+        // Remove from local list
+        _mediaList.removeWhere((item) => item.id == media.id);
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error deleting media: $e');
+      return false;
+    }
+  }
+
+  // Restore media from trash
+  Future<bool> restoreMedia(String mediaId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      final index = mediaList.indexWhere((item) => item.startsWith(mediaId));
+      if (index != -1) {
+        final media = VideoItem.fromStorageString(mediaList[index]);
+        final restoredMedia = media.copyWith(
+          isDeleted: false,
+          deletedDate: null,
+        );
+        mediaList[index] = restoredMedia.toStorageString();
+        await prefs.setStringList(_storageKey, mediaList);
+
+        // Add back to local list
+        _mediaList.add(restoredMedia);
+        _mediaList.sort((a, b) => b.id.compareTo(a.id));
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print('Error restoring media: $e');
+      return false;
+    }
+  }
+
+// Permanently delete media
+  Future<bool> permanentlyDeleteMedia(String mediaId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      // Also delete the physical file - Fixed the orElse to return null safely
+      VideoItem? mediaItem;
+      try {
+        mediaItem = mediaList
+            .map((data) => VideoItem.fromStorageString(data))
+            .firstWhere((item) => item.id == mediaId);
+      } catch (e) {
+        // Item not found, continue without physical file deletion
+        mediaItem = null;
+      }
+
+      if (mediaItem != null) {
+        final file = File(mediaItem.path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      }
+
+      mediaList.removeWhere((item) => item.startsWith(mediaId));
+      await prefs.setStringList(_storageKey, mediaList);
+
+      // Remove from local list
+      _mediaList.removeWhere((item) => item.id == mediaId);
+      return true;
+    } catch (e) {
+      print('Error permanently deleting media: $e');
+      return false;
+    }
+  }
+
+  // Get deleted media
+  Future<List<VideoItem>> getDeletedMedia() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      return mediaList
+          .map((data) => VideoItem.fromStorageString(data))
+          .where((item) => item.isDeleted)
+          .toList()
+        ..sort((a, b) {
+          if (a.deletedDate == null) return 1;
+          if (b.deletedDate == null) return -1;
+          return b.deletedDate!.compareTo(a.deletedDate!);
+        });
+    } catch (e) {
+      print('Error getting deleted media: $e');
+      return [];
+    }
+  }
+
+  // Authenticate with biometrics
+  Future<bool> authenticateUser({String reason = 'Authenticate to access locked media'}) async {
+    try {
+      final bool canCheck = await _localAuth.canCheckBiometrics;
+      if (!canCheck) return false;
+
+      final List<BiometricType> availableBiometrics =
+      await _localAuth.getAvailableBiometrics();
+      if (availableBiometrics.isEmpty) return false;
+
+      return await _localAuth.authenticate(
+        localizedReason: reason,
+        biometricOnly: true,
+        sensitiveTransaction: true,
+      );
+    } catch (e) {
+      print('Authentication error: $e');
+      return false;
+    }
+  }
+
+  // FIXED RENAME MEDIA METHOD
+  Future<bool> renameMedia(VideoItem media, String newName) async {
+    try {
+      if (newName.trim().isEmpty) {
+        debugPrint('New name is empty');
+        return false;
+      }
+
+      // Sanitize filename
+      final safeFileName = newName.trim().replaceAll(RegExp(r'[<>:"/\\|?*]'), '');
+      if (safeFileName.isEmpty) {
+        debugPrint('Invalid filename after sanitization');
+        return false;
+      }
+
+      // Check if file exists at stored path
+      final file = File(media.path);
+      if (!await file.exists()) {
+        debugPrint('File not found at: ${media.path}');
+
+        // Try to find the file by name in common directories
+        final foundPath = await findActualFilePath(media.title);
+        if (foundPath.isEmpty) {
+          debugPrint('Could not find file anywhere');
+          return false;
+        }
+
+        // Update media path to correct location
+        final updatedMedia = media.copyWith(path: foundPath);
+        await updateMediaPath(media.id, foundPath);
+        return await renameMedia(updatedMedia, newName); // Retry with correct path
+      }
+
+      // Get directory and extension
+      final directory = file.parent;
+      final extension = media.path.split('.').last;
+
+      // Create new path
+      final newPath = '${directory.path}/$safeFileName.$extension';
+      debugPrint('New path will be: $newPath');
+
+      // Check if file with new name already exists
+      if (await File(newPath).exists()) {
+        debugPrint('File with name $safeFileName already exists');
+        return false;
+      }
+
+      // Rename the physical file
+      debugPrint('Renaming from: ${media.path} to: $newPath');
+      await file.rename(newPath);
+      debugPrint('File renamed successfully');
+
+      // Update in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      final index = mediaList.indexWhere((item) => item.startsWith(media.id));
+      if (index != -1) {
+        // Create updated media with new title and path
+        final oldMedia = VideoItem.fromStorageString(mediaList[index]);
+        final updatedMedia = oldMedia.copyWith(
+          title: safeFileName,
+          path: newPath,
+        );
+
+        mediaList[index] = updatedMedia.toStorageString();
+        await prefs.setStringList(_storageKey, mediaList);
+
+        // Update local list
+        final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
+        if (localIndex != -1) {
+          _mediaList[localIndex] = updatedMedia;
+        }
+
+        debugPrint('Media updated in storage successfully');
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('Error renaming media: $e');
+      return false;
+    }
+  }
+
+  // Helper method to update media path
+  Future<bool> updateMediaPath(String mediaId, String newPath) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      final index = mediaList.indexWhere((item) => item.startsWith(mediaId));
+      if (index != -1) {
+        final media = VideoItem.fromStorageString(mediaList[index]);
+        final updatedMedia = media.copyWith(path: newPath);
+        mediaList[index] = updatedMedia.toStorageString();
+        await prefs.setStringList(_storageKey, mediaList);
+
+        // Update local list
+        final localIndex = _mediaList.indexWhere((item) => item.id == mediaId);
+        if (localIndex != -1) {
+          _mediaList[localIndex] = updatedMedia;
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error updating media path: $e');
+      return false;
+    }
+  }
+
+  // Find actual file path by searching common directories
+  Future<String> findActualFilePath(String fileName) async {
+    try {
+      final appDocDir = await getApplicationDocumentsDirectory();
+      final appDocPath = appDocDir.path;
+
+      // List of possible directories where files might be stored
+      final possibleDirs = [
+        appDocPath,
+        '$appDocPath/secure_player',
+        '$appDocPath/secure_player/videos',
+        '$appDocPath/videos',
+        '/storage/emulated/0/Download',
+        '/storage/emulated/0/Download/SecureVideo',
+        '/storage/emulated/0/Movies',
+        '/storage/emulated/0/Movies/SecureVideo',
+        '/storage/emulated/0/Pictures',
+        '/storage/emulated/0/Pictures/SecureImages',
+        '/storage/emulated/0/DCIM/Camera',
+        '/storage/emulated/0/Music',
+        '/storage/emulated/0/Music/SecureVideo',
+      ];
+
+      for (final dirPath in possibleDirs) {
+        try {
+          final dir = Directory(dirPath);
+          if (await dir.exists()) {
+            // Get all files in directory
+            final files = dir.listSync().whereType<File>().toList();
+
+            // Look for files containing the fileName (without extension)
+            final baseName = fileName.split('.').first;
+            for (final file in files) {
+              if (file.path.contains(baseName) || file.path.contains(fileName)) {
+                debugPrint('Found file in: $dirPath - ${file.path}');
+                return file.path;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Error searching directory $dirPath: $e');
+          continue;
+        }
+      }
+
+      // Recursively search in app documents directory
+      await _searchDirectoryRecursively(appDocDir, fileName).then((path) {
+        if (path.isNotEmpty) {
+          return path;
+        }
+      });
+
+      return '';
+    } catch (e) {
+      debugPrint('Error finding file: $e');
+      return '';
+    }
+  }
+
+  // Recursive directory search helper
+  Future<String> _searchDirectoryRecursively(Directory dir, String fileName) async {
+    try {
+      await for (final entity in dir.list(recursive: true, followLinks: false)) {
+        if (entity is File) {
+          if (entity.path.contains(fileName) ||
+              entity.path.contains(fileName.split('.').first)) {
+            return entity.path;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in recursive search: $e');
+    }
+    return '';
+  }
+
+  // Download file to device
+  Future<bool> downloadFile({
+    required String filePath,
+    required String fileName,
+  }) async {
+    try {
+      final permission = await PhotoManager.requestPermissionExtend();
+      if (!permission.isAuth) {
+        print('❌ Permission denied');
+        return false;
+      }
+
+      final file = File(filePath);
+      if (!await file.exists()) {
+        print('❌ File not found');
+        return false;
+      }
+
+      final ext = filePath.split('.').last.toLowerCase();
+
+      // Get file size
+      final fileSize = await file.length();
+      final fileSizeStr = _formatBytes(fileSize);
+
+      // Add to download history
+      await _addToDownloadHistory(
+        fileName: fileName,
+        filePath: filePath,
+        fileSize: fileSizeStr,
+      );
+
+      // Save based on file type
+      if (['mp4', 'mkv', 'avi', 'mov'].contains(ext)) {
+        await PhotoManager.editor.saveVideo(
+          file,
+          title: fileName,
+          relativePath: 'Movies/SecureVideo',
+        );
+      } else if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
+        await PhotoManager.editor.saveImage(
+          await file.readAsBytes(),
+          title: fileName,
+          relativePath: 'Pictures/SecureImages',
+          filename: 'images',
+        );
+      } else if (['mp3', 'wav', 'aac', 'ogg', 'm4a'].contains(ext)) {
+        final dir = Directory('/storage/emulated/0/Music/SecureVideo');
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        final newFile = File('${dir.path}/$fileName');
+        await file.copy(newFile.path);
+      } else {
+        final dir = Directory('/storage/emulated/0/Download/SecureVideo');
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        final newFile = File('${dir.path}/$fileName');
+        await file.copy(newFile.path);
+      }
+
+      return true;
+    } catch (e) {
+      print('❌ Download error: $e');
+      return false;
+    }
+  }
+
+  // Add to download history
+  Future<void> _addToDownloadHistory({
+    required String fileName,
+    required String filePath,
+    required String fileSize,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final downloadList = prefs.getStringList(_downloadHistoryKey) ?? [];
+
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      final date = DateTime.now().toIso8601String();
+      final downloadData = '$id|$fileName|$fileSize|completed|$date|$filePath||::1.0';
+
+      downloadList.add(downloadData);
+      await prefs.setStringList(_downloadHistoryKey, downloadList);
+    } catch (e) {
+      print('❌ Error adding to download history: $e');
+    }
+  }
+
+  // Format bytes helper
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    int i = 0;
+    double bytesDouble = bytes.toDouble();
+
+    while (bytesDouble >= 1024 && i < suffixes.length - 1) {
+      bytesDouble /= 1024;
+      i++;
+    }
+    return '${bytesDouble.toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
+  // Get download history
+  Future<List<Map<String, dynamic>>> getDownloadHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final downloadList = prefs.getStringList(_downloadHistoryKey) ?? [];
+
+      return downloadList.map((item) {
+        final parts = item.split('|');
+        return {
+          'id': parts[0],
+          'fileName': parts[1],
+          'fileSize': parts[2],
+          'status': parts[3],
+          'date': parts[4],
+          'filePath': parts[5],
+        };
+      }).toList();
+    } catch (e) {
+      print('Error getting download history: $e');
+      return [];
+    }
+  }
+}

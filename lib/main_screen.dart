@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_app/upload_screen/upload_screen.dart';
-import 'video_library_screen/video_library_screen.dart';
+import 'package:video_player_app/views/screens/home_screen/home_screen.dart';
+import 'app_lock_screen/app_lock_screen.dart';
 import 'download_screen/download_screen.dart';
 import 'security_settings/security_setting.dart';
 
@@ -11,20 +12,70 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
+class _MainScreenState extends State<MainScreen>
+     {
 
-  // 🔥 GLOBAL KEY
-  final _libraryKey = GlobalKey<VideoLibraryScreenState>();
+  int _selectedIndex = 0;
+  final _libraryKey = GlobalKey<HomeScreenState>();
+
+  bool _isAppLocked = false;
+  bool _isShowingLockScreen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    //WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+   // WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
 
   void _onVideoUploaded() {
-    // 1️⃣ switch to library tab
     setState(() {
       _selectedIndex = 0;
     });
 
-    // 2️⃣ force refresh library
     _libraryKey.currentState?.refreshVideos();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted) return;
+
+    if (state == AppLifecycleState.paused) {
+      _isAppLocked = true;
+    }
+
+    if (state == AppLifecycleState.resumed) {
+      if (_isAppLocked && !_isShowingLockScreen) {
+        _isAppLocked = false;
+        _showLockScreen();
+      }
+    }
+  }
+
+  void _showLockScreen() async {
+    if (!mounted) return;
+
+    _isShowingLockScreen = true;
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (!mounted) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const AppLockScreen(),
+        fullscreenDialog: true,
+      ),
+    );
+
+    if (mounted) {
+      _isShowingLockScreen = false;
+    }
   }
 
   @override
@@ -34,11 +85,8 @@ class _MainScreenState extends State<MainScreen> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          // ✅ SAME screen instance – but refreshable
-          VideoLibraryScreen(key: _libraryKey),
-          UploadScreen(
-            onVideoUploaded: _onVideoUploaded,
-          ),
+          HomeScreen(key: _libraryKey),
+          UploadScreen(onVideoUploaded: _onVideoUploaded),
           const DownloadScreen(),
           const SecuritySettingsScreen(),
         ],
@@ -52,6 +100,7 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 }
+
 
 class _ProfessionalNavigationBar extends StatefulWidget {
   final int selectedIndex;
@@ -96,14 +145,14 @@ class _ProfessionalNavigationBarState extends State<_ProfessionalNavigationBar> 
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF141432).withOpacity(0.95),
+        color: const Color(0xFF141432).withValues(alpha: .95),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: .3),
             blurRadius: 20,
             spreadRadius: 2,
             offset: const Offset(0, -5),
@@ -158,7 +207,7 @@ class _NavigationButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: isSelected
-              ? const Color(0xFF4788FF).withOpacity(0.15)
+              ? const Color(0xFF4788FF).withValues(alpha: .15)
               : Colors.transparent,
         ),
         child: Column(
@@ -178,7 +227,7 @@ class _NavigationButton extends StatelessWidget {
                 key: ValueKey(isSelected ? 'active_${item.label}' : item.label),
                 color: isSelected
                     ? const Color(0xFF4788FF)
-                    : Colors.grey.withOpacity(0.7),
+                    : Colors.grey.withValues(alpha: .7),
                 size: 24,
               ),
             ),
@@ -188,7 +237,8 @@ class _NavigationButton extends StatelessWidget {
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               transform: Matrix4.identity()
-                ..scale(isSelected ? 1.0 : 0.9, isSelected ? 1.0 : 0.9),
+                ..
+              scale(isSelected ? 1.0 : 0.9, isSelected ? 1.0 : 0.9),
               child: Text(
                 item.label,
                 style: TextStyle(
@@ -196,7 +246,7 @@ class _NavigationButton extends StatelessWidget {
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected
                       ? const Color(0xFF4788FF)
-                      : Colors.grey.withOpacity(0.7),
+                      : Colors.grey.withValues(alpha: .7),
                   letterSpacing: -0.2,
                 ),
               ),
