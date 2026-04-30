@@ -175,7 +175,7 @@ class _AppLockScreenState extends State<AppLockScreen>
       }
 
       final authenticated = await _localAuth.authenticate(
-        localizedReason: 'Unlock Secure Video Player',
+        localizedReason: 'Unlock Secure Player',
         biometricOnly: true,
 
         sensitiveTransaction: true,
@@ -250,7 +250,7 @@ class _AppLockScreenState extends State<AppLockScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const LiquidLockHeader(
-                      title: 'Secure Video Player',
+                      title: 'Secure Player',
                       subtitle: 'Enter your PIN to continue',
                     ),
 

@@ -834,9 +834,9 @@ class _UploadScreenState extends State<UploadScreen>
                     ),
                     child: const Center(
                       child: Icon(
-                        Icons.cloud_upload_rounded,
+                        Icons.add_rounded,
                         color: Colors.white,
-                        size: 24,
+                        size: 26,
                       ),
                     ),
                   ),
@@ -846,12 +846,12 @@ class _UploadScreenState extends State<UploadScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'UPLOAD FILES',
+                          'Add to Vault',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
-                            letterSpacing: 0.5,
+                            letterSpacing: 0.3,
                             shadows: [
                               Shadow(
                                 color: LiquidColors.primaryStart.withValues(alpha: .3),
@@ -862,7 +862,7 @@ class _UploadScreenState extends State<UploadScreen>
                           ),
                         ),
                         Text(
-                          'Add files from device or URL',
+                          'Import media from your device',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade400,

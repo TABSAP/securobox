@@ -827,7 +827,7 @@ class HomeScreenState extends State<HomeScreen>
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          '${_filteredMedia.length} files found',
+          '${_filteredMedia.length} ${_filteredMedia.length == 1 ? "item" : "items"}',
           style: TextStyle(
             color: Colors.grey.shade400,
             fontSize: 12,
@@ -987,7 +987,7 @@ class HomeScreenState extends State<HomeScreen>
                         ),
                         child: Center(
                           child: Icon(
-                            hasFilters ? Icons.search_off_rounded : Icons.library_music_outlined,
+                            hasFilters ? Icons.search_off_rounded : Icons.folder_special_outlined,
                             size: 60,
                             color: LiquidColors.primaryStart,
                           ),

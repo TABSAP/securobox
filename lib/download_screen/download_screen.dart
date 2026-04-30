@@ -626,12 +626,12 @@ class _DownloadScreenState extends State<DownloadScreen>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'DOWNLOAD HISTORY',
+                          'Export History',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
-                            letterSpacing: 0.5,
+                            letterSpacing: 0.3,
                             shadows: [
                               Shadow(
                                 color: LiquidColors.success.withOpacity(0.3),
@@ -642,7 +642,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                           ),
                         ),
                         Text(
-                          '${_downloads.length} downloaded files',
+                          '${_downloads.length} ${_downloads.length == 1 ? "file" : "files"} exported',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade400,

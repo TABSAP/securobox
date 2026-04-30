@@ -29,7 +29,7 @@ class LiquidTitle extends StatelessWidget {
             child: Text(
               'SECURE',
               style: TextStyle(
-                fontSize: 32,
+                fontSize: 36,
                 fontWeight: FontWeight.w900,
                 color: Colors.white,
                 letterSpacing: 4.0,
@@ -49,7 +49,7 @@ class LiquidTitle extends StatelessWidget {
               return LiquidColors.primaryGradient.createShader(bounds);
             },
             child: Text(
-              'VIDEO PLAYER',
+              'PLAYER',
               style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,

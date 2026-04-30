@@ -124,20 +124,19 @@ class _ProfessionalNavigationBarState extends State<_ProfessionalNavigationBar> 
       label: 'Library',
     ),
     NavigationItem(
-      icon: Icons.cloud_upload_outlined,
-      activeIcon: Icons.cloud_upload_rounded,
-      label: 'Upload',
+      icon: Icons.add_circle_outline_rounded,
+      activeIcon: Icons.add_circle_rounded,
+      label: 'Add',
     ),
     NavigationItem(
-      icon: Icons.download_outlined,
-      activeIcon: Icons.download_rounded,
-      label: 'Downloads',
+      icon: Icons.history_outlined,
+      activeIcon: Icons.history_rounded,
+      label: 'History',
     ),
     NavigationItem(
-
       icon: Icons.settings_outlined,
       activeIcon: Icons.settings_rounded,
-      label: 'Setting',
+      label: 'Settings',
     ),
   ];
 

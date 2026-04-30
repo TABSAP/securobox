@@ -2,14 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../../utils/liquid_colors.dart';
 
-class AppBarTitleWidget extends StatefulWidget {
+class AppBarTitleWidget extends StatelessWidget {
   const AppBarTitleWidget({super.key});
 
-  @override
-  State<AppBarTitleWidget> createState() => _AppBarTitleWidgetState();
-}
-
-class _AppBarTitleWidgetState extends State<AppBarTitleWidget> {
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder(
@@ -29,7 +24,7 @@ class _AppBarTitleWidgetState extends State<AppBarTitleWidget> {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: LiquidColors.primaryStart.withOpacity(0.4),
+                      color: LiquidColors.primaryStart.withValues(alpha: 0.4),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),
@@ -37,7 +32,7 @@ class _AppBarTitleWidgetState extends State<AppBarTitleWidget> {
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.add,
+                    Icons.shield_rounded,
                     color: Colors.white,
                     size: 22,
                   ),
@@ -49,15 +44,15 @@ class _AppBarTitleWidgetState extends State<AppBarTitleWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'LIBRARY VIDEOS',
+                      'My Library',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.3,
                         shadows: [
                           Shadow(
-                            color: LiquidColors.primaryStart.withOpacity(0.3),
+                            color: LiquidColors.primaryStart.withValues(alpha: 0.3),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -65,7 +60,7 @@ class _AppBarTitleWidgetState extends State<AppBarTitleWidget> {
                       ),
                     ),
                     Text(
-                      'Add files from device or URL',
+                      'Your private vault',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade400,
