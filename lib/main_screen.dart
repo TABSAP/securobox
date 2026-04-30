@@ -24,12 +24,12 @@ class _MainScreenState extends State<MainScreen>
   @override
   void initState() {
     super.initState();
-    //WidgetsBinding.instance.addObserver(this);
+
   }
 
   @override
   void dispose() {
-   // WidgetsBinding.instance.removeObserver(this);
+
     super.dispose();
   }
 
@@ -101,7 +101,6 @@ class _MainScreenState extends State<MainScreen>
   }
 }
 
-
 class _ProfessionalNavigationBar extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
@@ -117,7 +116,7 @@ class _ProfessionalNavigationBar extends StatefulWidget {
 }
 
 class _ProfessionalNavigationBarState extends State<_ProfessionalNavigationBar> {
-  // Navigation items configuration
+
   static const List<NavigationItem> _navItems = [
     NavigationItem(
       icon: Icons.video_library_outlined,
@@ -214,7 +213,7 @@ class _NavigationButton extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Animated icon
+
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
               transitionBuilder: (child, animation) {
@@ -233,7 +232,7 @@ class _NavigationButton extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            // Animated label
+
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,

@@ -139,7 +139,6 @@ class HomeScreenState extends State<HomeScreen>
     }
   }
 
-
   Future<void> _renameMedia(VideoItem media) async {
     if (media.isLocked) {
       final authenticated = await _mediaService.authenticateUser(
@@ -290,7 +289,7 @@ class HomeScreenState extends State<HomeScreen>
 
     if (result != null && result.isNotEmpty && mounted) {
       try {
-        // Show loading indicator
+
         setState(() => _isLoading = true);
 
         debugPrint('Attempting to rename: ${media.title} to: $result');
@@ -301,7 +300,7 @@ class HomeScreenState extends State<HomeScreen>
         setState(() => _isLoading = false);
 
         if (success) {
-          await _loadMedia(); // Reload to get updated data
+          await _loadMedia();
           if (widget.onVideosChanged != null) {
             widget.onVideosChanged!();
           }
@@ -609,7 +608,7 @@ class HomeScreenState extends State<HomeScreen>
             ),
           ),
           actions: [
-            /// appbar delete button
+
             TweenAnimationBuilder(
               tween: Tween<double>(begin: 0, end: 1),
               duration: const Duration(milliseconds: 500),
@@ -1090,7 +1089,7 @@ class HomeScreenState extends State<HomeScreen>
             onLockTap: () => _toggleMediaLock(media),
             onDownloadTap: () => _showDownloadConfirmation(media),
             onDeleteTap: () => _deleteMedia(media),
-            onRenameTap: () => _renameMedia(media), // Added rename callback
+            onRenameTap: () => _renameMedia(media),
           );
         },
       ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidInfoCard extends StatefulWidget {
   final String message;
   final IconData icon;

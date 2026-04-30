@@ -28,7 +28,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
   double _zoomLevel = 1.0;
   bool _isDarkMode = true;
 
-  // Search related variables
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   bool _isSearching = false;
@@ -39,7 +38,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
   Timer? _searchDebounceTimer;
   bool _isSearchInProgress = false;
 
-  // Book reading preferences
   bool _isDoubleTapped = false;
   PdfPageLayoutMode _pageLayoutMode = PdfPageLayoutMode.continuous;
   PdfScrollDirection _scrollDirection = PdfScrollDirection.vertical;
@@ -198,7 +196,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         _isSearchInProgress = true;
       });
 
-      // Perform search using the PDF viewer controller
       _pdfViewerController.searchText(_searchText);
     });
   }
@@ -214,20 +211,19 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
       _isSearchInProgress = true;
     });
 
-    // Perform search using the PDF viewer controller
     _pdfViewerController.searchText(_searchText);
   }
 
   void _goToNextSearchResult() {
     if (_totalSearchResults > 0) {
-      // Simply perform search again to go to next result
+
       _pdfViewerController.searchText(_searchText);
     }
   }
 
   void _goToPreviousSearchResult() {
     if (_totalSearchResults > 0) {
-      // Simply perform search again to go to previous result
+
       _pdfViewerController.searchText(_searchText);
     }
   }
@@ -749,7 +745,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
               _totalPages = details.document.pages.count;
             });
 
-            // Smooth initial animation
             Future.delayed(const Duration(milliseconds: 300), () {
               if (mounted) {
                 _pdfViewerController.jumpToPage(1);
@@ -773,7 +768,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           }
         },
         onTextSelectionChanged: (PdfTextSelectionChangedDetails details) {
-          // Handle text selection if needed
+
         },
       );
     } catch (e) {
@@ -850,7 +845,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         top: false,
         child: Row(
           children: [
-            // Zoom controls
+
             Row(
               children: [
                 Container(
@@ -927,7 +922,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
 
             const Spacer(),
 
-            // Page navigation
             Row(
               children: [
                 Container(
@@ -973,7 +967,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                 ),
                 const SizedBox(width: 5),
 
-                // Page indicator with go-to functionality
                 GestureDetector(
                   onTap: _goToPage,
                   child: Container(

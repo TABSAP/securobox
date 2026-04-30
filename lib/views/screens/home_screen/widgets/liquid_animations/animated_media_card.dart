@@ -61,7 +61,6 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       ),
     );
 
-    // Start animation with delay based on index
     Future.delayed(Duration(milliseconds: widget.index * 100), () {
       if (mounted) {
         _controller.forward();

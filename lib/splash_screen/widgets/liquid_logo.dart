@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidLogo extends StatelessWidget {
   final Animation<double> animation;
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidPinDots extends StatelessWidget {
   final int enteredLength;
   final bool hasError;

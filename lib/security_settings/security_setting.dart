@@ -9,7 +9,7 @@ class SecuritySettingsScreen extends StatefulWidget {
 
 class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     with SingleTickerProviderStateMixin {
-  // Security state
+
   bool _appLockEnabled = false;
   bool _videoLockEnabled = false;
   bool _biometricEnabled = false;
@@ -20,21 +20,17 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _confirmPinMode = false;
   final List<String> _confirmPin = [];
 
-  // Biometric
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _biometricAvailable = false;
   List<BiometricType> _availableBiometrics = [];
 
-  // Secure storage
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   bool _secureStorageAvailable = true;
 
-  // Animation
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // Error states
   String? _pinError;
   bool _isLoading = false;
 
@@ -509,7 +505,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                   children: [
                     const SizedBox(height: 8),
 
-                    // Security Cards
                     LiquidSecurityCard(
                       icon: Icons.lock_outline_rounded,
                       title: 'App Lock',
@@ -534,7 +529,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                     const SizedBox(height: 16),
 
-                    // Biometric Card
                     LiquidSecurityCard(
                       icon: _getBiometricIcon(),
                       title: 'Biometric Authentication',
@@ -585,7 +579,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                     const SizedBox(height: 32),
 
-                    // PIN Section
                     LiquidPinSection(
                       currentPin: _appPin,
                       isChanging: _changingPin,
@@ -598,7 +591,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                     const SizedBox(height: 24),
 
-                    // PIN Input (When Changing)
                     if (_changingPin) ...[
                       LiquidPinInput(
                         confirmMode: _confirmPinMode,
@@ -612,12 +604,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       const SizedBox(height: 24),
                     ],
 
-                    // Security Info Card
                     _buildSecurityInfoCard(),
 
                     const SizedBox(height: 24),
 
-                    // Security Tips
                     _buildSecurityTipsCard(),
 
                     const SizedBox(height: 40),

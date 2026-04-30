@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidCategorySelector extends StatefulWidget {
   final String selectedCategory;
   final Function(String) onCategoryChanged;

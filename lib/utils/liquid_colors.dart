@@ -1,33 +1,28 @@
 import 'package:flutter/material.dart';
 
 class LiquidColors {
-  // Primary liquid colors - flowing blue/purple gradient
+
   static const Color primaryStart = Color(0xFF4158D0);
   static const Color primaryMid = Color(0xFFC850C0);
   static const Color primaryEnd = Color(0xFFFFCC70);
 
-  // Secondary liquid colors
   static const Color secondaryStart = Color(0xFF0093E9);
   static const Color secondaryEnd = Color(0xFF80D0C7);
 
-  // Background colors
   static const Color backgroundDeep = Color(0xFF0A0F1E);
   static const Color backgroundMid = Color(0xFF141B2B);
   static const Color backgroundLight = Color(0xFF1E2738);
 
-  // Accent colors
   static const Color accentBlue = Color(0xFF3B82F6);
   static const Color accentPurple = Color(0xFF8B5CF6);
   static const Color accentPink = Color(0xFFEC4899);
   static const Color accentOrange = Color(0xFFF59E0B);
 
-  // Status colors
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
   static const Color info = Color(0xFF3B82F6);
 
-  // Get gradient based on type
   static Gradient get primaryGradient => const LinearGradient(
     colors: [primaryStart, primaryMid, primaryEnd],
     begin: Alignment.topLeft,
@@ -64,7 +59,6 @@ class LiquidColors {
     end: Alignment.bottomRight,
   );
 
-  // Get media type color with liquid effect
   static Color getMediaColor(String type) {
     switch (type) {
       case 'video':
@@ -80,7 +74,6 @@ class LiquidColors {
     }
   }
 
-  // Get media type gradient
   static Gradient getMediaGradient(String type) {
     switch (type) {
       case 'video':

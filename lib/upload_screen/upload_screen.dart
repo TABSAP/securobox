@@ -4,7 +4,6 @@ import 'package:video_player_app/download_screen/widgets/view.dart';
 import 'package:video_player_app/utils/media_helper.dart';
 import '../upload_screen/widgets/view.dart';
 
-
 class UploadScreen extends StatefulWidget {
   final VoidCallback? onVideoUploaded;
 
@@ -514,7 +513,7 @@ class _UploadScreenState extends State<UploadScreen>
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Category Selector in Dialog
+
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -757,18 +756,11 @@ class _UploadScreenState extends State<UploadScreen>
       if (mounted) {
         FlushBarHelper.flushBarSuccessMessage('File downloaded successfully to "$_selectedCategory" folder', context);
 
-        // _showSnackBar(
-        //   'File downloaded successfully to "$_selectedCategory" folder',
-        //   LiquidColors.success,
-        // );
       }
     } catch (e) {
       if (mounted) {
         FlushBarHelper.flushBarErrorMessage('Download failed: ${e.toString()}', context);
-        // _showSnackBar(
-        //   'Download failed: ${e.toString()}',
-        //   LiquidColors.error,
-        // );
+
       }
     } finally {
       if (mounted) {
@@ -905,7 +897,7 @@ class _UploadScreenState extends State<UploadScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with Category Selector
+
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: SlideTransition(
@@ -926,7 +918,7 @@ class _UploadScreenState extends State<UploadScreen>
                           getColor: _getCategoryColor,
                         ),
                         const SizedBox(height: 12),
-                        // File Type Info
+
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
@@ -991,7 +983,6 @@ class _UploadScreenState extends State<UploadScreen>
 
                 const SizedBox(height: 24),
 
-                // Upload Options
                 Row(
                   children: [
                     Expanded(
@@ -1010,22 +1001,12 @@ class _UploadScreenState extends State<UploadScreen>
                       ),
                     ),
                     const SizedBox(width: 16),
-                    // Expanded(
-                    //   child: LiquidUploadCard(
-                    //     icon: Icons.link_rounded,
-                    //     title: 'From URL',
-                    //     subtitle: 'Download from link',
-                    //     gradient: [LiquidColors.success, LiquidColors.accentBlue],
-                    //     index: 1,
-                    //     onTap: _downloadFromURL,
-                    //   ),
-                    // ),
+
                   ],
                 ),
 
                 const SizedBox(height: 30),
 
-                // Selected Files Section
                 if (_selectedFiles.isNotEmpty)
                   FadeTransition(
                     opacity: _fadeAnimation,
@@ -1126,18 +1107,17 @@ class _UploadScreenState extends State<UploadScreen>
                     ),
                   ),
 
-                // Empty State
                 if (_selectedFiles.isEmpty && !_isUploading)
                   FadeTransition(
                     opacity: _fadeAnimation,
                     child: SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.4, // Reduced height
+                      height: MediaQuery.of(context).size.height * 0.4,
                       child: Center(
-                        child: SingleChildScrollView( // Added SingleChildScrollView
+                        child: SingleChildScrollView(
                           physics: const BouncingScrollPhysics(),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min, // Added mainAxisSize.min
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               TweenAnimationBuilder(
                                 tween: Tween<double>(begin: 0, end: 1),
@@ -1147,8 +1127,8 @@ class _UploadScreenState extends State<UploadScreen>
                                   return Transform.scale(
                                     scale: value,
                                     child: Container(
-                                      width: 120, // Reduced size
-                                      height: 120, // Reduced size
+                                      width: 120,
+                                      height: 120,
                                       decoration: BoxDecoration(
                                         gradient: RadialGradient(
                                           colors: [
@@ -1158,7 +1138,7 @@ class _UploadScreenState extends State<UploadScreen>
                                           center: Alignment.center,
                                           radius: 0.8,
                                         ),
-                                        borderRadius: BorderRadius.circular(24), // Reduced radius
+                                        borderRadius: BorderRadius.circular(24),
                                         border: Border.all(
                                           color: _getCategoryColor(_selectedCategory).withValues(alpha: .3),
                                           width: 2,
@@ -1167,7 +1147,7 @@ class _UploadScreenState extends State<UploadScreen>
                                       child: Center(
                                         child: Icon(
                                           _getCategoryIcon(_selectedCategory),
-                                          size: 50, // Reduced size
+                                          size: 50,
                                           color: _getCategoryColor(_selectedCategory),
                                         ),
                                       ),
@@ -1175,22 +1155,22 @@ class _UploadScreenState extends State<UploadScreen>
                                   );
                                 },
                               ),
-                              const SizedBox(height: 16), // Reduced spacing
+                              const SizedBox(height: 16),
                               const Text(
                                 'No Files Selected',
                                 style: TextStyle(
-                                  fontSize: 18, // Reduced font size
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
                                 ),
                               ),
-                              const SizedBox(height: 8), // Reduced spacing
+                              const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8), // Reduced padding
+                                    horizontal: 16, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: _getCategoryColor(_selectedCategory).withValues(alpha: .1),
-                                  borderRadius: BorderRadius.circular(20), // Reduced radius
+                                  borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: _getCategoryColor(_selectedCategory).withValues(alpha: .3),
                                   ),
@@ -1203,37 +1183,37 @@ class _UploadScreenState extends State<UploadScreen>
                                       children: [
                                         Icon(
                                           Icons.folder_rounded,
-                                          size: 14, // Reduced size
+                                          size: 14,
                                           color: _getCategoryColor(_selectedCategory),
                                         ),
-                                        const SizedBox(width: 6), // Reduced spacing
+                                        const SizedBox(width: 6),
                                         Text(
                                           'Category: $_selectedCategory',
                                           style: TextStyle(
                                             color: _getCategoryColor(_selectedCategory),
                                             fontWeight: FontWeight.w600,
-                                            fontSize: 13, // Added font size
+                                            fontSize: 13,
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 2), // Reduced spacing
+                                    const SizedBox(height: 2),
                                     Text(
                                       '/secure_player/${_selectedCategory.toLowerCase()}',
                                       style: TextStyle(
                                         color: Colors.grey.shade400,
-                                        fontSize: 11, // Reduced font size
+                                        fontSize: 11,
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 8), // Reduced spacing
+                              const SizedBox(height: 8),
                               Text(
                                 'Choose files from device or paste a URL',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
-                                  fontSize: 13, // Reduced font size
+                                  fontSize: 13,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
@@ -1244,7 +1224,6 @@ class _UploadScreenState extends State<UploadScreen>
                     ),
                   ),
 
-                // Uploading Progress
                 if (_isUploading)
                   SizedBox(
                     height: MediaQuery.of(context).size.height * 0.45,
@@ -1256,7 +1235,6 @@ class _UploadScreenState extends State<UploadScreen>
                     ),
                   ),
 
-                // Upload Button
                 if (_selectedFiles.isNotEmpty && !_isUploading)
                   FadeTransition(
                     opacity: _fadeAnimation,
@@ -1319,7 +1297,6 @@ class _UploadScreenState extends State<UploadScreen>
     );
   }
 
-  // Helper methods for icons and colors
   IconData _getCategoryIcon(String category) {
     switch (category) {
       case "Videos":

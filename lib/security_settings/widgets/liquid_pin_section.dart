@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidPinSection extends StatefulWidget {
   final List<String> currentPin;
   final bool isChanging;

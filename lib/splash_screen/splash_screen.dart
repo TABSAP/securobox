@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_app/splash_screen/widgets/view.dart';
 
-import '../ads/app_open_ad_service.dart';
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -23,13 +21,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-
-    // AppOpenAdService.loadAd();
-    // Future.delayed(const Duration(milliseconds: 600), () {
-    //   AppOpenAdService.showAdIfAvailable();
-    // });
-
-
     _initializeAnimations();
     _startNavigationTimer();
   }

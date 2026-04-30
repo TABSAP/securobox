@@ -19,7 +19,6 @@ class MediaService {
 
   List<VideoItem> get mediaList => _mediaList;
 
-  // Load all media from storage
   Future<List<VideoItem>> loadMedia() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -27,9 +26,9 @@ class MediaService {
 
       final loadedList = mediaList
           .map((data) => VideoItem.fromStorageString(data))
-          .where((item) => !item.isDeleted) // Filter out database items
+          .where((item) => !item.isDeleted)
           .toList()
-        ..sort((a, b) => b.id.compareTo(a.id)); // Sort by newest first
+        ..sort((a, b) => b.id.compareTo(a.id));
 
       _mediaList = loadedList;
       return loadedList;
@@ -39,7 +38,6 @@ class MediaService {
     }
   }
 
-  // Save media list to storage
   Future<bool> saveMedia(List<VideoItem> mediaList) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -53,7 +51,6 @@ class MediaService {
     }
   }
 
-  // Update media category
   Future<bool> updateMediaCategory(VideoItem media, String newCategory) async {
     try {
       final updatedMedia = media.copyWith(category: newCategory);
@@ -65,7 +62,6 @@ class MediaService {
         mediaList[index] = updatedMedia.toStorageString();
         await prefs.setStringList(_storageKey, mediaList);
 
-        // Update local list
         final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
         if (localIndex != -1) {
           _mediaList[localIndex] = updatedMedia;
@@ -79,7 +75,6 @@ class MediaService {
     }
   }
 
-  // Toggle media lock status
   Future<bool> toggleMediaLock(VideoItem media) async {
     try {
       final updatedMedia = media.copyWith(isLocked: !media.isLocked);
@@ -91,7 +86,6 @@ class MediaService {
         mediaList[index] = updatedMedia.toStorageString();
         await prefs.setStringList(_storageKey, mediaList);
 
-        // Update local list
         final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
         if (localIndex != -1) {
           _mediaList[localIndex] = updatedMedia;
@@ -105,7 +99,6 @@ class MediaService {
     }
   }
 
-  // Soft delete media
   Future<bool> softDeleteMedia(VideoItem media) async {
     try {
       final deletedMedia = media.copyWith(
@@ -121,7 +114,6 @@ class MediaService {
         mediaList[index] = deletedMedia.toStorageString();
         await prefs.setStringList(_storageKey, mediaList);
 
-        // Remove from local list
         _mediaList.removeWhere((item) => item.id == media.id);
         return true;
       }
@@ -132,7 +124,6 @@ class MediaService {
     }
   }
 
-  // Restore media from trash
   Future<bool> restoreMedia(String mediaId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -148,7 +139,6 @@ class MediaService {
         mediaList[index] = restoredMedia.toStorageString();
         await prefs.setStringList(_storageKey, mediaList);
 
-        // Add back to local list
         _mediaList.add(restoredMedia);
         _mediaList.sort((a, b) => b.id.compareTo(a.id));
         return true;
@@ -160,20 +150,18 @@ class MediaService {
     }
   }
 
-// Permanently delete media
   Future<bool> permanentlyDeleteMedia(String mediaId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final mediaList = prefs.getStringList(_storageKey) ?? [];
 
-      // Also delete the physical file - Fixed the orElse to return null safely
       VideoItem? mediaItem;
       try {
         mediaItem = mediaList
             .map((data) => VideoItem.fromStorageString(data))
             .firstWhere((item) => item.id == mediaId);
       } catch (e) {
-        // Item not found, continue without physical file deletion
+
         mediaItem = null;
       }
 
@@ -187,7 +175,6 @@ class MediaService {
       mediaList.removeWhere((item) => item.startsWith(mediaId));
       await prefs.setStringList(_storageKey, mediaList);
 
-      // Remove from local list
       _mediaList.removeWhere((item) => item.id == mediaId);
       return true;
     } catch (e) {
@@ -196,7 +183,6 @@ class MediaService {
     }
   }
 
-  // Get deleted media
   Future<List<VideoItem>> getDeletedMedia() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -217,7 +203,6 @@ class MediaService {
     }
   }
 
-  // Authenticate with biometrics
   Future<bool> authenticateUser({String reason = 'Authenticate to access locked media'}) async {
     try {
       final bool canCheck = await _localAuth.canCheckBiometrics;
@@ -238,7 +223,6 @@ class MediaService {
     }
   }
 
-  // FIXED RENAME MEDIA METHOD
   Future<bool> renameMedia(VideoItem media, String newName) async {
     try {
       if (newName.trim().isEmpty) {
@@ -246,57 +230,48 @@ class MediaService {
         return false;
       }
 
-      // Sanitize filename
       final safeFileName = newName.trim().replaceAll(RegExp(r'[<>:"/\\|?*]'), '');
       if (safeFileName.isEmpty) {
         debugPrint('Invalid filename after sanitization');
         return false;
       }
 
-      // Check if file exists at stored path
       final file = File(media.path);
       if (!await file.exists()) {
         debugPrint('File not found at: ${media.path}');
 
-        // Try to find the file by name in common directories
         final foundPath = await findActualFilePath(media.title);
         if (foundPath.isEmpty) {
           debugPrint('Could not find file anywhere');
           return false;
         }
 
-        // Update media path to correct location
         final updatedMedia = media.copyWith(path: foundPath);
         await updateMediaPath(media.id, foundPath);
-        return await renameMedia(updatedMedia, newName); // Retry with correct path
+        return await renameMedia(updatedMedia, newName);
       }
 
-      // Get directory and extension
       final directory = file.parent;
       final extension = media.path.split('.').last;
 
-      // Create new path
       final newPath = '${directory.path}/$safeFileName.$extension';
       debugPrint('New path will be: $newPath');
 
-      // Check if file with new name already exists
       if (await File(newPath).exists()) {
         debugPrint('File with name $safeFileName already exists');
         return false;
       }
 
-      // Rename the physical file
       debugPrint('Renaming from: ${media.path} to: $newPath');
       await file.rename(newPath);
       debugPrint('File renamed successfully');
 
-      // Update in SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final mediaList = prefs.getStringList(_storageKey) ?? [];
 
       final index = mediaList.indexWhere((item) => item.startsWith(media.id));
       if (index != -1) {
-        // Create updated media with new title and path
+
         final oldMedia = VideoItem.fromStorageString(mediaList[index]);
         final updatedMedia = oldMedia.copyWith(
           title: safeFileName,
@@ -306,7 +281,6 @@ class MediaService {
         mediaList[index] = updatedMedia.toStorageString();
         await prefs.setStringList(_storageKey, mediaList);
 
-        // Update local list
         final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
         if (localIndex != -1) {
           _mediaList[localIndex] = updatedMedia;
@@ -323,7 +297,6 @@ class MediaService {
     }
   }
 
-  // Helper method to update media path
   Future<bool> updateMediaPath(String mediaId, String newPath) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -336,7 +309,6 @@ class MediaService {
         mediaList[index] = updatedMedia.toStorageString();
         await prefs.setStringList(_storageKey, mediaList);
 
-        // Update local list
         final localIndex = _mediaList.indexWhere((item) => item.id == mediaId);
         if (localIndex != -1) {
           _mediaList[localIndex] = updatedMedia;
@@ -350,13 +322,11 @@ class MediaService {
     }
   }
 
-  // Find actual file path by searching common directories
   Future<String> findActualFilePath(String fileName) async {
     try {
       final appDocDir = await getApplicationDocumentsDirectory();
       final appDocPath = appDocDir.path;
 
-      // List of possible directories where files might be stored
       final possibleDirs = [
         appDocPath,
         '$appDocPath/secure_player',
@@ -377,10 +347,9 @@ class MediaService {
         try {
           final dir = Directory(dirPath);
           if (await dir.exists()) {
-            // Get all files in directory
+
             final files = dir.listSync().whereType<File>().toList();
 
-            // Look for files containing the fileName (without extension)
             final baseName = fileName.split('.').first;
             for (final file in files) {
               if (file.path.contains(baseName) || file.path.contains(fileName)) {
@@ -395,7 +364,6 @@ class MediaService {
         }
       }
 
-      // Recursively search in app documents directory
       await _searchDirectoryRecursively(appDocDir, fileName).then((path) {
         if (path.isNotEmpty) {
           return path;
@@ -409,7 +377,6 @@ class MediaService {
     }
   }
 
-  // Recursive directory search helper
   Future<String> _searchDirectoryRecursively(Directory dir, String fileName) async {
     try {
       await for (final entity in dir.list(recursive: true, followLinks: false)) {
@@ -426,7 +393,6 @@ class MediaService {
     return '';
   }
 
-  // Download file to device
   Future<bool> downloadFile({
     required String filePath,
     required String fileName,
@@ -446,18 +412,15 @@ class MediaService {
 
       final ext = filePath.split('.').last.toLowerCase();
 
-      // Get file size
       final fileSize = await file.length();
       final fileSizeStr = _formatBytes(fileSize);
 
-      // Add to download history
       await _addToDownloadHistory(
         fileName: fileName,
         filePath: filePath,
         fileSize: fileSizeStr,
       );
 
-      // Save based on file type
       if (['mp4', 'mkv', 'avi', 'mov'].contains(ext)) {
         await PhotoManager.editor.saveVideo(
           file,
@@ -494,7 +457,6 @@ class MediaService {
     }
   }
 
-  // Add to download history
   Future<void> _addToDownloadHistory({
     required String fileName,
     required String filePath,
@@ -515,7 +477,6 @@ class MediaService {
     }
   }
 
-  // Format bytes helper
   String _formatBytes(int bytes) {
     if (bytes <= 0) return '0 B';
     const suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
@@ -529,7 +490,6 @@ class MediaService {
     return '${bytesDouble.toStringAsFixed(1)} ${suffixes[i]}';
   }
 
-  // Get download history
   Future<List<Map<String, dynamic>>> getDownloadHistory() async {
     try {
       final prefs = await SharedPreferences.getInstance();

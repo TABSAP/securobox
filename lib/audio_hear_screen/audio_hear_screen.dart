@@ -1,4 +1,3 @@
-// lib/features/chat/presentation/screens/audio_player_screen.dart
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:audio_session/audio_session.dart';
@@ -248,7 +247,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Album Art
+
         Container(
           width: 200,
           height: 200,
@@ -273,7 +272,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
           ),
         ),
 
-        // Title
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Text(
@@ -288,7 +286,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
         Text('Speed: ${_currentSpeed}x', style: const TextStyle(color: Color(0xFF4788FF))),
         const SizedBox(height: 30),
 
-        // Progress
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
@@ -322,7 +319,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
 
         const SizedBox(height: 30),
 
-        // Controls
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -379,7 +375,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
 
         const SizedBox(height: 30),
 
-        // Volume
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
           child: Row(

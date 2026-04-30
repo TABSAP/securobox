@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidFileItem extends StatefulWidget {
   final File file;
   final int index;

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidProgressIndicator extends StatefulWidget {
   final double progress;
   final Color color;
@@ -189,10 +188,8 @@ class LiquidProgressPainter extends CustomPainter {
       ..strokeWidth = 8
       ..color = color.withOpacity(0.2);
 
-    // Draw background circle
     canvas.drawCircle(center, radius, paint);
 
-    // Draw progress arc
     final progressPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
@@ -210,7 +207,6 @@ class LiquidProgressPainter extends CustomPainter {
       progressPaint,
     );
 
-    // Draw liquid effect
     final liquidPaint = Paint()
       ..style = PaintingStyle.fill
       ..color = color.withOpacity(0.1);

@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 
 class DownloadItem {
@@ -23,10 +22,6 @@ class DownloadItem {
   });
 }
 
-/// video items models
-
-// models/app_models.dart में
-
 class VideoItem {
   final String id;
    String title;
@@ -48,7 +43,6 @@ class VideoItem {
     this.deletedDate,
   });
 
-  // For SharedPreferences storage
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -77,7 +71,6 @@ class VideoItem {
     );
   }
 
-  // Copy with method
   VideoItem copyWith({
     String? id,
     String? title,
@@ -100,7 +93,6 @@ class VideoItem {
     );
   }
 
-  // For saving to SharedPreferences (string format)
   String toStorageString() {
     return '$id|$title|$path|$type|$isLocked|$category|$isDeleted|${deletedDate?.toIso8601String() ?? ""}';
   }
@@ -109,7 +101,7 @@ class VideoItem {
     final parts = storageString.split('|');
 
     if (parts.length < 6) {
-      // Old format (without isDeleted and deletedDate)
+
       return VideoItem(
         id: parts[0],
         title: parts[1],

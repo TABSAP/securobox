@@ -33,7 +33,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     _loadDeletedVideos();
     _searchController.addListener(_onSearchChanged);
 
-    // Auto-delete old files after loading
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoDeleteOldFiles();
     });
@@ -63,7 +62,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     _animationController.forward();
   }
 
-  // Auto-delete files older than 30 days
   Future<void> _autoDeleteOldFiles() async {
     try {
       final now = DateTime.now();
@@ -78,10 +76,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         try {
           final video = VideoItem.fromStorageString(mediaData);
 
-          // Check if video is deleted and old
           if (video.isDeleted && video.deletedDate != null) {
             if (video.deletedDate!.isBefore(thirtyDaysAgo)) {
-              // Delete the actual file
+
               try {
                 final file = File(video.path);
                 if (await file.exists()) {
@@ -91,7 +88,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 debugPrint('Error deleting file ${video.title}: $e');
               }
               hasDeleted = true;
-              continue; // Skip adding to updated list (permanently delete)
+              continue;
             }
           }
           updatedMediaList.add(mediaData);
@@ -551,7 +548,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     }
   }
 
-  // Get days remaining before auto-delete
   int _getDaysRemaining(DateTime deletedDate) {
     final now = DateTime.now();
     final deleteDate = deletedDate.add(const Duration(days: 30));

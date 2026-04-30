@@ -1,0 +1,9 @@
+First release of Secure Player.
+
+• Private offline vault for videos, audio, photos and documents
+• PIN and biometric (fingerprint / face) app lock
+• Screenshot and screen-capture blocking
+• Built-in video, audio, image and PDF players
+• Auto-organized categories with quick search
+• Recycle bin for safe deletion
+• 100% offline — no ads, no trackers, no account needed

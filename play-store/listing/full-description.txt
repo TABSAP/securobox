@@ -1,0 +1,53 @@
+Secure Player is a 100% offline private media vault. Keep your videos, audio, photos and documents safe behind a PIN and biometric lock — nothing ever leaves your device.
+
+★ Why Secure Player
+
+• 100% offline — your files never touch the cloud
+• PIN + biometric (fingerprint / face) lock for the entire app
+• Screenshot blocking — prevents screen recording and screen capture
+• AES-encrypted local storage
+• No ads, no trackers, no analytics
+• No account, no sign-up, no internet permission required for playback
+
+★ What you can store
+
+• Videos (MP4, MOV, MKV, AVI, WMV, FLV, M4V)
+• Audio (MP3, WAV, AAC, FLAC, OGG, M4A, WMA)
+• Photos (JPG, PNG, GIF, WEBP, BMP)
+• Documents (PDF, DOC, DOCX, PPT, XLS, TXT)
+
+★ Built-in players
+
+• Video player with playback speed, fullscreen and gesture controls
+• Audio player with background playback
+• PDF reader with smooth scrolling and zoom
+• Image gallery with pinch-to-zoom
+
+★ Smart organization
+
+• Auto-categorized library: Videos, Photos, Audio, Documents, plus custom folders
+• Educational, Personal, Work, Sports, Travel categories built-in
+• Quick search across your vault
+• Recycle bin for accidentally deleted files
+
+★ Import options
+
+• Pick files from your device storage
+• Download from a direct URL into your vault
+• Files are copied to a private app folder, isolated from the rest of your phone
+
+★ Security model
+
+• PIN with strength check (rejects 1234, 0000, sequential digits, repeats)
+• Optional biometric unlock (fingerprint or face)
+• Auto-lock when the app goes to background
+• Per-video lock for an extra layer of protection
+• PIN backup in Android's hardware-backed Keystore
+
+★ Privacy promise
+
+We do not collect, store, or transmit any of your data.
+We have no servers. We do not see your files.
+You are in control — always.
+
+Secure Player is perfect for anyone who wants to keep personal videos, sensitive documents, or private memories safely tucked away on their phone, accessible only by them.

@@ -10,7 +10,6 @@ import 'package:video_player_app/utils/flush_bar_helper.dart';
 import '../main_screen.dart';
 import '../utils/liquid_colors.dart';
 
-
 class AppLockScreen extends StatefulWidget {
   const AppLockScreen({super.key});
 
@@ -80,7 +79,6 @@ class _AppLockScreenState extends State<AppLockScreen>
       _biometricEnabled = prefs.getBool('enableBiometric') ?? false;
     });
 
-    // Auto-attempt biometric if enabled
     if (_biometricEnabled && mounted) {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) _useBiometric();
@@ -193,7 +191,6 @@ class _AppLockScreenState extends State<AppLockScreen>
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
@@ -259,7 +256,6 @@ class _AppLockScreenState extends State<AppLockScreen>
 
                     const SizedBox(height: 32),
 
-                    // Animated PIN dots
                     AnimatedBuilder(
                       animation: _errorController,
                       builder: (context, child) {
@@ -275,7 +271,6 @@ class _AppLockScreenState extends State<AppLockScreen>
 
                     const SizedBox(height: 32),
 
-                    // Number pad
                     if (!_hidePinPad)
                       GridView.builder(
                         shrinkWrap: true,
@@ -374,7 +369,6 @@ class _AppLockScreenState extends State<AppLockScreen>
 
                     const SizedBox(height: 20),
 
-                    // Biometric fallback button
                     if (_hidePinPad || _biometricEnabled)
                       TweenAnimationBuilder(
                         tween: Tween<double>(begin: 0, end: 1),

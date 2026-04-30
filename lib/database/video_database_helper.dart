@@ -1,4 +1,3 @@
-// services/shared_prefs_service.dart
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -14,7 +13,6 @@ class SharedPrefsService {
   static const String _deletedVideosKey = 'deleted_videos_backup';
   static const String _settingsKey = 'app_settings';
 
-  // Save all videos
   Future<void> saveVideos(List<VideoItem> videos) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -25,7 +23,6 @@ class SharedPrefsService {
     }
   }
 
-  // Get all videos
   Future<List<VideoItem>> getVideos() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -43,15 +40,12 @@ class SharedPrefsService {
     }
   }
 
-  // Add or update a single video
   Future<void> saveVideo(VideoItem video) async {
     try {
       final videos = await getVideos();
 
-      // Remove existing video with same id
       videos.removeWhere((v) => v.id == video.id);
 
-      // Add new/updated video
       videos.add(video);
 
       await saveVideos(videos);
@@ -60,7 +54,6 @@ class SharedPrefsService {
     }
   }
 
-  // Delete video (soft delete)
   Future<void> softDeleteVideo(String videoId) async {
     try {
       final videos = await getVideos();
@@ -75,7 +68,6 @@ class SharedPrefsService {
         videos[index] = deletedVideo;
         await saveVideos(videos);
 
-        // Also backup database video
         await _backupDeletedVideo(deletedVideo);
       }
     } catch (e) {
@@ -83,7 +75,6 @@ class SharedPrefsService {
     }
   }
 
-  // Restore video
   Future<void> restoreVideo(String videoId) async {
     try {
       final videos = await getVideos();
@@ -103,7 +94,6 @@ class SharedPrefsService {
     }
   }
 
-  // Get database videos only
   Future<List<VideoItem>> getDeletedVideos() async {
     try {
       final videos = await getVideos();
@@ -114,7 +104,6 @@ class SharedPrefsService {
     }
   }
 
-  // Get active (not database) videos
   Future<List<VideoItem>> getActiveVideos() async {
     try {
       final videos = await getVideos();
@@ -125,7 +114,6 @@ class SharedPrefsService {
     }
   }
 
-  // Permanently delete video
   Future<void> permanentDelete(String videoId) async {
     try {
       final videos = await getVideos();
@@ -136,7 +124,6 @@ class SharedPrefsService {
     }
   }
 
-  // Clear all database videos
   Future<void> clearAllDeleted() async {
     try {
       final videos = await getVideos();
@@ -147,7 +134,6 @@ class SharedPrefsService {
     }
   }
 
-  // Backup database video (optional - for recovery)
   Future<void> _backupDeletedVideo(VideoItem video) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -161,7 +147,6 @@ class SharedPrefsService {
     }
   }
 
-  // Get video by ID
   Future<VideoItem?> getVideoById(String videoId) async {
     try {
       final videos = await getVideos();
@@ -172,7 +157,6 @@ class SharedPrefsService {
     }
   }
 
-  // Get app settings
   Future<Map<String, dynamic>> getSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -195,7 +179,6 @@ class SharedPrefsService {
     }
   }
 
-  // Save app settings
   Future<void> saveSettings(Map<String, dynamic> settings) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -205,7 +188,6 @@ class SharedPrefsService {
     }
   }
 
-  // Clear all data (for testing/logout)
   Future<void> clearAllData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -215,7 +197,6 @@ class SharedPrefsService {
     }
   }
 
-  // Initialize with sample data (for testing)
   Future<void> initializeWithSampleData() async {
     try {
       final videos = await getVideos();
@@ -275,7 +256,6 @@ class SharedPrefsService {
     }
   }
 
-  // Get statistics
   Future<Map<String, int>> getStatistics() async {
     try {
       final videos = await getVideos();

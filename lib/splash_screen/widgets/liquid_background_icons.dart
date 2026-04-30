@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidBackgroundIcons extends StatelessWidget {
   final double screenWidth;
   final double screenHeight;
@@ -16,7 +15,7 @@ class LiquidBackgroundIcons extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Animated floating icons
+
         ...List.generate(6, (index) {
           final delay = index * 200;
           final isEven = index.isEven;
@@ -49,7 +48,6 @@ class LiquidBackgroundIcons extends StatelessWidget {
           );
         }),
 
-        // Rotating circular elements
         Positioned(
           top: screenHeight * 0.1,
           right: screenWidth * 0.2,

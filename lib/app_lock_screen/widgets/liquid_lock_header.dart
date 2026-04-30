@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidLockHeader extends StatelessWidget {
   final String title;
   final String subtitle;

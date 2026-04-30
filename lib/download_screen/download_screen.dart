@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_app/download_screen/widgets/view.dart';
 
-
-
 class DownloadScreen extends StatefulWidget {
   const DownloadScreen({super.key});
 
@@ -290,7 +288,7 @@ class _DownloadScreenState extends State<DownloadScreen>
     if (!permission.isAuth) {
       debugPrint('❌ Permission denied');
       FlushBarHelper.flushBarErrorMessage('Permission denied', context);
-      //_showSnackBar('Permission denied', LiquidColors.error);
+
       return;
     }
 
@@ -298,7 +296,7 @@ class _DownloadScreenState extends State<DownloadScreen>
     if (!await file.exists()) {
       debugPrint('❌ File not found');
       FlushBarHelper.flushBarErrorMessage('File not found', context);
-      //_showSnackBar('File not found', LiquidColors.error);
+
       return;
     }
 
@@ -363,13 +361,13 @@ class _DownloadScreenState extends State<DownloadScreen>
 
       if (mounted) {
         FlushBarHelper.flushBarSuccessMessage('$fileName downloaded successfully', context);
-       // _showSnackBar('$fileName downloaded successfully', LiquidColors.success);
+
       }
     } catch (e) {
       debugPrint('❌ Save error: $e');
       if (mounted) {
         FlushBarHelper.flushBarErrorMessage('Download failed: ${e.toString()}', context);
-        //_showSnackBar('Download failed: ${e.toString()}', LiquidColors.error);
+
       }
     }
   }
@@ -416,7 +414,7 @@ class _DownloadScreenState extends State<DownloadScreen>
   Future<void> _shareVideo(String videoPath) async {
     if (!await File(videoPath).exists()) {
       FlushBarHelper.flushBarErrorMessage('Video file not found', context);
-      //_showSnackBar('Video file not found', LiquidColors.error);
+
       return;
     }
 
@@ -424,7 +422,7 @@ class _DownloadScreenState extends State<DownloadScreen>
       await Share.shareXFiles([XFile(videoPath)], text: 'Check out this ${getFileTypeLabel(videoPath)}!');
     } catch (e) {
       FlushBarHelper.flushBarErrorMessage('Failed to share: ${e.toString()}', context);
-      //_showSnackBar('Failed to share: ${e.toString()}', LiquidColors.error);
+
     }
   }
 
@@ -542,7 +540,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                             _downloads.clear();
                           });
                           FlushBarHelper.flushBarSuccessMessage('Download history cleared', context);
-                          //_showSnackBar('Download history cleared', LiquidColors.error);
+
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: LiquidColors.error,
@@ -754,10 +752,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                     onButtonPressed: () {
                       Navigator.of(context).popUntil((route) => route.isFirst);
                       FlushBarHelper.flushBarSuccessMessage('Go to Video Library tab to download videos', context);
-                      // _showSnackBar(
-                      //   'Go to Video Library tab to download videos',
-                      //   LiquidColors.accentBlue,
-                      // );
+
                     },
                     iconColor: LiquidColors.success,
                   )

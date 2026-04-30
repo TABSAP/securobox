@@ -10,7 +10,7 @@ class LiquidDeletedCard extends StatefulWidget {
   final IconData Function(String) getIcon;
   final Color Function(String) getColor;
   final int index;
-  final int? daysRemaining; // Add this parameter
+  final int? daysRemaining;
 
   const LiquidDeletedCard({
     super.key,
@@ -21,7 +21,7 @@ class LiquidDeletedCard extends StatefulWidget {
     required this.getIcon,
     required this.getColor,
     required this.index,
-    this.daysRemaining, // Initialize here
+    this.daysRemaining,
   });
 
   @override
@@ -212,7 +212,6 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
         ),
         const SizedBox(height: 8),
 
-        // Days remaining indicator
         if (widget.video.deletedDate != null)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -251,7 +250,6 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
 
         const SizedBox(height: 8),
 
-        // Deleted date
         if (widget.video.deletedDate != null)
           Row(
             children: [
@@ -273,7 +271,6 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
 
         const SizedBox(height: 8),
 
-        // Type and category chips
         Wrap(
           spacing: 8,
           children: [
@@ -437,11 +434,11 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
 
   Future<bool?> _confirmDismiss(DismissDirection direction) async {
     if (direction == DismissDirection.startToEnd) {
-      // Restore on swipe right
+
       widget.onRestore();
       return false;
     } else {
-      // Show delete confirmation on swipe left
+
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => _buildDeleteDialog(),

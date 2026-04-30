@@ -48,28 +48,27 @@ class MediaHelper {
   static String getFileTypeLabel(String path) {
     final ext = path.split('.').last.toLowerCase();
 
-    // Video extensions
     if ([
       'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', 'mpg', 'mpeg', '3gp',
       'webm', 'ts', 'mts', 'm2ts'
     ].contains(ext)) {
       return 'Video';
     }
-    // Audio extensions
+
     else if ([
       'mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma', 'aiff', 'alac', 'opus',
       'mid', 'midi', 'amr', 'ape', 'ra', 'rm', 'mka', 'm4b', 'm4p', 'ac3', 'dts'
     ].contains(ext)) {
       return 'Audio';
     }
-    // Image extensions
+
     else if ([
       'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif', 'svg', 'ico',
       'heic', 'heif', 'raw', 'cr2', 'nef', 'arw', 'dng'
     ].contains(ext)) {
       return 'Image';
     }
-    // Document extensions
+
     else if ([
       'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'ppt', 'pptx', 'xls', 'xlsx',
       'csv', 'md', 'markdown', 'html', 'htm', 'epub', 'mobi', 'azw3', 'tex',
@@ -77,18 +76,18 @@ class MediaHelper {
     ].contains(ext)) {
       return 'Document';
     }
-    // Archive files
+
     else if ([
       'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso', 'dmg', 'pkg',
       'deb', 'rpm', 'cab'
     ].contains(ext)) {
       return 'Archive';
     }
-    // Executable files
+
     else if (['exe', 'msi', 'apk', 'dmg', 'app', 'bat', 'sh', 'bash'].contains(ext)) {
       return 'Executable';
     }
-    // Code files
+
     else if ([
       'dart', 'java', 'cpp', 'c', 'h', 'py', 'js', 'ts', 'php', 'rb', 'go',
       'rs', 'swift', 'kt', 'cs'

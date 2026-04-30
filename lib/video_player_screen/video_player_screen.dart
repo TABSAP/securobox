@@ -33,7 +33,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void initState() {
     super.initState();
     _initializeVideoPlayer();
-    // Lock to landscape for better video viewing
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -44,7 +44,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
-    // Restore orientation
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -225,13 +225,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   void _toggleFullScreen() {
     if (_isFullScreen) {
-      // Exit fullscreen
+
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
       ]);
     } else {
-      // Enter fullscreen landscape
+
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -276,7 +276,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Top Bar
+
             Container(
               padding: EdgeInsets.fromLTRB(
                 20,
@@ -287,10 +287,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Back Button
+
                   GestureDetector(
                     onTap: () {
-                      // Restore portrait orientation before going back
+
                       if (_isFullScreen) {
                         SystemChrome.setPreferredOrientations([
                           DeviceOrientation.portraitUp,
@@ -314,7 +314,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     ),
                   ),
 
-                  // Video Title
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -332,7 +331,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     ),
                   ),
 
-                  // Settings Button
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'speed') {
@@ -369,13 +367,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ),
             ),
 
-            // Center Play/Pause Button
             Expanded(
               child: Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    // Seek Backward
+
                     GestureDetector(
                       onTap: _seekBackward,
                       child: Container(
@@ -393,7 +390,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       ),
                     ),
 
-                    // Play/Pause
                     GestureDetector(
                       onTap: _togglePlayPause,
                       child: Container(
@@ -420,7 +416,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       ),
                     ),
 
-                    // Seek Forward
                     GestureDetector(
                       onTap: _seekForward,
                       child: Container(
@@ -442,7 +437,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ),
             ),
 
-            // Bottom Bar
             Container(
               padding: EdgeInsets.fromLTRB(
                 20,
@@ -452,7 +446,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ),
               child: Column(
                 children: [
-                  // Progress Bar
+
                   VideoProgressIndicator(
                     _videoPlayerController,
                     allowScrubbing: true,
@@ -464,11 +458,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
 
-                  // Controls Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Current Time
+
                       Text(
                         _formatDuration(_videoPlayerController.value.position),
                         style: const TextStyle(
@@ -478,10 +471,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         ),
                       ),
 
-                      // Right Controls
                       Row(
                         children: [
-                          // Speed Indicator
+
                           GestureDetector(
                             onTap: () => _showPlaybackSpeedDialog(),
                             child: Container(
@@ -503,7 +495,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           ),
                           const SizedBox(width: 12),
 
-                          // Fullscreen Button
                           GestureDetector(
                             onTap: _toggleFullScreen,
                             child: Container(
@@ -600,7 +591,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 );
               },
             ),
-            //const SizedBox(height: 10),
+
           ],
         ),
       ),
@@ -654,7 +645,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Video Player with proper aspect ratio
+
           Center(
             child: AspectRatio(
               aspectRatio: videoAspectRatio > 0
@@ -664,10 +655,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             ),
           ),
 
-          // Custom Controls
           _buildCustomControls(),
 
-          // Speed Indicator (when changed)
           if (_showOverlay)
             Positioned(
               top: MediaQuery.of(context).padding.top + 80,
@@ -714,7 +703,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Widget _buildVideoPlayerWithOrientationHandler() {
     return WillPopScope(
       onWillPop: () async {
-        // Restore portrait orientation before going back
+
         if (_isFullScreen) {
           await SystemChrome.setPreferredOrientations([
             DeviceOrientation.portraitUp,
@@ -725,7 +714,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       },
       child: OrientationBuilder(
         builder: (context, orientation) {
-          // Update current orientation
+
           _currentOrientation = orientation;
 
           return AnimatedContainer(
@@ -740,12 +729,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Widget _buildVideoPlayerContent() {
     if (_isFullScreen) {
-      // Fullscreen mode - hide safe areas
+
       return Stack(
         fit: StackFit.expand,
         children: [
           _buildVideoPlayer(),
-          // Optional: Add exit fullscreen button
+
           if (_showOverlay)
             Positioned(
               top: MediaQuery.of(context).padding.top + 10,
@@ -770,7 +759,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ],
       );
     } else {
-      // Normal mode - show with safe areas
+
       return SafeArea(
         top: true,
         bottom: true,

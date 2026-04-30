@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-
 class LiquidUploadCard extends StatefulWidget {
   final IconData icon;
   final String title;

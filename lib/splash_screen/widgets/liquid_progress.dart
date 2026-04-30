@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
 
-
 class LiquidProgress extends StatefulWidget {
   final Animation<double> animation;
 
