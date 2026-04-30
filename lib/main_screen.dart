@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/upload_screen/upload_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/session_manager.dart';
+import 'package:video_player_app/utils/vault_crypto.dart';
 import 'package:video_player_app/views/screens/home_screen/home_screen.dart';
 import 'app_lock_screen/app_lock_screen.dart';
 import 'download_screen/download_screen.dart';
@@ -128,6 +129,7 @@ class _MainScreenState extends State<MainScreen>
     if (!lockEnabled) return;
 
     _isShowingLockScreen = true;
+    await VaultCrypto.instance.wipeTempCache();
     await Navigator.of(context).push(
       PageRouteBuilder(
         opaque: true,

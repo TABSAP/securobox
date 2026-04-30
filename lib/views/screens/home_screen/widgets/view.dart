@@ -7,6 +7,7 @@ export 'package:video_player_app/models/app_models.dart';
 export 'package:video_player_app/services/media_service.dart';
 export 'package:video_player_app/utils/media_helper.dart';
 export 'package:video_player_app/utils/liquid_colors.dart';
+export 'package:video_player_app/utils/vault_crypto.dart';
 export 'package:video_player_app/views/screens/home_screen/widgets/liquid_animations/liquid_background.dart';
 export 'package:video_player_app/views/screens/home_screen/widgets/liquid_animations/animated_media_card.dart';
 export 'package:video_player_app/views/screens/home_screen/widgets/liquid_animations/delete_dialog.dart';

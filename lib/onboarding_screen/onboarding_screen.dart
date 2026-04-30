@@ -244,12 +244,41 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
           ),
           const SizedBox(height: 36),
-          _featureRow(Icons.lock_outline_rounded, 'PIN-protected access'),
+          _featureRow(Icons.lock_outline_rounded, 'AES-256 encryption for every file'),
           const SizedBox(height: 14),
-          _featureRow(Icons.fingerprint_rounded, 'Biometric unlock support'),
+          _featureRow(Icons.fingerprint_rounded, 'PIN + biometric unlock'),
           const SizedBox(height: 14),
           _featureRow(Icons.cloud_off_rounded, '100% offline — no cloud, no tracking'),
-          const Spacer(flex: 3),
+          const Spacer(flex: 2),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: LiquidColors.warning.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: LiquidColors.warning.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    color: LiquidColors.warning, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Important — your PIN cannot be recovered. Lose it and your vault contents are permanently inaccessible. By design.',
+                    style: TextStyle(
+                      color: Colors.grey.shade300,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(flex: 1),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(

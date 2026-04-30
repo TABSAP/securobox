@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:video_player_app/download_screen/widgets/view.dart';
 import 'package:video_player_app/utils/media_helper.dart';
+import 'package:video_player_app/utils/vault_crypto.dart';
 import '../upload_screen/widgets/view.dart';
 
 class UploadScreen extends StatefulWidget {
@@ -373,17 +374,6 @@ class _UploadScreenState extends State<UploadScreen>
     });
 
     try {
-      final appDir = await getApplicationDocumentsDirectory();
-      final mainDir = Directory('${appDir.path}/secure_player');
-      if (!await mainDir.exists()) {
-        await mainDir.create(recursive: true);
-      }
-
-      final categoryDir = Directory('${mainDir.path}/${_selectedCategory.toLowerCase()}');
-      if (!await categoryDir.exists()) {
-        await categoryDir.create(recursive: true);
-      }
-
       final prefs = await SharedPreferences.getInstance();
       List<String> videoList = prefs.getStringList('videoLibrary') ?? [];
 
@@ -392,12 +382,10 @@ class _UploadScreenState extends State<UploadScreen>
       for (int i = 0; i < _selectedFiles.length; i++) {
         final file = _selectedFiles[i];
         final timestamp = DateTime.now().millisecondsSinceEpoch + i;
-        final fileExt = p.extension(file.path);
-        final fileName = '${timestamp}_${p.basenameWithoutExtension(file.path)}$fileExt';
-        final destination = File('${categoryDir.path}/$fileName');
+        final originalName = p.basenameWithoutExtension(file.path);
 
         try {
-          await file.copy(destination.path);
+          final encryptedPath = await VaultCrypto.instance.importEncrypted(file);
 
           String fileType = "other";
           if (_selectedCategory == "Videos") {
@@ -413,7 +401,7 @@ class _UploadScreenState extends State<UploadScreen>
           }
 
           videoList.add(
-            '$timestamp|${p.basenameWithoutExtension(file.path)}|${destination.path}|$fileType|false|$_selectedCategory',
+            '$timestamp|$originalName|$encryptedPath|$fileType|false|$_selectedCategory|false||true',
           );
           fileCount++;
 
@@ -684,19 +672,10 @@ class _UploadScreenState extends State<UploadScreen>
     });
 
     try {
-      final appDir = await getApplicationDocumentsDirectory();
-      final mainDir = Directory('${appDir.path}/secure_player');
-      if (!await mainDir.exists()) {
-        await mainDir.create(recursive: true);
-      }
+      final tmp = await getTemporaryDirectory();
+      final stagingPath = '${tmp.path}/sp_dl_${DateTime.now().millisecondsSinceEpoch}';
 
-      final categoryDir = Directory('${mainDir.path}/${_selectedCategory.toLowerCase()}');
-      if (!await categoryDir.exists()) {
-        await categoryDir.create(recursive: true);
-      }
-
-      final uri = Uri.parse(url);
-      final pathSegments = uri.pathSegments;
+      final pathSegments = parsedUri.pathSegments;
       final originalFileName = pathSegments.isNotEmpty ? pathSegments.last : 'downloaded_file';
 
       String fileExt = '.mp4';
@@ -719,14 +698,12 @@ class _UploadScreenState extends State<UploadScreen>
         }
       }
 
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = '$timestamp$fileExt';
-      final savePath = '${categoryDir.path}/$fileName';
+      final stagingFile = File('$stagingPath$fileExt');
 
       final dio = Dio();
       await dio.download(
         url,
-        savePath,
+        stagingFile.path,
         onReceiveProgress: (received, total) {
           if (total != -1 && mounted) {
             setState(() {
@@ -735,6 +712,11 @@ class _UploadScreenState extends State<UploadScreen>
           }
         },
       );
+
+      final encryptedPath = await VaultCrypto.instance.importEncrypted(stagingFile);
+      try {
+        await stagingFile.delete();
+      } catch (_) {}
 
       final prefs = await SharedPreferences.getInstance();
       List<String> videoList = prefs.getStringList('videoLibrary') ?? [];
@@ -749,11 +731,12 @@ class _UploadScreenState extends State<UploadScreen>
       } else if (_selectedCategory == "Documents") {
         fileType = "document";
       } else {
-        fileType = _getFileTypeFromExtension(savePath);
+        fileType = _getFileTypeFromExtension(stagingFile.path);
       }
 
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
       videoList.add(
-        '$timestamp|Downloaded File|$savePath|$fileType|false|$_selectedCategory',
+        '$timestamp|Downloaded File|$encryptedPath|$fileType|false|$_selectedCategory|false||true',
       );
       await prefs.setStringList('videoLibrary', videoList);
 

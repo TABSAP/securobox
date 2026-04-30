@@ -433,6 +433,29 @@ class HomeScreenState extends State<HomeScreen>
       return;
     }
 
+    String playPath = media.path;
+    if (media.encrypted) {
+      try {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => Center(
+            child: CircularProgressIndicator(color: LiquidColors.accentBlue),
+          ),
+        );
+        playPath = await VaultCrypto.instance.decryptToTemp(media.path);
+        if (!mounted) return;
+        Navigator.of(context, rootNavigator: true).pop();
+      } catch (e) {
+        if (mounted) {
+          Navigator.of(context, rootNavigator: true).pop();
+          FlushBarHelper.flushBarErrorMessage('Failed to decrypt file', context);
+        }
+        return;
+      }
+    }
+
     switch (media.type.toLowerCase()) {
       case 'video':
         if (!mounted) return;
@@ -440,11 +463,14 @@ class HomeScreenState extends State<HomeScreen>
           context,
           MaterialPageRoute(
             builder: (context) => VideoPlayerScreen(
-              videoPath: media.path,
+              videoPath: playPath,
               videoTitle: media.title,
             ),
           ),
-        ).then((_) => mounted ? _loadMedia() : null);
+        ).then((_) async {
+          if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
+          if (mounted) _loadMedia();
+        });
         break;
 
       case 'image':
@@ -469,7 +495,7 @@ class HomeScreenState extends State<HomeScreen>
               body: Center(
                 child: InteractiveViewer(
                   child: Image.file(
-                    File(media.path),
+                    File(playPath),
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) {
                       return Center(
@@ -497,11 +523,13 @@ class HomeScreenState extends State<HomeScreen>
           context,
           MaterialPageRoute(
             builder: (context) => AudioPlayerScreen(
-              filePath: media.path,
+              filePath: playPath,
               fileName: media.title,
             ),
           ),
-        );
+        ).then((_) async {
+          if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
+        });
         break;
 
       case 'pdf':
@@ -511,11 +539,13 @@ class HomeScreenState extends State<HomeScreen>
           context,
           MaterialPageRoute(
             builder: (context) => PDFReaderScreen(
-              filePath: media.path,
+              filePath: playPath,
               fileName: media.title,
             ),
           ),
-        );
+        ).then((_) async {
+          if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
+        });
         break;
 
       default:

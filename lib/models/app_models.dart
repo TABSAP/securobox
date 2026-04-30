@@ -24,13 +24,14 @@ class DownloadItem {
 
 class VideoItem {
   final String id;
-   String title;
-   String path;
+  String title;
+  String path;
   final String type;
   bool isLocked;
   final String category;
   bool isDeleted;
   DateTime? deletedDate;
+  final bool encrypted;
 
   VideoItem({
     required this.id,
@@ -41,35 +42,8 @@ class VideoItem {
     required this.category,
     this.isDeleted = false,
     this.deletedDate,
+    this.encrypted = false,
   });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'title': title,
-      'path': path,
-      'type': type,
-      'isLocked': isLocked,
-      'category': category,
-      'isDeleted': isDeleted,
-      'deletedDate': deletedDate?.toIso8601String(),
-    };
-  }
-
-  factory VideoItem.fromJson(Map<String, dynamic> json) {
-    return VideoItem(
-      id: json['id'] ?? '',
-      title: json['title'] ?? '',
-      path: json['path'] ?? '',
-      type: json['type'] ?? 'video',
-      isLocked: json['isLocked'] ?? false,
-      category: json['category'] ?? 'Videos',
-      isDeleted: json['isDeleted'] ?? false,
-      deletedDate: json['deletedDate'] != null
-          ? DateTime.tryParse(json['deletedDate'])
-          : null,
-    );
-  }
 
   VideoItem copyWith({
     String? id,
@@ -80,6 +54,7 @@ class VideoItem {
     String? category,
     bool? isDeleted,
     DateTime? deletedDate,
+    bool? encrypted,
   }) {
     return VideoItem(
       id: id ?? this.id,
@@ -90,18 +65,18 @@ class VideoItem {
       category: category ?? this.category,
       isDeleted: isDeleted ?? this.isDeleted,
       deletedDate: deletedDate ?? this.deletedDate,
+      encrypted: encrypted ?? this.encrypted,
     );
   }
 
   String toStorageString() {
-    return '$id|$title|$path|$type|$isLocked|$category|$isDeleted|${deletedDate?.toIso8601String() ?? ""}';
+    return '$id|$title|$path|$type|$isLocked|$category|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted';
   }
 
   factory VideoItem.fromStorageString(String storageString) {
     final parts = storageString.split('|');
 
     if (parts.length < 6) {
-
       return VideoItem(
         id: parts[0],
         title: parts[1],
@@ -109,8 +84,6 @@ class VideoItem {
         type: parts[3],
         isLocked: parts[4] == 'true',
         category: parts[5],
-        isDeleted: false,
-        deletedDate: null,
       );
     }
 
@@ -125,6 +98,7 @@ class VideoItem {
       deletedDate: parts.length > 7 && parts[7].isNotEmpty
           ? DateTime.tryParse(parts[7])
           : null,
+      encrypted: parts.length > 8 ? parts[8] == 'true' : false,
     );
   }
 }
