@@ -609,6 +609,7 @@ class HomeScreenState extends State<HomeScreen>
             ),
           ),
           actions: [
+            /// appbar delete button
             TweenAnimationBuilder(
               tween: Tween<double>(begin: 0, end: 1),
               duration: const Duration(milliseconds: 500),
@@ -947,7 +948,7 @@ class HomeScreenState extends State<HomeScreen>
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.8,
+          height: MediaQuery.of(context).size.height * 0.5,
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

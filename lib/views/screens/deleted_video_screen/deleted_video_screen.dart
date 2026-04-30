@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_app/views/screens/deleted_video_screen/widgets/view.dart';
-
-
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+import 'package:intl/intl.dart';
 
 class DeletedVideosScreen extends StatefulWidget {
   final VoidCallback? onVideosChanged;
@@ -31,6 +32,11 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     _initAnimations();
     _loadDeletedVideos();
     _searchController.addListener(_onSearchChanged);
+
+    // Auto-delete old files after loading
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _autoDeleteOldFiles();
+    });
   }
 
   @override
@@ -55,6 +61,59 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
     );
     _animationController.forward();
+  }
+
+  // Auto-delete files older than 30 days
+  Future<void> _autoDeleteOldFiles() async {
+    try {
+      final now = DateTime.now();
+      final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+      bool hasDeleted = false;
+
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList('videoLibrary') ?? [];
+      final updatedMediaList = <String>[];
+
+      for (final mediaData in mediaList) {
+        try {
+          final video = VideoItem.fromStorageString(mediaData);
+
+          // Check if video is deleted and old
+          if (video.isDeleted && video.deletedDate != null) {
+            if (video.deletedDate!.isBefore(thirtyDaysAgo)) {
+              // Delete the actual file
+              try {
+                final file = File(video.path);
+                if (await file.exists()) {
+                  await file.delete();
+                }
+              } catch (e) {
+                debugPrint('Error deleting file ${video.title}: $e');
+              }
+              hasDeleted = true;
+              continue; // Skip adding to updated list (permanently delete)
+            }
+          }
+          updatedMediaList.add(mediaData);
+        } catch (e) {
+          debugPrint('Error parsing video: $e');
+        }
+      }
+
+      if (hasDeleted) {
+        await prefs.setStringList('videoLibrary', updatedMediaList);
+        await _loadDeletedVideos();
+
+        if (mounted) {
+          _showSnackBar(
+            'Old files (30+ days) auto-deleted',
+            LiquidColors.error,
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in auto-delete: $e');
+    }
   }
 
   Future<void> _loadDeletedVideos() async {
@@ -168,8 +227,12 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       }
 
       await prefs.setStringList('videoLibrary', updatedMediaList);
-      _showSnackBar('"${video.title}" permanently database', LiquidColors.error);
+      _showSnackBar('"${video.title}" permanently deleted', LiquidColors.error);
       await _loadDeletedVideos();
+
+      if (widget.onVideosChanged != null) {
+        widget.onVideosChanged!();
+      }
 
     } catch (e) {
       debugPrint('Error deleting video: $e');
@@ -210,6 +273,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       await prefs.setStringList('videoLibrary', updatedMediaList);
       _showSnackBar('Trash emptied successfully', LiquidColors.error);
       await _loadDeletedVideos();
+
+      if (widget.onVideosChanged != null) {
+        widget.onVideosChanged!();
+      }
 
     } catch (e) {
       debugPrint('Error clearing database videos: $e');
@@ -380,7 +447,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               ),
               const SizedBox(height: 12),
               Text(
-                'All ${_deletedVideos.length} database videos will be permanently removed. This action cannot be undone.',
+                'All ${_deletedVideos.length} deleted files will be permanently removed. This action cannot be undone.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -477,9 +544,18 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       return 'Yesterday';
     } else if (difference.inDays < 7) {
       return '${difference.inDays} days ago';
+    } else if (difference.inDays < 30) {
+      return '${difference.inDays} days ago';
     } else {
       return DateFormat('dd MMM yyyy').format(date);
     }
+  }
+
+  // Get days remaining before auto-delete
+  int _getDaysRemaining(DateTime deletedDate) {
+    final now = DateTime.now();
+    final deleteDate = deletedDate.add(const Duration(days: 30));
+    return deleteDate.difference(now).inDays;
   }
 
   @override
@@ -543,13 +619,26 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
-                    'Recycle Bin',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                      color: Colors.white,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Recycle Bin',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          color: Colors.white,
+                        ),
+                      ),
+                      if (_deletedVideos.isNotEmpty)
+                        Text(
+                          'Auto-delete after 30 days',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade400,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -669,7 +758,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                       controller: _searchController,
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'Search database files...',
+                        hintText: 'Search deleted files...',
                         hintStyle: TextStyle(color: Colors.grey.shade500),
                         border: InputBorder.none,
                         isDense: true,
@@ -702,7 +791,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '${_filteredVideos.length} database ${_filteredVideos.length == 1 ? 'file' : 'files'}',
+            '${_filteredVideos.length} ${_filteredVideos.length == 1 ? 'file' : 'files'}',
             style: TextStyle(
               color: Colors.grey.shade400,
               fontSize: 12,
@@ -762,7 +851,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           ),
           const SizedBox(height: 20),
           Text(
-            'Loading database videos...',
+            'Loading deleted files...',
             style: TextStyle(
               color: Colors.grey.shade400,
               fontSize: 14,
@@ -783,10 +872,16 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         padding: const EdgeInsets.all(16),
         itemCount: _filteredVideos.length,
         itemBuilder: (context, index) {
+          final video = _filteredVideos[index];
+          final daysRemaining = video.deletedDate != null
+              ? _getDaysRemaining(video.deletedDate!)
+              : 30;
+
           return LiquidDeletedCard(
-            video: _filteredVideos[index],
-            onRestore: () => _restoreVideo(_filteredVideos[index]),
-            onDelete: () => _permanentDelete(_filteredVideos[index]),
+            video: video,
+            daysRemaining: daysRemaining,
+            onRestore: () => _restoreVideo(video),
+            onDelete: () => _permanentDelete(video),
             formatDate: _formatDate,
             getIcon: _getMediaIcon,
             getColor: _getMediaColor,

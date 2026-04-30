@@ -10,6 +10,7 @@ class LiquidDeletedCard extends StatefulWidget {
   final IconData Function(String) getIcon;
   final Color Function(String) getColor;
   final int index;
+  final int? daysRemaining; // Add this parameter
 
   const LiquidDeletedCard({
     super.key,
@@ -20,6 +21,7 @@ class LiquidDeletedCard extends StatefulWidget {
     required this.getIcon,
     required this.getColor,
     required this.index,
+    this.daysRemaining, // Initialize here
   });
 
   @override
@@ -76,11 +78,18 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
     super.dispose();
   }
 
+  Color _getDaysRemainingColor(int days) {
+    if (days <= 5) return LiquidColors.error;
+    if (days <= 15) return LiquidColors.warning;
+    return LiquidColors.success;
+  }
+
   @override
   Widget build(BuildContext context) {
     final iconData = widget.getIcon(widget.video.type);
     final iconColor = widget.getColor(widget.video.type);
     final isLocked = widget.video.isLocked;
+    final daysRemaining = widget.daysRemaining ?? 30;
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -127,7 +136,7 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
                   children: [
                     _buildIcon(iconData, iconColor, isLocked),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildInfo(iconColor, isLocked)),
+                    Expanded(child: _buildInfo(iconColor, isLocked, daysRemaining)),
                     _buildActionButtons(),
                   ],
                 ),
@@ -185,7 +194,9 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
     );
   }
 
-  Widget _buildInfo(Color iconColor, bool isLocked) {
+  Widget _buildInfo(Color iconColor, bool isLocked, int daysRemaining) {
+    final daysColor = _getDaysRemainingColor(daysRemaining);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -200,6 +211,47 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 8),
+
+        // Days remaining indicator
+        if (widget.video.deletedDate != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: daysColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: daysColor.withOpacity(0.3),
+                width: 0.5,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  daysRemaining <= 5
+                      ? Icons.warning_amber_rounded
+                      : Icons.timer_outlined,
+                  size: 14,
+                  color: daysColor,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  daysRemaining <= 0
+                      ? 'Auto-delete today'
+                      : 'Auto-delete in $daysRemaining days',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: daysColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        const SizedBox(height: 8),
+
+        // Deleted date
         if (widget.video.deletedDate != null)
           Row(
             children: [
@@ -218,7 +270,10 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
               ),
             ],
           ),
-        const SizedBox(height: 4),
+
+        const SizedBox(height: 8),
+
+        // Type and category chips
         Wrap(
           spacing: 8,
           children: [
@@ -319,6 +374,7 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
               onPressed: onTap,
               icon: Icon(icon, color: color, size: 20),
               padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
             ),
           ),
         );
@@ -381,9 +437,11 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
 
   Future<bool?> _confirmDismiss(DismissDirection direction) async {
     if (direction == DismissDirection.startToEnd) {
+      // Restore on swipe right
       widget.onRestore();
       return false;
     } else {
+      // Show delete confirmation on swipe left
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => _buildDeleteDialog(),

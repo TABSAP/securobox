@@ -135,9 +135,10 @@ class _ProfessionalNavigationBarState extends State<_ProfessionalNavigationBar> 
       label: 'Downloads',
     ),
     NavigationItem(
-      icon: Icons.security_outlined,
-      activeIcon: Icons.security_rounded,
-      label: 'Security',
+
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings_rounded,
+      label: 'Setting',
     ),
   ];
 
@@ -207,7 +208,7 @@ class _NavigationButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: isSelected
-              ? const Color(0xFF4788FF).withValues(alpha: .15)
+              ? const Color(0xFFFFFFFF).withValues(alpha: .20)
               : Colors.transparent,
         ),
         child: Column(
@@ -226,7 +227,7 @@ class _NavigationButton extends StatelessWidget {
                 isSelected ? item.activeIcon : item.icon,
                 key: ValueKey(isSelected ? 'active_${item.label}' : item.label),
                 color: isSelected
-                    ? const Color(0xFF4788FF)
+                    ? const Color(0xFFFFFFFF)
                     : Colors.grey.withValues(alpha: .7),
                 size: 24,
               ),
@@ -245,7 +246,7 @@ class _NavigationButton extends StatelessWidget {
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected
-                      ? const Color(0xFF4788FF)
+                      ? const Color(0xFFFFFFFF)
                       : Colors.grey.withValues(alpha: .7),
                   letterSpacing: -0.2,
                 ),
