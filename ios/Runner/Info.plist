@@ -67,5 +67,9 @@
 			<string>mailto</string>
 			<string>https</string>
 		</array>
+		<key>UIFileSharingEnabled</key>
+		<false/>
+		<key>LSSupportsOpeningDocumentsInPlace</key>
+		<false/>
 	</dict>
 </plist>

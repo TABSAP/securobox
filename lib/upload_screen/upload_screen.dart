@@ -183,7 +183,6 @@ class _UploadScreenState extends State<UploadScreen>
         );
       }
     } catch (e) {
-      debugPrint('Error picking files: $e');
       if (!mounted) return;
       _showSnackBar(
         'Error: ${e.toString()}',
@@ -235,13 +234,10 @@ class _UploadScreenState extends State<UploadScreen>
     try {
       if (Platform.isAndroid) {
         AndroidDeviceInfo androidInfo = await _deviceInfoPlugin.androidInfo;
-        debugPrint('Android Device: ${androidInfo.model}, SDK: ${androidInfo.version.sdkInt}');
       } else if (Platform.isIOS) {
         IosDeviceInfo iosInfo = await _deviceInfoPlugin.iosInfo;
-        debugPrint('iOS Device: ${iosInfo.utsname.machine}');
       }
     } catch (e) {
-      debugPrint('Error getting device info: $e');
     }
   }
 
@@ -427,7 +423,6 @@ class _UploadScreenState extends State<UploadScreen>
             });
           }
         } catch (e) {
-          debugPrint('Error uploading file ${file.path}: $e');
         }
       }
 
@@ -449,7 +444,6 @@ class _UploadScreenState extends State<UploadScreen>
         }
       }
     } catch (e) {
-      debugPrint('Error in upload process: $e');
       if (mounted) {
         setState(() {
           _isUploading = false;
@@ -667,8 +661,18 @@ class _UploadScreenState extends State<UploadScreen>
   Future<void> _downloadFileFromUrl(String url) async {
     if (url.isEmpty) {
       if (!mounted) return;
+      _showSnackBar('Please enter a valid URL', LiquidColors.error);
+      return;
+    }
+
+    final parsedUri = Uri.tryParse(url);
+    if (parsedUri == null ||
+        !parsedUri.hasScheme ||
+        parsedUri.scheme.toLowerCase() != 'https' ||
+        !parsedUri.hasAuthority) {
+      if (!mounted) return;
       _showSnackBar(
-        'Please enter a valid URL',
+        'Only HTTPS URLs are allowed',
         LiquidColors.error,
       );
       return;

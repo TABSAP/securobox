@@ -19,7 +19,6 @@ class SharedPrefsService {
       final videosJson = videos.map((video) => video.toJson()).toList();
       await prefs.setString(_videosKey, json.encode(videosJson));
     } catch (e) {
-      print('Error saving videos: $e');
     }
   }
 
@@ -35,7 +34,6 @@ class SharedPrefsService {
       final List<dynamic> decoded = json.decode(videosJson);
       return decoded.map((item) => VideoItem.fromJson(item)).toList();
     } catch (e) {
-      print('Error getting videos: $e');
       return [];
     }
   }
@@ -50,7 +48,6 @@ class SharedPrefsService {
 
       await saveVideos(videos);
     } catch (e) {
-      print('Error saving video: $e');
     }
   }
 
@@ -71,7 +68,6 @@ class SharedPrefsService {
         await _backupDeletedVideo(deletedVideo);
       }
     } catch (e) {
-      print('Error soft deleting video: $e');
     }
   }
 
@@ -90,7 +86,6 @@ class SharedPrefsService {
         await saveVideos(videos);
       }
     } catch (e) {
-      print('Error restoring video: $e');
     }
   }
 
@@ -99,7 +94,6 @@ class SharedPrefsService {
       final videos = await getVideos();
       return videos.where((video) => video.isDeleted).toList();
     } catch (e) {
-      print('Error getting database videos: $e');
       return [];
     }
   }
@@ -109,7 +103,6 @@ class SharedPrefsService {
       final videos = await getVideos();
       return videos.where((video) => !video.isDeleted).toList();
     } catch (e) {
-      print('Error getting active videos: $e');
       return [];
     }
   }
@@ -120,7 +113,6 @@ class SharedPrefsService {
       videos.removeWhere((v) => v.id == videoId);
       await saveVideos(videos);
     } catch (e) {
-      print('Error permanently deleting video: $e');
     }
   }
 
@@ -130,7 +122,6 @@ class SharedPrefsService {
       final activeVideos = videos.where((v) => !v.isDeleted).toList();
       await saveVideos(activeVideos);
     } catch (e) {
-      print('Error clearing database videos: $e');
     }
   }
 
@@ -143,7 +134,6 @@ class SharedPrefsService {
       backupList.add(video.toJson());
       await prefs.setString(_deletedVideosKey, json.encode(backupList));
     } catch (e) {
-      print('Error backing up database video: $e');
     }
   }
 
@@ -152,7 +142,6 @@ class SharedPrefsService {
       final videos = await getVideos();
       return videos.firstWhere((v) => v.id == videoId);
     } catch (e) {
-      print('Error getting video by ID: $e');
       return null;
     }
   }
@@ -174,7 +163,6 @@ class SharedPrefsService {
 
       return Map<String, dynamic>.from(json.decode(settingsJson));
     } catch (e) {
-      print('Error getting settings: $e');
       return {};
     }
   }
@@ -184,7 +172,6 @@ class SharedPrefsService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_settingsKey, json.encode(settings));
     } catch (e) {
-      print('Error saving settings: $e');
     }
   }
 
@@ -193,7 +180,6 @@ class SharedPrefsService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
     } catch (e) {
-      print('Error clearing data: $e');
     }
   }
 
@@ -246,12 +232,10 @@ class SharedPrefsService {
 
         await saveVideos(sampleVideos);
         if (kDebugMode) {
-          print('Sample data initialized with ${sampleVideos.length} videos');
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error initializing sample data: $e');
       }
     }
   }
@@ -271,7 +255,6 @@ class SharedPrefsService {
         'cloud': videos.where((v) => v.type == 'cloud').length,
       };
     } catch (e) {
-      print('Error getting statistics: $e');
       return {};
     }
   }

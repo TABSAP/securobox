@@ -128,7 +128,6 @@ class _DownloadScreenState extends State<DownloadScreen>
             }
           }
         } catch (e) {
-          debugPrint('Error parsing download item: $e');
         }
       }
       _downloads.sort((a, b) => b.id.compareTo(a.id));
@@ -288,7 +287,6 @@ class _DownloadScreenState extends State<DownloadScreen>
   }) async {
     final permission = await PhotoManager.requestPermissionExtend();
     if (!permission.isAuth) {
-      debugPrint('❌ Permission denied');
       FlushBarHelper.flushBarErrorMessage('Permission denied', context);
 
       return;
@@ -296,7 +294,6 @@ class _DownloadScreenState extends State<DownloadScreen>
 
     final file = File(filePath);
     if (!await file.exists()) {
-      debugPrint('❌ File not found');
       FlushBarHelper.flushBarErrorMessage('File not found', context);
 
       return;
@@ -314,7 +311,6 @@ class _DownloadScreenState extends State<DownloadScreen>
           title: fileName,
           relativePath: 'Movies/SecureVideo',
         );
-        debugPrint('✅ Video saved');
         await _addToDownloadHistory(
           fileName: fileName,
           filePath: filePath,
@@ -327,7 +323,6 @@ class _DownloadScreenState extends State<DownloadScreen>
           relativePath: 'Pictures/SecureImages',
           filename: 'name',
         );
-        debugPrint('✅ Image saved');
         await _addToDownloadHistory(
           fileName: fileName,
           filePath: filePath,
@@ -362,7 +357,6 @@ class _DownloadScreenState extends State<DownloadScreen>
 
       }
     } catch (e) {
-      debugPrint('❌ Save error: $e');
       if (mounted) {
         FlushBarHelper.flushBarErrorMessage('Download failed: ${e.toString()}', context);
 

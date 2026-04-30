@@ -85,7 +85,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   await file.delete();
                 }
               } catch (e) {
-                debugPrint('Error deleting file ${video.title}: $e');
               }
               hasDeleted = true;
               continue;
@@ -93,7 +92,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           }
           updatedMediaList.add(mediaData);
         } catch (e) {
-          debugPrint('Error parsing video: $e');
         }
       }
 
@@ -109,7 +107,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         }
       }
     } catch (e) {
-      debugPrint('Error in auto-delete: $e');
     }
   }
 
@@ -131,7 +128,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               _deletedVideos.add(video);
             }
           } catch (e) {
-            debugPrint('Error parsing database video: $e');
           }
         }
 
@@ -144,7 +140,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading database videos: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -196,7 +191,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         widget.onVideosChanged!();
       }
     } catch (e) {
-      debugPrint('Error restoring video: $e');
       _showErrorDialog('Failed to restore video');
     }
   }
@@ -218,7 +212,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               await file.delete();
             }
           } catch (e) {
-            debugPrint('Error deleting file: $e');
           }
         }
       }
@@ -232,7 +225,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       }
 
     } catch (e) {
-      debugPrint('Error deleting video: $e');
       _showErrorDialog('Failed to delete video');
     }
   }
@@ -252,7 +244,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             await file.delete();
           }
         } catch (e) {
-          debugPrint('Error deleting file ${video.title}: $e');
         }
       }
 
@@ -263,7 +254,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             updatedMediaList.add(mediaData);
           }
         } catch (e) {
-          debugPrint('Error parsing video: $e');
         }
       }
 
@@ -276,7 +266,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       }
 
     } catch (e) {
-      debugPrint('Error clearing database videos: $e');
       _showErrorDialog('Failed to empty trash');
     }
   }

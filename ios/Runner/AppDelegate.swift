@@ -10,7 +10,28 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+    setSecureFileProtection()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private func setSecureFileProtection() {
+    let fm = FileManager.default
+    guard let docsURL = fm.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+    do {
+      try (docsURL as NSURL).setResourceValue(
+        URLFileProtection.completeUntilFirstUserAuthentication,
+        forKey: .fileProtectionKey
+      )
+    } catch {}
+
+    if let enumerator = fm.enumerator(at: docsURL, includingPropertiesForKeys: nil) {
+      for case let url as URL in enumerator {
+        try? (url as NSURL).setResourceValue(
+          URLFileProtection.completeUntilFirstUserAuthentication,
+          forKey: .fileProtectionKey
+        )
+      }
+    }
   }
 
   override func applicationWillResignActive(_ application: UIApplication) {

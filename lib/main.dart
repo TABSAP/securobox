@@ -13,7 +13,6 @@ void main() async {
     try {
       FlutterScreenshotBlocker.enableScreenshotBlocking();
     } catch (e) {
-      debugPrint('Screenshot blocker not available: $e');
     }
   }
 

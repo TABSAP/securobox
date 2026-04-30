@@ -5,7 +5,7 @@ Secure Player is a 100% offline private media vault. Keep your videos, audio, ph
 • 100% offline — your files never touch the cloud
 • PIN + biometric (fingerprint / face) lock for the entire app
 • Screenshot blocking — prevents screen recording and screen capture
-• AES-encrypted local storage
+• PIN hashed with PBKDF2 + stored in OS Keystore
 • No ads, no trackers, no analytics
 • No account, no sign-up, no internet permission required for playback
 

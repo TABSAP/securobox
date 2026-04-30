@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
+import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -17,19 +18,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _appLockEnabled = false;
   bool _videoLockEnabled = false;
   bool _biometricEnabled = false;
-  List<String> _appPin = ['1', '2', '3', '4'];
   bool _changingPin = false;
   final List<String> _newPin = [];
-  bool _showCurrentPin = false;
   bool _confirmPinMode = false;
   final List<String> _confirmPin = [];
 
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _biometricAvailable = false;
   List<BiometricType> _availableBiometrics = [];
-
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  bool _secureStorageAvailable = true;
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -44,7 +40,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     _initAnimations();
     _loadSecuritySettings();
     _checkBiometricCapability();
-    _checkSecureStorage();
   }
 
   @override
@@ -70,31 +65,16 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     _animationController.forward();
   }
 
-  Future<void> _checkSecureStorage() async {
-    try {
-      await _secureStorage.write(key: 'test_key', value: 'test_value');
-      await _secureStorage.delete(key: 'test_key');
-      setState(() => _secureStorageAvailable = true);
-    } catch (e) {
-      debugPrint('Secure storage not available: $e');
-      setState(() => _secureStorageAvailable = false);
-    }
-  }
-
   Future<void> _loadSecuritySettings() async {
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      final storedPin = prefs.getStringList('appPin');
-
       setState(() {
         _appLockEnabled = prefs.getBool('appLock') ?? false;
         _videoLockEnabled = prefs.getBool('videoLock') ?? false;
         _biometricEnabled = prefs.getBool('biometric') ?? false;
-        _appPin = storedPin ?? ['1', '2', '3', '4'];
       });
     } catch (e) {
-      debugPrint('Error loading settings: $e');
       _showSnackBar('Failed to load security settings', LiquidColors.error);
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -119,7 +99,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         });
       }
     } catch (e) {
-      debugPrint('Biometric check error: $e');
       if (mounted) {
         setState(() {
           _biometricAvailable = false;
@@ -136,10 +115,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
 
     if (setting == 'appLock' && value) {
-      final isDefaultPin = _appPin.join() == '1234';
-      if (isDefaultPin) {
+      final hasPin = await PinCrypto.instance.hasPin();
+      if (!hasPin) {
         _showSnackBar(
-          'Please change default PIN before enabling app lock',
+          'Please set a PIN before enabling app lock',
           LiquidColors.warning,
         );
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -194,7 +173,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _showSnackBar('Authentication cancelled', LiquidColors.warning);
       }
     } catch (e) {
-      debugPrint('Biometric error: $e');
       _showSnackBar('Authentication failed. Please try again.', LiquidColors.error);
     }
   }
@@ -259,7 +237,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       return;
     }
 
-    if (newPin == _appPin.join()) {
+    final isSameAsCurrent = await PinCrypto.instance.verifyPin(newPin);
+    if (isSameAsCurrent) {
       setState(() {
         _pinError = 'New PIN cannot be same as current PIN';
         _newPin.clear();
@@ -270,20 +249,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('appPin', _newPin);
-
-      if (_secureStorageAvailable) {
-        try {
-          await _secureStorage.write(key: 'secure_pin', value: newPin);
-        } catch (e) {
-          debugPrint('Secure storage backup failed: $e');
-        }
-      }
+      await PinCrypto.instance.setPin(newPin);
 
       if (mounted) {
         setState(() {
-          _appPin = List.from(_newPin);
           _changingPin = false;
           _confirmPinMode = false;
           _newPin.clear();
@@ -293,8 +262,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
       _showSnackBar('PIN changed successfully', LiquidColors.success);
 
-      final wasDefaultPin = _appPin.join() == '1234';
-      if (wasDefaultPin && !_appLockEnabled) {
+      if (!_appLockEnabled) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           await _saveSetting('appLock', true);
           if (mounted) setState(() => _appLockEnabled = true);
@@ -302,7 +270,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         });
       }
     } catch (e) {
-      debugPrint('Error saving PIN: $e');
       _showSnackBar('Failed to save PIN', LiquidColors.error);
       setState(() {
         _changingPin = false;
@@ -585,13 +552,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     const SizedBox(height: 32),
 
                     LiquidPinSection(
-                      currentPin: _appPin,
                       isChanging: _changingPin,
-                      showCurrentPin: _showCurrentPin,
                       onStartChange: _startPinChange,
-                      onToggleShowPin: () {
-                        setState(() => _showCurrentPin = !_showCurrentPin);
-                      },
                     ),
 
                     const SizedBox(height: 24),
@@ -983,15 +945,19 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ],
           ),
           const SizedBox(height: 20),
-          _buildSecurityFeature('256-bit AES encryption for all videos'),
+          _buildSecurityFeature('PIN hashed with PBKDF2 (100,000 rounds)'),
           const SizedBox(height: 12),
-          _buildSecurityFeature('Secure offline storage - no cloud uploads'),
+          _buildSecurityFeature('Hash stored in OS Keychain / Keystore'),
           const SizedBox(height: 12),
-          _buildSecurityFeature('Biometric authentication with hardware-level security'),
+          _buildSecurityFeature('Files held in app-private sandbox storage'),
           const SizedBox(height: 12),
-          _buildSecurityFeature('Automatic lock after 3 failed attempts'),
+          _buildSecurityFeature('Cloud backup disabled — files stay on device'),
           const SizedBox(height: 12),
-          _buildSecurityFeature('No data collection - privacy guaranteed'),
+          _buildSecurityFeature('Biometric authentication via OS BiometricPrompt'),
+          const SizedBox(height: 12),
+          _buildSecurityFeature('Escalating cooldown after wrong PIN attempts'),
+          const SizedBox(height: 12),
+          _buildSecurityFeature('No analytics, no trackers, no servers'),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),

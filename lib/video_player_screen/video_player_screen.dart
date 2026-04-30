@@ -98,7 +98,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         });
       }
     } catch (e) {
-      debugPrint('Video player error: $e');
       if (mounted) {
         _showErrorDialog();
       }

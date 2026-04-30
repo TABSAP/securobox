@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/main_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -29,7 +29,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late Animation<Offset> _slide;
 
   final _localAuth = LocalAuthentication();
-  final _secure = const FlutterSecureStorage();
 
   @override
   void initState() {
@@ -131,13 +130,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
 
     final pin = _newPin.join();
+    await PinCrypto.instance.setPin(pin);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList('appPin', _newPin);
     await prefs.setBool('appLock', true);
     await prefs.setBool('hasOnboarded', true);
-    try {
-      await _secure.write(key: 'secure_pin', value: pin);
-    } catch (_) {}
 
     HapticFeedback.mediumImpact();
     if (!mounted) return;

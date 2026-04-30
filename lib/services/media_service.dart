@@ -34,7 +34,6 @@ class MediaService {
       _mediaList = loadedList;
       return loadedList;
     } catch (e) {
-      print('Error loading media: $e');
       return [];
     }
   }
@@ -47,7 +46,6 @@ class MediaService {
       _mediaList = mediaList;
       return true;
     } catch (e) {
-      print('Error saving media: $e');
       return false;
     }
   }
@@ -71,7 +69,6 @@ class MediaService {
       }
       return false;
     } catch (e) {
-      print('Error updating category: $e');
       return false;
     }
   }
@@ -95,7 +92,6 @@ class MediaService {
       }
       return false;
     } catch (e) {
-      print('Error toggling lock: $e');
       return false;
     }
   }
@@ -120,7 +116,6 @@ class MediaService {
       }
       return false;
     } catch (e) {
-      print('Error deleting media: $e');
       return false;
     }
   }
@@ -146,7 +141,6 @@ class MediaService {
       }
       return false;
     } catch (e) {
-      print('Error restoring media: $e');
       return false;
     }
   }
@@ -179,7 +173,6 @@ class MediaService {
       _mediaList.removeWhere((item) => item.id == mediaId);
       return true;
     } catch (e) {
-      print('Error permanently deleting media: $e');
       return false;
     }
   }
@@ -199,7 +192,6 @@ class MediaService {
           return b.deletedDate!.compareTo(a.deletedDate!);
         });
     } catch (e) {
-      print('Error getting deleted media: $e');
       return [];
     }
   }
@@ -219,7 +211,6 @@ class MediaService {
         sensitiveTransaction: true,
       );
     } catch (e) {
-      print('Authentication error: $e');
       return false;
     }
   }
@@ -227,23 +218,19 @@ class MediaService {
   Future<bool> renameMedia(VideoItem media, String newName) async {
     try {
       if (newName.trim().isEmpty) {
-        debugPrint('New name is empty');
         return false;
       }
 
       final safeFileName = newName.trim().replaceAll(RegExp(r'[<>:"/\\|?*]'), '');
       if (safeFileName.isEmpty) {
-        debugPrint('Invalid filename after sanitization');
         return false;
       }
 
       final file = File(media.path);
       if (!await file.exists()) {
-        debugPrint('File not found at: ${media.path}');
 
         final foundPath = await findActualFilePath(media.title);
         if (foundPath.isEmpty) {
-          debugPrint('Could not find file anywhere');
           return false;
         }
 
@@ -256,16 +243,12 @@ class MediaService {
       final extension = media.path.split('.').last;
 
       final newPath = '${directory.path}/$safeFileName.$extension';
-      debugPrint('New path will be: $newPath');
 
       if (await File(newPath).exists()) {
-        debugPrint('File with name $safeFileName already exists');
         return false;
       }
 
-      debugPrint('Renaming from: ${media.path} to: $newPath');
       await file.rename(newPath);
-      debugPrint('File renamed successfully');
 
       final prefs = await SharedPreferences.getInstance();
       final mediaList = prefs.getStringList(_storageKey) ?? [];
@@ -287,13 +270,11 @@ class MediaService {
           _mediaList[localIndex] = updatedMedia;
         }
 
-        debugPrint('Media updated in storage successfully');
         return true;
       }
 
       return false;
     } catch (e) {
-      debugPrint('Error renaming media: $e');
       return false;
     }
   }
@@ -318,7 +299,6 @@ class MediaService {
       }
       return false;
     } catch (e) {
-      debugPrint('Error updating media path: $e');
       return false;
     }
   }
@@ -354,13 +334,11 @@ class MediaService {
             final baseName = fileName.split('.').first;
             for (final file in files) {
               if (file.path.contains(baseName) || file.path.contains(fileName)) {
-                debugPrint('Found file in: $dirPath - ${file.path}');
                 return file.path;
               }
             }
           }
         } catch (e) {
-          debugPrint('Error searching directory $dirPath: $e');
           continue;
         }
       }
@@ -373,7 +351,6 @@ class MediaService {
 
       return '';
     } catch (e) {
-      debugPrint('Error finding file: $e');
       return '';
     }
   }
@@ -389,7 +366,6 @@ class MediaService {
         }
       }
     } catch (e) {
-      debugPrint('Error in recursive search: $e');
     }
     return '';
   }
@@ -401,13 +377,11 @@ class MediaService {
     try {
       final permission = await PhotoManager.requestPermissionExtend();
       if (!permission.isAuth) {
-        print('❌ Permission denied');
         return false;
       }
 
       final file = File(filePath);
       if (!await file.exists()) {
-        print('❌ File not found');
         return false;
       }
 
@@ -451,7 +425,6 @@ class MediaService {
 
       return true;
     } catch (e) {
-      print('❌ Download error: $e');
       return false;
     }
   }
@@ -472,7 +445,6 @@ class MediaService {
       downloadList.add(downloadData);
       await prefs.setStringList(_downloadHistoryKey, downloadList);
     } catch (e) {
-      print('❌ Error adding to download history: $e');
     }
   }
 
@@ -506,7 +478,6 @@ class MediaService {
         };
       }).toList();
     } catch (e) {
-      print('Error getting download history: $e');
       return [];
     }
   }

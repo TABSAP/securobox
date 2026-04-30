@@ -131,7 +131,6 @@ class HomeScreenState extends State<HomeScreen>
           _isLoading = false;
         });
       }
-      debugPrint('Error loading media: $e');
     }
   }
 
@@ -295,9 +294,7 @@ class HomeScreenState extends State<HomeScreen>
 
         setState(() => _isLoading = true);
 
-        debugPrint('Attempting to rename: ${media.title} to: $result');
         final success = await _mediaService.renameMedia(media, result);
-        debugPrint('Rename result: $success');
 
         if (!mounted) return;
         setState(() => _isLoading = false);
@@ -320,7 +317,6 @@ class HomeScreenState extends State<HomeScreen>
         }
       } catch (e) {
         setState(() => _isLoading = false);
-        debugPrint('Error in rename: $e');
         if (mounted) {
           FlushBarHelper.flushBarErrorMessage('Error: ${e.toString()}', context);
         }

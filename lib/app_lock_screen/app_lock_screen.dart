@@ -8,6 +8,7 @@ import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
+import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 
 import '../main_screen.dart';
@@ -24,7 +25,6 @@ class AppLockScreen extends StatefulWidget {
 class _AppLockScreenState extends State<AppLockScreen>
     with SingleTickerProviderStateMixin {
   String _enteredPin = '';
-  List<String> _correctPin = ['1', '2', '3', '4'];
 
   bool _biometricEnabled = false;
   bool _isAuthenticating = false;
@@ -74,8 +74,8 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
-      _correctPin = prefs.getStringList('appPin') ?? ['1', '2', '3', '4'];
       _biometricEnabled = prefs.getBool('biometric') ?? false;
     });
 
@@ -112,22 +112,14 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 
   Future<void> _checkPin() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedPin = prefs.getStringList('appPin') ?? _correctPin;
-
-    bool isCorrect = true;
-    for (int i = 0; i < 4; i++) {
-      if (_enteredPin[i] != savedPin[i]) {
-        isCorrect = false;
-        break;
-      }
-    }
+    final isCorrect = await PinCrypto.instance.verifyPin(_enteredPin);
 
     if (isCorrect && mounted) {
       _unlockApp();
     } else {
       HapticFeedback.heavyImpact();
       await SessionManager.instance.recordFailedAttempt();
+      if (!mounted) return;
       setState(() {
         _enteredPin = '';
         _hasError = true;
