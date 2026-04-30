@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,29 +8,30 @@ import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 
 import '../main_screen.dart';
 import '../utils/liquid_colors.dart';
 
 class AppLockScreen extends StatefulWidget {
-  const AppLockScreen({super.key});
+  final bool isOverlay;
+  const AppLockScreen({super.key, this.isOverlay = false});
 
   @override
   State<AppLockScreen> createState() => _AppLockScreenState();
 }
 
 class _AppLockScreenState extends State<AppLockScreen>
-    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   String _enteredPin = '';
   List<String> _correctPin = ['1', '2', '3', '4'];
 
-  bool _isAppLocked = true;
   bool _biometricEnabled = false;
   bool _isAuthenticating = false;
-
-  int _wrongPinCount = 0;
-  bool _hidePinPad = false;
   bool _hasError = false;
+
+  Duration? _cooldownRemaining;
+  Timer? _cooldownTicker;
 
   late AnimationController _errorController;
   late Animation<double> _shakeAnimation;
@@ -39,8 +41,8 @@ class _AppLockScreenState extends State<AppLockScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _loadPreferences();
+    _startCooldownTicker();
 
     _errorController = AnimationController(
       vsync: this,
@@ -53,42 +55,42 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    _cooldownTicker?.cancel();
     _errorController.dispose();
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
-      _isAppLocked = true;
-    }
+  void _startCooldownTicker() {
+    _refreshCooldown();
+    _cooldownTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) _refreshCooldown();
+    });
+  }
 
-    if (state == AppLifecycleState.resumed && _isAppLocked) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AppLockScreen()),
-      );
-    }
+  Future<void> _refreshCooldown() async {
+    final remaining = await SessionManager.instance.getCooldownRemaining();
+    if (mounted) setState(() => _cooldownRemaining = remaining);
   }
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _correctPin = prefs.getStringList('appPin') ?? ['1', '2', '3', '4'];
-      _biometricEnabled = prefs.getBool('enableBiometric') ?? false;
+      _biometricEnabled = prefs.getBool('biometric') ?? false;
     });
 
-    if (_biometricEnabled && mounted) {
+    if (_biometricEnabled && mounted && _cooldownRemaining == null) {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) _useBiometric();
       });
     }
   }
 
+  bool get _padDisabled => _cooldownRemaining != null;
+
   void _onNumberPressed(String number) {
-    if (_enteredPin.length < 4 && !_hidePinPad) {
+    if (_padDisabled) return;
+    if (_enteredPin.length < 4) {
       HapticFeedback.lightImpact();
       setState(() {
         _enteredPin += number;
@@ -99,7 +101,8 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 
   void _onDeletePressed() {
-    if (_enteredPin.isNotEmpty && !_hidePinPad) {
+    if (_padDisabled) return;
+    if (_enteredPin.isNotEmpty) {
       HapticFeedback.selectionClick();
       setState(() {
         _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
@@ -124,25 +127,35 @@ class _AppLockScreenState extends State<AppLockScreen>
       _unlockApp();
     } else {
       HapticFeedback.heavyImpact();
+      await SessionManager.instance.recordFailedAttempt();
       setState(() {
         _enteredPin = '';
-        _wrongPinCount++;
         _hasError = true;
-        if (_wrongPinCount >= 3) _hidePinPad = true;
       });
       _errorController.forward().then((_) => _errorController.reverse());
+      await _refreshCooldown();
       _showErrorFeedback();
     }
   }
 
-  void _unlockApp() {
-    _wrongPinCount = 0;
-    _hidePinPad = false;
-    _hasError = false;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainScreen()),
-    );
+  Future<void> _unlockApp() async {
+    await SessionManager.instance.unlock();
+    if (!mounted) return;
+    if (widget.isOverlay) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+      );
+    }
+  }
+
+  String _formatCooldown(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds % 60;
+    if (m > 0) return '${m}m ${s}s';
+    return '${s}s';
   }
 
   void _showErrorFeedback() {
@@ -275,7 +288,7 @@ class _AppLockScreenState extends State<AppLockScreen>
 
                     const SizedBox(height: 32),
 
-                    if (!_hidePinPad)
+                    if (!_padDisabled)
                       GridView.builder(
                         shrinkWrap: true,
                         itemCount: 12,
@@ -316,64 +329,55 @@ class _AppLockScreenState extends State<AppLockScreen>
                         },
                       ),
 
-                    if (_hidePinPad)
-                      TweenAnimationBuilder(
-                        tween: Tween<double>(begin: 0, end: 1),
-                        duration: const Duration(milliseconds: 600),
-                        curve: Curves.elasticOut,
-                        builder: (context, double value, child) {
-                          return Transform.scale(
-                            scale: value,
-                            child: Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  colors: [
-                                    LiquidColors.error.withValues(alpha: .2),
-                                    LiquidColors.error.withValues(alpha: .1),
-                                  ],
-                                  center: Alignment.center,
-                                  radius: 0.8,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: LiquidColors.error.withValues(alpha: .3)
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.warning_amber_rounded,
-                                    color: LiquidColors.error,
-                                    size: 40,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Too many wrong attempts',
-                                    style: TextStyle(
-                                      color: LiquidColors.error,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Use biometric to unlock',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade400,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
+                    if (_padDisabled)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            colors: [
+                              LiquidColors.error.withValues(alpha: .2),
+                              LiquidColors.error.withValues(alpha: .1),
+                            ],
+                            center: Alignment.center,
+                            radius: 0.8,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: LiquidColors.error.withValues(alpha: .3),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.lock_clock_rounded,
+                              color: LiquidColors.error,
+                              size: 40,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Too many wrong attempts',
+                              style: TextStyle(
+                                color: LiquidColors.error,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          );
-                        },
+                            const SizedBox(height: 6),
+                            Text(
+                              'Try again in ${_formatCooldown(_cooldownRemaining!)}',
+                              style: TextStyle(
+                                color: Colors.grey.shade300,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
                     const SizedBox(height: 20),
 
-                    if (_hidePinPad || _biometricEnabled)
+                    if (_padDisabled || _biometricEnabled)
                       TweenAnimationBuilder(
                         tween: Tween<double>(begin: 0, end: 1),
                         duration: const Duration(milliseconds: 600),

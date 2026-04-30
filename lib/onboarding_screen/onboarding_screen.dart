@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/main_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -167,6 +168,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _goToApp() {
     if (!mounted) return;
+    SessionManager.instance.markActive();
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const MainScreen()),
     );

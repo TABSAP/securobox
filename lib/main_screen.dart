@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/upload_screen/upload_screen.dart';
+import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/views/screens/home_screen/home_screen.dart';
 import 'app_lock_screen/app_lock_screen.dart';
 import 'download_screen/download_screen.dart';
@@ -14,31 +18,61 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen>
-     {
-
+    with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final _libraryKey = GlobalKey<HomeScreenState>();
 
-  bool _isAppLocked = false;
+  bool _wasPaused = false;
   bool _isShowingLockScreen = false;
+  bool _showPrivacyShield = false;
+  Timer? _inactivityTimer;
 
   @override
   void initState() {
     super.initState();
-
+    WidgetsBinding.instance.addObserver(this);
+    SessionManager.instance.shouldLock.addListener(_onLockRequested);
+    SessionManager.instance.markActive();
+    _startInactivityTimer();
   }
 
   @override
   void dispose() {
-
+    SessionManager.instance.shouldLock.removeListener(_onLockRequested);
+    WidgetsBinding.instance.removeObserver(this);
+    _inactivityTimer?.cancel();
     super.dispose();
+  }
+
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
+      if (!mounted || _isShowingLockScreen) return;
+      if (await SessionManager.instance.hasInactivityElapsed()) {
+        _showLockScreen();
+      }
+    });
+  }
+
+  void _onLockRequested() {
+    if (SessionManager.instance.shouldLock.value &&
+        mounted &&
+        !_isShowingLockScreen) {
+      SessionManager.instance.shouldLock.value = false;
+      _showLockScreen();
+    }
+  }
+
+  void _onUserActivity([_]) {
+    if (!_isShowingLockScreen) {
+      SessionManager.instance.markActive();
+    }
   }
 
   void _onVideoUploaded() {
     setState(() {
       _selectedIndex = 0;
     });
-
     _libraryKey.currentState?.refreshVideos();
   }
 
@@ -46,61 +80,132 @@ class _MainScreenState extends State<MainScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
 
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      setState(() => _showPrivacyShield = true);
+    }
+
     if (state == AppLifecycleState.paused) {
-      _isAppLocked = true;
+      _wasPaused = true;
     }
 
     if (state == AppLifecycleState.resumed) {
-      if (_isAppLocked && !_isShowingLockScreen) {
-        _isAppLocked = false;
-        _showLockScreen();
-      }
+      setState(() => _showPrivacyShield = false);
+      _onResumed();
     }
   }
 
-  void _showLockScreen() async {
-    if (!mounted) return;
+  Future<void> _onResumed() async {
+    if (_isShowingLockScreen) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final lockEnabled = prefs.getBool('appLock') ?? false;
+    if (!lockEnabled) {
+      _wasPaused = false;
+      SessionManager.instance.markActive();
+      return;
+    }
+
+    final autoLock = SessionManager.instance.autoLockSeconds;
+    final mustLock = autoLock == 0 ||
+        _wasPaused ||
+        await SessionManager.instance.hasInactivityElapsed();
+
+    _wasPaused = false;
+
+    if (mustLock && mounted) {
+      _showLockScreen();
+    } else {
+      SessionManager.instance.markActive();
+    }
+  }
+
+  Future<void> _showLockScreen() async {
+    if (!mounted || _isShowingLockScreen) return;
+    final prefs = await SharedPreferences.getInstance();
+    final lockEnabled = prefs.getBool('appLock') ?? false;
+    if (!lockEnabled) return;
 
     _isShowingLockScreen = true;
-
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    if (!mounted) return;
-
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AppLockScreen(),
+      PageRouteBuilder(
+        opaque: true,
         fullscreenDialog: true,
+        transitionDuration: const Duration(milliseconds: 250),
+        pageBuilder: (_, __, ___) => const AppLockScreen(isOverlay: true),
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
       ),
     );
-
     if (mounted) {
       _isShowingLockScreen = false;
+      SessionManager.instance.markActive();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A1F),
-      body: IndexedStack(
-        index: _selectedIndex,
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _onUserActivity,
+      onPointerMove: _onUserActivity,
+      child: Stack(
         children: [
-          HomeScreen(
-            key: _libraryKey,
-            onAddRequested: () => setState(() => _selectedIndex = 1),
+          Scaffold(
+            backgroundColor: const Color(0xFF0A0A1F),
+            body: IndexedStack(
+              index: _selectedIndex,
+              children: [
+                HomeScreen(
+                  key: _libraryKey,
+                  onAddRequested: () => setState(() => _selectedIndex = 1),
+                ),
+                UploadScreen(onVideoUploaded: _onVideoUploaded),
+                const DownloadScreen(),
+                const SecuritySettingsScreen(),
+              ],
+            ),
+            bottomNavigationBar: _ProfessionalNavigationBar(
+              selectedIndex: _selectedIndex,
+              onTabSelected: (index) {
+                if (index != _selectedIndex) HapticFeedback.selectionClick();
+                SessionManager.instance.markActive();
+                setState(() => _selectedIndex = index);
+              },
+            ),
           ),
-          UploadScreen(onVideoUploaded: _onVideoUploaded),
-          const DownloadScreen(),
-          const SecuritySettingsScreen(),
+          if (_showPrivacyShield) const _PrivacyShield(),
         ],
       ),
-      bottomNavigationBar: _ProfessionalNavigationBar(
-        selectedIndex: _selectedIndex,
-        onTabSelected: (index) {
-          if (index != _selectedIndex) HapticFeedback.selectionClick();
-          setState(() => _selectedIndex = index);
-        },
+    );
+  }
+}
+
+class _PrivacyShield extends StatelessWidget {
+  const _PrivacyShield();
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF0A0A1F),
+      child: Center(
+        child: Container(
+          width: 110,
+          height: 110,
+          decoration: BoxDecoration(
+            gradient: LiquidColors.primaryGradient,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: LiquidColors.primaryStart.withValues(alpha: 0.4),
+                blurRadius: 30,
+                spreadRadius: 4,
+              ),
+            ],
+          ),
+          child: const Icon(Icons.shield_rounded, color: Colors.white, size: 60),
+        ),
       ),
     );
   }

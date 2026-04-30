@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
 
@@ -608,6 +609,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       const SizedBox(height: 24),
                     ],
 
+                    _buildSessionCard(),
+
+                    const SizedBox(height: 24),
+
                     _buildSecurityInfoCard(),
 
                     const SizedBox(height: 24),
@@ -625,6 +630,130 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildSessionCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: .9),
+            LiquidColors.backgroundMid.withValues(alpha: .95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: LiquidColors.accentBlue.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.timer_outlined, color: Colors.white, size: 22),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'SESSION',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Auto-lock when inactive',
+            style: TextStyle(
+              color: Colors.grey.shade300,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+            decoration: BoxDecoration(
+              color: LiquidColors.backgroundDeep,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: LiquidColors.accentBlue.withValues(alpha: 0.3),
+              ),
+            ),
+            child: DropdownButton<int>(
+              value: SessionManager.instance.autoLockSeconds,
+              isExpanded: true,
+              dropdownColor: LiquidColors.backgroundLight,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              underline: const SizedBox(),
+              icon: Icon(Icons.arrow_drop_down_rounded,
+                  color: LiquidColors.accentBlue),
+              items: SessionManager.autoLockOptions.entries
+                  .map((e) => DropdownMenuItem<int>(
+                        value: e.key,
+                        child: Text(e.value),
+                      ))
+                  .toList(),
+              onChanged: (value) async {
+                if (value == null) return;
+                HapticFeedback.selectionClick();
+                await SessionManager.instance.setAutoLockSeconds(value);
+                if (mounted) setState(() {});
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                SessionManager.instance.requestLock();
+              },
+              icon: Icon(Icons.lock_rounded,
+                  color: LiquidColors.accentBlue, size: 18),
+              label: Text(
+                'Lock Now',
+                style: TextStyle(
+                  color: LiquidColors.accentBlue,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: BorderSide(
+                  color: LiquidColors.accentBlue.withValues(alpha: 0.6),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
