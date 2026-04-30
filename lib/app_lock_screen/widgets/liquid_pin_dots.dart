@@ -3,19 +3,22 @@ import '../../utils/liquid_colors.dart';
 
 class LiquidPinDots extends StatelessWidget {
   final int enteredLength;
+  final int totalLength;
   final bool hasError;
 
   const LiquidPinDots({
     super.key,
     required this.enteredLength,
+    this.totalLength = 4,
     this.hasError = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final spacing = totalLength == 6 ? 8.0 : 12.0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(4, (index) {
+      children: List.generate(totalLength, (index) {
         return TweenAnimationBuilder(
           tween: Tween<double>(begin: 0, end: 1),
           duration: Duration(milliseconds: 300 + (index * 50)),
@@ -25,7 +28,7 @@ class LiquidPinDots extends StatelessWidget {
               scale: value,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 12),
+                margin: EdgeInsets.symmetric(horizontal: spacing),
                 width: 18,
                 height: 18,
                 decoration: BoxDecoration(

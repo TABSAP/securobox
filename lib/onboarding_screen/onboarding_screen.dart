@@ -14,13 +14,14 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-enum _Step { welcome, setPin, confirmPin, biometric }
+enum _Step { welcome, pickLength, setPin, confirmPin, biometric }
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
   _Step _step = _Step.welcome;
   final List<String> _newPin = [];
   final List<String> _confirmPin = [];
+  int _pinLength = 4;
   String? _error;
   bool _biometricAvailable = false;
 
@@ -74,11 +75,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     setState(() {
       _error = null;
       if (_step == _Step.setPin) {
-        if (_newPin.length < 4) _newPin.add(d);
-        if (_newPin.length == 4) _validatePinStrength();
+        if (_newPin.length < _pinLength) _newPin.add(d);
+        if (_newPin.length == _pinLength) _validatePinStrength();
       } else if (_step == _Step.confirmPin) {
-        if (_confirmPin.length < 4) _confirmPin.add(d);
-        if (_confirmPin.length == 4) _confirmAndSave();
+        if (_confirmPin.length < _pinLength) _confirmPin.add(d);
+        if (_confirmPin.length == _pinLength) _confirmAndSave();
       }
     });
   }
@@ -96,12 +97,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _validatePinStrength() {
     final pin = _newPin.join();
-    final weak = ['0000', '1111', '1234', '4321', '2222', '3333', '4444',
-                  '5555', '6666', '7777', '8888', '9999'];
-    if (weak.contains(pin) ||
-        RegExp(r'^(\d)\1{3}$').hasMatch(pin) ||
-        RegExp(r'^(0123|1234|2345|3456|4567|5678|6789|9876|8765|7654|6543|5432|4321|3210)$')
-            .hasMatch(pin)) {
+    if (_isWeakPin(pin)) {
       setState(() {
         _error = 'PIN too weak — try something less obvious';
         _newPin.clear();
@@ -114,6 +110,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         _animateForward();
       }
     });
+  }
+
+  bool _isWeakPin(String pin) {
+    if (RegExp(r'^(\d)\1+$').hasMatch(pin)) return true;
+    final ascending = '0123456789';
+    final descending = '9876543210';
+    if (ascending.contains(pin) || descending.contains(pin)) return true;
+    const knownBad = {
+      '1234', '4321', '0000', '1111', '2222', '3333', '4444',
+      '5555', '6666', '7777', '8888', '9999', '123456', '654321',
+      '111111', '000000', '121212', '696969', '112233', '789456',
+    };
+    if (knownBad.contains(pin)) return true;
+    return false;
   }
 
   Future<void> _confirmAndSave() async {
@@ -192,12 +202,195 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     switch (_step) {
       case _Step.welcome:
         return _welcome();
+      case _Step.pickLength:
+        return _lengthPicker();
       case _Step.setPin:
       case _Step.confirmPin:
         return _pinEntry();
       case _Step.biometric:
         return _biometricPrompt();
     }
+  }
+
+  Widget _lengthPicker() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          const Spacer(flex: 2),
+          Container(
+            width: 90,
+            height: 90,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: const Icon(Icons.pin_outlined, color: Colors.white, size: 50),
+          ),
+          const SizedBox(height: 28),
+          const Text(
+            'Choose Your PIN Length',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Longer PINs are exponentially harder to guess',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade400,
+            ),
+          ),
+          const SizedBox(height: 32),
+          _lengthOption(
+            digits: 4,
+            label: '4-digit PIN',
+            sub: 'Quicker to type — 10,000 combinations',
+          ),
+          const SizedBox(height: 12),
+          _lengthOption(
+            digits: 6,
+            label: '6-digit PIN',
+            sub: 'Recommended — 1,000,000 combinations',
+            recommended: true,
+          ),
+          const Spacer(flex: 3),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                setState(() => _step = _Step.setPin);
+                _animateForward();
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                backgroundColor: LiquidColors.accentBlue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Continue',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _lengthOption({
+    required int digits,
+    required String label,
+    required String sub,
+    bool recommended = false,
+  }) {
+    final selected = _pinLength == digits;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _pinLength = digits);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: selected
+              ? LiquidColors.accentBlue.withValues(alpha: 0.18)
+              : LiquidColors.backgroundLight.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: selected
+                ? LiquidColors.accentBlue
+                : Colors.white.withValues(alpha: 0.08),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: selected ? LiquidColors.accentBlue : Colors.grey.shade600,
+                  width: 2,
+                ),
+                color: selected ? LiquidColors.accentBlue : Colors.transparent,
+              ),
+              child: selected
+                  ? const Icon(Icons.check, color: Colors.white, size: 16)
+                  : null,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (recommended) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: LiquidColors.success.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'BEST',
+                            style: TextStyle(
+                              color: LiquidColors.success,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    sub,
+                    style: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _welcome() {
@@ -284,7 +477,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: ElevatedButton(
               onPressed: () {
                 HapticFeedback.lightImpact();
-                setState(() => _step = _Step.setPin);
+                setState(() => _step = _Step.pickLength);
                 _animateForward();
               },
               style: ElevatedButton.styleFrom(
@@ -355,20 +548,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           const SizedBox(height: 8),
           Text(
             isConfirm
-                ? 'Enter the same 4-digit PIN to confirm'
-                : 'Choose a 4-digit PIN to lock the app',
+                ? 'Enter the same $_pinLength-digit PIN to confirm'
+                : 'Choose a $_pinLength-digit PIN to lock the app',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
           ),
           const SizedBox(height: 36),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(4, (i) {
+            children: List.generate(_pinLength, (i) {
               final filled = i < entered.length;
               return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 10),
-                width: 18,
-                height: 18,
+                margin: EdgeInsets.symmetric(
+                  horizontal: _pinLength == 6 ? 7 : 10,
+                ),
+                width: _pinLength == 6 ? 16 : 18,
+                height: _pinLength == 6 ? 16 : 18,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: filled

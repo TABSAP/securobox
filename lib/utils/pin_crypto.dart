@@ -11,9 +11,12 @@ class PinCrypto {
 
   static const _kHashKey = 'pin_hash_v1';
   static const _kSaltKey = 'pin_salt_v1';
+  static const _kPinLengthKey = 'pin_length_v1';
   static const _kIterations = 100000;
   static const _kHashLengthBytes = 32;
   static const _kSaltLengthBytes = 16;
+  static const defaultPinLength = 4;
+  static const supportedPinLengths = [4, 6];
 
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -68,8 +71,20 @@ class PinCrypto {
     await _secure.write(key: _kSaltKey, value: base64Encode(salt));
     await _secure.write(key: _kHashKey, value: base64Encode(hash));
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kPinLengthKey, pin.length);
     await prefs.remove('appPin');
     await prefs.remove('secure_pin');
+  }
+
+  Future<int> getPinLength() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_kPinLengthKey) ?? defaultPinLength;
+  }
+
+  Future<void> setPreferredPinLength(int length) async {
+    if (!supportedPinLengths.contains(length)) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kPinLengthKey, length);
   }
 
   Future<bool> verifyPin(String pin) async {

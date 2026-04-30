@@ -5,6 +5,7 @@ class LiquidPinInput extends StatefulWidget {
   final bool confirmMode;
   final List<String> newPin;
   final List<String> confirmPin;
+  final int totalLength;
   final String? error;
   final Function(String) onNumberPressed;
   final VoidCallback onDelete;
@@ -15,6 +16,7 @@ class LiquidPinInput extends StatefulWidget {
     required this.confirmMode,
     required this.newPin,
     required this.confirmPin,
+    this.totalLength = 4,
     this.error,
     required this.onNumberPressed,
     required this.onDelete,
@@ -102,8 +104,8 @@ class _LiquidPinInputState extends State<LiquidPinInput>
         const SizedBox(height: 8),
         Text(
           widget.confirmMode
-              ? 'Enter the same 4-digit PIN again'
-              : 'Create a new 4-digit security PIN',
+              ? 'Enter the same ${widget.totalLength}-digit PIN again'
+              : 'Create a new ${widget.totalLength}-digit security PIN',
           style: TextStyle(
             color: Colors.grey.shade400,
             fontSize: 12,
@@ -134,6 +136,8 @@ class _LiquidPinInputState extends State<LiquidPinInput>
   }
 
   Widget _buildPinIndicator({required List<String> pin, required String label, required Color color}) {
+    final spacing = widget.totalLength == 6 ? 6.0 : 12.0;
+    final size = widget.totalLength == 6 ? 18.0 : 24.0;
     return Column(
       children: [
         Text(
@@ -147,7 +151,7 @@ class _LiquidPinInputState extends State<LiquidPinInput>
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(4, (index) {
+          children: List.generate(widget.totalLength, (index) {
             return TweenAnimationBuilder(
               tween: Tween<double>(begin: 0, end: 1),
               duration: Duration(milliseconds: 300 + (index * 50)),
@@ -156,9 +160,9 @@ class _LiquidPinInputState extends State<LiquidPinInput>
                 return Transform.scale(
                   scale: value,
                   child: Container(
-                    width: 24,
-                    height: 24,
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
+                    width: size,
+                    height: size,
+                    margin: EdgeInsets.symmetric(horizontal: spacing),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: RadialGradient(

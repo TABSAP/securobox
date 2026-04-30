@@ -25,6 +25,7 @@ class AppLockScreen extends StatefulWidget {
 class _AppLockScreenState extends State<AppLockScreen>
     with SingleTickerProviderStateMixin {
   String _enteredPin = '';
+  int _pinLength = PinCrypto.defaultPinLength;
 
   bool _biometricEnabled = false;
   bool _isAuthenticating = false;
@@ -74,9 +75,11 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    final pinLen = await PinCrypto.instance.getPinLength();
     if (!mounted) return;
     setState(() {
       _biometricEnabled = prefs.getBool('biometric') ?? false;
+      _pinLength = pinLen;
     });
 
     if (_biometricEnabled && mounted && _cooldownRemaining == null) {
@@ -90,13 +93,13 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   void _onNumberPressed(String number) {
     if (_padDisabled) return;
-    if (_enteredPin.length < 4) {
+    if (_enteredPin.length < _pinLength) {
       HapticFeedback.lightImpact();
       setState(() {
         _enteredPin += number;
         _hasError = false;
       });
-      if (_enteredPin.length == 4) _checkPin();
+      if (_enteredPin.length == _pinLength) _checkPin();
     }
   }
 
@@ -272,6 +275,7 @@ class _AppLockScreenState extends State<AppLockScreen>
                           offset: Offset(_shakeAnimation.value, 0),
                           child: LiquidPinDots(
                             enteredLength: _enteredPin.length,
+                            totalLength: _pinLength,
                             hasError: _hasError,
                           ),
                         );

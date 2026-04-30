@@ -22,6 +22,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   final List<String> _newPin = [];
   bool _confirmPinMode = false;
   final List<String> _confirmPin = [];
+  int _pinLength = PinCrypto.defaultPinLength;
 
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _biometricAvailable = false;
@@ -69,10 +70,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
+      final pinLen = await PinCrypto.instance.getPinLength();
+      if (!mounted) return;
       setState(() {
         _appLockEnabled = prefs.getBool('appLock') ?? false;
         _videoLockEnabled = prefs.getBool('videoLock') ?? false;
         _biometricEnabled = prefs.getBool('biometric') ?? false;
+        _pinLength = pinLen;
       });
     } catch (e) {
       _showSnackBar('Failed to load security settings', LiquidColors.error);
@@ -192,11 +196,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     setState(() {
       _pinError = null;
       if (!_confirmPinMode) {
-        if (_newPin.length < 4) _newPin.add(number);
-        if (_newPin.length == 4) _validateFirstPin();
+        if (_newPin.length < _pinLength) _newPin.add(number);
+        if (_newPin.length == _pinLength) _validateFirstPin();
       } else {
-        if (_confirmPin.length < 4) _confirmPin.add(number);
-        if (_confirmPin.length == 4) _validateAndSavePin();
+        if (_confirmPin.length < _pinLength) _confirmPin.add(number);
+        if (_confirmPin.length == _pinLength) _validateAndSavePin();
       }
     });
   }
@@ -216,10 +220,16 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   bool _isPinStrong(String pin) {
-    final simplePins = ['0000', '1111', '1234', '4321', '2222', '3333', '4444'];
-    if (simplePins.contains(pin)) return false;
-    if (RegExp(r'^(\d)\1{3}$').hasMatch(pin)) return false;
-    if (RegExp(r'^0123|1234|2345|3456|4567|5678|6789|9876|8765|7654|6543|5432|4321|3210$').hasMatch(pin)) return false;
+    if (RegExp(r'^(\d)\1+$').hasMatch(pin)) return false;
+    const ascending = '0123456789';
+    const descending = '9876543210';
+    if (ascending.contains(pin) || descending.contains(pin)) return false;
+    const knownBad = {
+      '1234', '4321', '0000', '1111', '2222', '3333', '4444',
+      '5555', '6666', '7777', '8888', '9999', '123456', '654321',
+      '111111', '000000', '121212', '696969', '112233', '789456',
+    };
+    if (knownBad.contains(pin)) return false;
     return true;
   }
 
@@ -563,6 +573,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                         confirmMode: _confirmPinMode,
                         newPin: _newPin,
                         confirmPin: _confirmPin,
+                        totalLength: _pinLength,
                         error: _pinError,
                         onNumberPressed: _onPinNumberPressed,
                         onDelete: _onPinDelete,
@@ -688,6 +699,23 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
           ),
           const SizedBox(height: 16),
+          Text(
+            'PIN length',
+            style: TextStyle(
+              color: Colors.grey.shade300,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: _pinLengthChip(4)),
+              const SizedBox(width: 10),
+              Expanded(child: _pinLengthChip(6)),
+            ],
+          ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -716,6 +744,83 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _pinLengthChip(int digits) {
+    final selected = _pinLength == digits;
+    return GestureDetector(
+      onTap: () async {
+        if (selected) return;
+        HapticFeedback.selectionClick();
+        final hasPin = await PinCrypto.instance.hasPin();
+        if (!mounted) return;
+        if (hasPin) {
+          final ok = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              backgroundColor: LiquidColors.backgroundLight,
+              title: const Text(
+                'Change PIN length?',
+                style: TextStyle(color: Colors.white),
+              ),
+              content: Text(
+                'You will need to set a new $digits-digit PIN now. Continue?',
+                style: TextStyle(color: Colors.grey.shade300),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.grey.shade400),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(
+                    'Continue',
+                    style: TextStyle(color: LiquidColors.accentBlue),
+                  ),
+                ),
+              ],
+            ),
+          );
+          if (ok != true) return;
+        }
+        await PinCrypto.instance.setPreferredPinLength(digits);
+        if (!mounted) return;
+        setState(() => _pinLength = digits);
+        if (hasPin) {
+          _startPinChange();
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: selected
+              ? LiquidColors.accentBlue.withValues(alpha: 0.18)
+              : LiquidColors.backgroundDeep,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected
+                ? LiquidColors.accentBlue
+                : Colors.white.withValues(alpha: 0.08),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            '$digits digits',
+            style: TextStyle(
+              color: selected ? Colors.white : Colors.grey.shade400,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              fontSize: 14,
+            ),
+          ),
+        ),
       ),
     );
   }
