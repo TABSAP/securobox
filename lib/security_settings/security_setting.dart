@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -206,6 +209,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   void _onPinNumberPressed(String number) {
+    HapticFeedback.lightImpact();
     setState(() {
       _pinError = null;
       if (!_confirmPinMode) {
@@ -610,11 +614,185 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                     _buildSecurityTipsCard(),
 
+                    const SizedBox(height: 24),
+
+                    _buildAboutCard(),
+
                     const SizedBox(height: 40),
                   ],
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAboutCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: .9),
+            LiquidColors.backgroundMid.withValues(alpha: .95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LiquidColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.info_outline_rounded, color: Colors.white, size: 22),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'ABOUT & SUPPORT',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _aboutTile(
+            icon: Icons.star_rounded,
+            label: 'Rate Secure Player',
+            sublabel: 'Leave a review on Google Play',
+            color: LiquidColors.warning,
+            onTap: () async {
+              HapticFeedback.lightImpact();
+              final url = Uri.parse('https://play.google.com/store/apps/details?id=com.tabsap.video_player');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          _aboutTile(
+            icon: Icons.mail_outline_rounded,
+            label: 'Send Feedback',
+            sublabel: 'hello@farhatullah.com',
+            color: LiquidColors.accentBlue,
+            onTap: () async {
+              HapticFeedback.lightImpact();
+              final url = Uri.parse(
+                'mailto:hello@farhatullah.com?subject=Secure%20Player%20feedback',
+              );
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url);
+              }
+            },
+          ),
+          const SizedBox(height: 8),
+          _aboutTile(
+            icon: Icons.privacy_tip_outlined,
+            label: 'Privacy Policy',
+            sublabel: 'How we handle your data',
+            color: LiquidColors.success,
+            onTap: () async {
+              HapticFeedback.lightImpact();
+              final url = Uri.parse(
+                'https://farhatullah777.github.io/secure-player-privacy/',
+              );
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          FutureBuilder<PackageInfo>(
+            future: PackageInfo.fromPlatform(),
+            builder: (context, snap) {
+              final v = snap.hasData
+                  ? '${snap.data!.version} (${snap.data!.buildNumber})'
+                  : '...';
+              return Center(
+                child: Text(
+                  'Secure Player v$v',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _aboutTile({
+    required IconData icon,
+    required String label,
+    required String sublabel,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      sublabel,
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.grey.shade600,
+                size: 20,
+              ),
+            ],
           ),
         ),
       ),

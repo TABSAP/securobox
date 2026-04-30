@@ -62,5 +62,10 @@
 		<array>
 			<string>audio</string>
 		</array>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>mailto</string>
+			<string>https</string>
+		</array>
 	</dict>
 </plist>

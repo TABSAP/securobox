@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player_app/upload_screen/upload_screen.dart';
 import 'package:video_player_app/views/screens/home_screen/home_screen.dart';
 import 'app_lock_screen/app_lock_screen.dart';
@@ -85,7 +86,10 @@ class _MainScreenState extends State<MainScreen>
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          HomeScreen(key: _libraryKey),
+          HomeScreen(
+            key: _libraryKey,
+            onAddRequested: () => setState(() => _selectedIndex = 1),
+          ),
           UploadScreen(onVideoUploaded: _onVideoUploaded),
           const DownloadScreen(),
           const SecuritySettingsScreen(),
@@ -94,6 +98,7 @@ class _MainScreenState extends State<MainScreen>
       bottomNavigationBar: _ProfessionalNavigationBar(
         selectedIndex: _selectedIndex,
         onTabSelected: (index) {
+          if (index != _selectedIndex) HapticFeedback.selectionClick();
           setState(() => _selectedIndex = index);
         },
       ),

@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/app_models.dart';
 
@@ -434,20 +435,18 @@ class MediaService {
           relativePath: 'Pictures/SecureImages',
           filename: 'images',
         );
-      } else if (['mp3', 'wav', 'aac', 'ogg', 'm4a'].contains(ext)) {
-        final dir = Directory('/storage/emulated/0/Music/SecureVideo');
+      } else if (Platform.isAndroid) {
+        final folder = ['mp3', 'wav', 'aac', 'ogg', 'm4a'].contains(ext)
+            ? 'Music/SecureVideo'
+            : 'Download/SecureVideo';
+        final dir = Directory('/storage/emulated/0/$folder');
         if (!await dir.exists()) {
           await dir.create(recursive: true);
         }
         final newFile = File('${dir.path}/$fileName');
         await file.copy(newFile.path);
       } else {
-        final dir = Directory('/storage/emulated/0/Download/SecureVideo');
-        if (!await dir.exists()) {
-          await dir.create(recursive: true);
-        }
-        final newFile = File('${dir.path}/$fileName');
-        await file.copy(newFile.path);
+        await Share.shareXFiles([XFile(filePath)], subject: fileName);
       }
 
       return true;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
 import 'package:video_player_app/splash_screen/widgets/view.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -71,11 +72,17 @@ class _SplashScreenState extends State<SplashScreen>
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      final hasOnboarded = prefs.getBool('hasOnboarded') ?? false;
       final isLockEnabled = prefs.getBool('appLock') ?? false;
 
       if (!mounted) return;
 
-      if (isLockEnabled) {
+      if (!hasOnboarded) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+        );
+      } else if (isLockEnabled) {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const AppLockScreen()),

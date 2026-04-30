@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player_app/download_screen/widgets/view.dart';
 
 class DownloadScreen extends StatefulWidget {
@@ -331,30 +333,26 @@ class _DownloadScreenState extends State<DownloadScreen>
           filePath: filePath,
           fileSize: fileSizeStr,
         );
-      } else if (['mp3', 'wav', 'aac', 'ogg', 'm4a'].contains(ext)) {
-        final dir = Directory('/storage/emulated/0/Music/SecureVideo');
+      } else if (Platform.isAndroid) {
+        final folder = ['mp3', 'wav', 'aac', 'ogg', 'm4a'].contains(ext)
+            ? 'Music/SecureVideo'
+            : 'Download/SecureVideo';
+        final dir = Directory('/storage/emulated/0/$folder');
         if (!await dir.exists()) {
           await dir.create(recursive: true);
         }
         final newFile = File('${dir.path}/$fileName.$ext');
         await file.copy(newFile.path);
-        debugPrint('✅ Audio saved to Music');
         await _addToDownloadHistory(
           fileName: fileName,
           filePath: newFile.path,
           fileSize: fileSizeStr,
         );
       } else {
-        final dir = Directory('/storage/emulated/0/Download/SecureVideo');
-        if (!await dir.exists()) {
-          await dir.create(recursive: true);
-        }
-        final newFile = File('${dir.path}/$fileName.$ext');
-        await file.copy(newFile.path);
-        debugPrint('✅ File saved to Downloads');
+        await Share.shareXFiles([XFile(filePath)], subject: fileName);
         await _addToDownloadHistory(
           fileName: fileName,
-          filePath: newFile.path,
+          filePath: filePath,
           fileSize: fileSizeStr,
         );
       }

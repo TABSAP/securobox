@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onVideosChanged;
+  final VoidCallback? onAddRequested;
 
   const HomeScreen({
     super.key,
     this.onVideosChanged,
+    this.onAddRequested,
   });
 
   @override
@@ -767,57 +770,75 @@ class HomeScreenState extends State<HomeScreen>
   Widget _buildCategoryFilter() {
     return SizedBox(
       height: 45,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: MediaHelper.mediaCategories.length,
-        itemBuilder: (context, index) {
-          final category = MediaHelper.mediaCategories[index];
-          final isSelected = _selectedCategory == category;
-          return TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: Duration(milliseconds: 500 + (index * 50)),
-            curve: Curves.elasticOut,
-            builder: (context, double value, child) {
-              return Transform.scale(
-                scale: value,
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(
-                    label: Text(
-                      category,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: TextStyle(
-                        color: isSelected ? Colors.white : Colors.grey.shade400,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                    ),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      setState(() {
-                        _selectedCategory = selected ? category : "All";
-                        _filterMedia();
-                      });
-                    },
-                    backgroundColor: LiquidColors.backgroundDeep,
-                    selectedColor: LiquidColors.accentBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                      side: BorderSide(
-                        color: isSelected
-                            ? LiquidColors.accentBlue
-                            : LiquidColors.backgroundLight,
-                        width: 1,
-                      ),
-                    ),
-                    elevation: isSelected ? 4 : 0,
-                    shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.3),
-                  ),
-                ),
-              );
-            },
-          );
+      child: ShaderMask(
+        shaderCallback: (rect) {
+          return const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            stops: [0.0, 0.04, 0.92, 1.0],
+            colors: [
+              Colors.transparent,
+              Colors.black,
+              Colors.black,
+              Colors.transparent,
+            ],
+          ).createShader(rect);
         },
+        blendMode: BlendMode.dstIn,
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          itemCount: MediaHelper.mediaCategories.length,
+          itemBuilder: (context, index) {
+            final category = MediaHelper.mediaCategories[index];
+            final isSelected = _selectedCategory == category;
+            return TweenAnimationBuilder(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: Duration(milliseconds: 500 + (index * 50)),
+              curve: Curves.elasticOut,
+              builder: (context, double value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(
+                        category,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.grey.shade400,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _selectedCategory = selected ? category : "All";
+                          _filterMedia();
+                        });
+                      },
+                      backgroundColor: LiquidColors.backgroundDeep,
+                      selectedColor: LiquidColors.accentBlue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                        side: BorderSide(
+                          color: isSelected
+                              ? LiquidColors.accentBlue
+                              : LiquidColors.backgroundLight,
+                          width: 1,
+                        ),
+                      ),
+                      elevation: isSelected ? 4 : 0,
+                      shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.3),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -1009,13 +1030,52 @@ class HomeScreenState extends State<HomeScreen>
                 Text(
                   hasFilters
                       ? 'Try different search terms or categories'
-                      : 'Upload your first file to get started',
+                      : 'Tap the button below to add your first file',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.grey.shade400,
                     fontSize: 14,
                   ),
                 ),
-                if (hasFilters) const SizedBox(height: 25),
+                const SizedBox(height: 25),
+                if (!hasFilters && widget.onAddRequested != null)
+                  TweenAnimationBuilder(
+                    tween: Tween<double>(begin: 0, end: 1),
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.elasticOut,
+                    builder: (context, double value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            widget.onAddRequested!();
+                          },
+                          icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+                          label: const Text(
+                            'Add Your First File',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: LiquidColors.accentBlue,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            elevation: 8,
+                            shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.4),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 if (hasFilters)
                   TweenAnimationBuilder(
                     tween: Tween<double>(begin: 0, end: 1),

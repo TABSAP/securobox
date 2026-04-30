@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_action_button.dart';
@@ -88,6 +89,7 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   void _onNumberPressed(String number) {
     if (_enteredPin.length < 4 && !_hidePinPad) {
+      HapticFeedback.lightImpact();
       setState(() {
         _enteredPin += number;
         _hasError = false;
@@ -98,6 +100,7 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   void _onDeletePressed() {
     if (_enteredPin.isNotEmpty && !_hidePinPad) {
+      HapticFeedback.selectionClick();
       setState(() {
         _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
         _hasError = false;
@@ -120,6 +123,7 @@ class _AppLockScreenState extends State<AppLockScreen>
     if (isCorrect && mounted) {
       _unlockApp();
     } else {
+      HapticFeedback.heavyImpact();
       setState(() {
         _enteredPin = '';
         _wrongPinCount++;
