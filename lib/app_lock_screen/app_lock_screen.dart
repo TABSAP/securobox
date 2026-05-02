@@ -8,6 +8,7 @@ import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
+import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 
@@ -122,6 +123,7 @@ class _AppLockScreenState extends State<AppLockScreen>
     } else {
       HapticFeedback.heavyImpact();
       await SessionManager.instance.recordFailedAttempt();
+      unawaited(IntrusionService.instance.captureSilently());
       if (!mounted) return;
       setState(() {
         _enteredPin = '';

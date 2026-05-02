@@ -67,13 +67,16 @@ class VaultCrypto {
     return dir;
   }
 
-  Future<String> importEncrypted(File source) async {
+  Future<String> importEncrypted(File source, {String? subdir}) async {
     final key = await _getMasterKey();
     final iv = _randomBytes(_kIvLengthBytes);
-    final vaultDir = await _vaultDir();
+    final baseDir = await _vaultDir();
+    final outDir = subdir == null
+        ? baseDir
+        : await Directory(p.join(baseDir.path, subdir)).create(recursive: true);
     final ext = p.extension(source.path);
     final outName = '${const Uuid().v4()}$ext.enc';
-    final outPath = p.join(vaultDir.path, outName);
+    final outPath = p.join(outDir.path, outName);
 
     await _processFile(
       srcPath: source.path,

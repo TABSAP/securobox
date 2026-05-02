@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
+import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 class SecuritySettingsScreen extends StatefulWidget {
@@ -18,6 +20,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _appLockEnabled = false;
   bool _videoLockEnabled = false;
   bool _biometricEnabled = false;
+  bool _intrusionEnabled = false;
+  int _intrusionCount = 0;
   bool _changingPin = false;
   final List<String> _newPin = [];
   bool _confirmPinMode = false;
@@ -71,12 +75,16 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       final pinLen = await PinCrypto.instance.getPinLength();
+      final intrusionEnabled = await IntrusionService.instance.isEnabled();
+      final intrusionCount = await IntrusionService.instance.count();
       if (!mounted) return;
       setState(() {
         _appLockEnabled = prefs.getBool('appLock') ?? false;
         _videoLockEnabled = prefs.getBool('videoLock') ?? false;
         _biometricEnabled = prefs.getBool('biometric') ?? false;
         _pinLength = pinLen;
+        _intrusionEnabled = intrusionEnabled;
+        _intrusionCount = intrusionCount;
       });
     } catch (e) {
       _showSnackBar('Failed to load security settings', LiquidColors.error);
@@ -147,6 +155,41 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   Future<void> _saveSetting(String setting, bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(setting, value);
+  }
+
+  Future<void> _toggleIntrusion(bool value) async {
+    HapticFeedback.lightImpact();
+    if (value) {
+      final granted = await IntrusionService.instance.requestCameraPermission();
+      if (!granted) {
+        if (mounted) {
+          _showSnackBar(
+            'Camera permission required for break-in detection',
+            LiquidColors.warning,
+          );
+        }
+        return;
+      }
+    }
+    await IntrusionService.instance.setEnabled(value);
+    if (!mounted) return;
+    setState(() => _intrusionEnabled = value);
+    _showSnackBar(
+      value
+          ? 'Break-in detection enabled'
+          : 'Break-in detection disabled',
+      value ? LiquidColors.success : LiquidColors.warning,
+    );
+  }
+
+  Future<void> _openIntrusionLog() async {
+    HapticFeedback.lightImpact();
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const IntrusionLogScreen()),
+    );
+    if (mounted) {
+      _loadSecuritySettings();
+    }
   }
 
   Future<void> _testAndEnableBiometric() async {
@@ -586,6 +629,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                     const SizedBox(height: 24),
 
+                    _buildIntrusionCard(),
+
+                    const SizedBox(height: 24),
+
                     _buildSecurityInfoCard(),
 
                     const SizedBox(height: 24),
@@ -603,6 +650,154 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildIntrusionCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: .9),
+            LiquidColors.backgroundMid.withValues(alpha: .95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: LiquidColors.warning.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [LiquidColors.warning, LiquidColors.error],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.camera_front_rounded,
+                      color: Colors.white, size: 22),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'BREAK-IN DETECTION',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _intrusionEnabled,
+                onChanged: _toggleIntrusion,
+                activeColor: Colors.white,
+                activeTrackColor: LiquidColors.warning,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Captures a front-camera photo on every wrong PIN attempt. Photos are encrypted and stored only inside this app.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade400,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Note: iOS shows a green status-bar indicator while the camera is active.',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _openIntrusionLog,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: LiquidColors.backgroundDeep,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: LiquidColors.warning.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: LiquidColors.warning.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.history_rounded,
+                          color: LiquidColors.warning, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Intrusion Log',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _intrusionCount > 0
+                            ? LiquidColors.error.withValues(alpha: 0.2)
+                            : Colors.grey.shade800,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$_intrusionCount',
+                        style: TextStyle(
+                          color: _intrusionCount > 0
+                              ? LiquidColors.error
+                              : Colors.grey.shade400,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.chevron_right_rounded,
+                        color: Colors.grey.shade600, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
