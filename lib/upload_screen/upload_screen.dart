@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:video_player_app/download_screen/widgets/view.dart';
 import 'package:video_player_app/utils/media_helper.dart';
+import 'package:video_player_app/utils/title_helper.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 import '../upload_screen/widgets/view.dart';
 
@@ -382,7 +383,7 @@ class _UploadScreenState extends State<UploadScreen>
       for (int i = 0; i < _selectedFiles.length; i++) {
         final file = _selectedFiles[i];
         final timestamp = DateTime.now().millisecondsSinceEpoch + i;
-        final originalName = p.basenameWithoutExtension(file.path);
+        final originalName = TitleHelper.prettyTitleFromFilename(file.path);
 
         try {
           final encryptedPath = await VaultCrypto.instance.importEncrypted(file);
@@ -735,8 +736,9 @@ class _UploadScreenState extends State<UploadScreen>
       }
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final title = TitleHelper.prettyTitleFromUrl(parsedUri);
       videoList.add(
-        '$timestamp|Downloaded File|$encryptedPath|$fileType|false|$_selectedCategory|false||true',
+        '$timestamp|$title|$encryptedPath|$fileType|false|$_selectedCategory|false||true',
       );
       await prefs.setStringList('videoLibrary', videoList);
 
