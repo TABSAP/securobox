@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io' show Platform;
+import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
+import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
@@ -22,6 +25,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _biometricEnabled = false;
   bool _intrusionEnabled = false;
   int _intrusionCount = 0;
+  bool _deleteOriginals = false;
   bool _changingPin = false;
   final List<String> _newPin = [];
   bool _confirmPinMode = false;
@@ -77,6 +81,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final pinLen = await PinCrypto.instance.getPinLength();
       final intrusionEnabled = await IntrusionService.instance.isEnabled();
       final intrusionCount = await IntrusionService.instance.count();
+      final deleteOriginals =
+          await ImportSettings.instance.deleteOriginalsEnabled();
       if (!mounted) return;
       setState(() {
         _appLockEnabled = prefs.getBool('appLock') ?? false;
@@ -85,6 +91,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _pinLength = pinLen;
         _intrusionEnabled = intrusionEnabled;
         _intrusionCount = intrusionCount;
+        _deleteOriginals = deleteOriginals;
       });
     } catch (e) {
       _showSnackBar('Failed to load security settings', LiquidColors.error);
@@ -178,6 +185,31 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       value
           ? 'Break-in detection enabled'
           : 'Break-in detection disabled',
+      value ? LiquidColors.success : LiquidColors.warning,
+    );
+  }
+
+  Future<void> _toggleDeleteOriginals(bool value) async {
+    HapticFeedback.lightImpact();
+    if (value && Platform.isIOS) {
+      final status = await Permission.photos.request();
+      if (!status.isGranted) {
+        if (mounted) {
+          _showSnackBar(
+            'Photos permission required to remove originals from gallery',
+            LiquidColors.warning,
+          );
+        }
+        return;
+      }
+    }
+    await ImportSettings.instance.setDeleteOriginalsEnabled(value);
+    if (!mounted) return;
+    setState(() => _deleteOriginals = value);
+    _showSnackBar(
+      value
+          ? 'Originals will be removed after each import'
+          : 'Originals will stay on your device',
       value ? LiquidColors.success : LiquidColors.warning,
     );
   }
@@ -633,6 +665,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                     const SizedBox(height: 24),
 
+                    _buildImportCard(),
+
+                    const SizedBox(height: 24),
+
                     _buildSecurityInfoCard(),
 
                     const SizedBox(height: 24),
@@ -650,6 +686,122 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildImportCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: .9),
+            LiquidColors.backgroundMid.withValues(alpha: .95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: LiquidColors.accentPurple.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      LiquidColors.accentPurple,
+                      LiquidColors.accentPink,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.move_to_inbox_rounded,
+                      color: Colors.white, size: 22),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'IMPORT',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _deleteOriginals,
+                onChanged: _toggleDeleteOriginals,
+                activeColor: Colors.white,
+                activeTrackColor: LiquidColors.accentPurple,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Move originals into the vault',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'When enabled, files you import are removed from your device after they are encrypted into the vault.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade400,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: LiquidColors.warning.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: LiquidColors.warning.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded,
+                    color: LiquidColors.warning, size: 14),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    Platform.isIOS
+                        ? 'On iOS, photos and videos can only be removed via the system confirmation dialog after each import.'
+                        : 'Some files (especially on Android 13+) may need to be removed manually because of OS storage rules.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade300,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

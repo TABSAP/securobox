@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:video_player_app/download_screen/widgets/view.dart';
+import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/media_helper.dart';
 import 'package:video_player_app/utils/title_helper.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
@@ -377,8 +378,13 @@ class _UploadScreenState extends State<UploadScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       List<String> videoList = prefs.getStringList('videoLibrary') ?? [];
+      final deleteOriginals =
+          await ImportSettings.instance.deleteOriginalsEnabled();
 
       int fileCount = 0;
+      int deletedOriginals = 0;
+      final isMediaCategory = const {'Videos', 'Photos', 'Audio'}
+          .contains(_selectedCategory);
 
       for (int i = 0; i < _selectedFiles.length; i++) {
         final file = _selectedFiles[i];
@@ -406,6 +412,12 @@ class _UploadScreenState extends State<UploadScreen>
           );
           fileCount++;
 
+          if (deleteOriginals) {
+            final removed =
+                await ImportSettings.instance.deleteOriginal(file);
+            if (removed) deletedOriginals++;
+          }
+
           if (mounted) {
             setState(() {
               _uploadProgress = (i + 1) / _selectedFiles.length;
@@ -423,10 +435,19 @@ class _UploadScreenState extends State<UploadScreen>
           _selectedFiles.clear();
         });
 
-        _showSnackBar(
-          '$fileCount file(s) uploaded successfully to "$_selectedCategory" folder',
-          LiquidColors.success,
-        );
+        final base =
+            '$fileCount file(s) added to your "$_selectedCategory" vault';
+        String message = base;
+        if (deleteOriginals && fileCount > 0) {
+          if (Platform.isIOS && isMediaCategory) {
+            message =
+                '$base. iOS will ask you to confirm removal from Photos.';
+          } else if (deletedOriginals > 0) {
+            message = '$base. $deletedOriginals original(s) removed.';
+          }
+        }
+
+        _showSnackBar(message, LiquidColors.success);
 
         if (widget.onVideoUploaded != null) {
           widget.onVideoUploaded!();
