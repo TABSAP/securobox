@@ -6,6 +6,7 @@ import 'dart:io' show Platform;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
+import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
@@ -26,6 +27,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _intrusionEnabled = false;
   int _intrusionCount = 0;
   bool _deleteOriginals = false;
+  String _currentDisguise = 'default';
   bool _changingPin = false;
   final List<String> _newPin = [];
   bool _confirmPinMode = false;
@@ -83,6 +85,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final intrusionCount = await IntrusionService.instance.count();
       final deleteOriginals =
           await ImportSettings.instance.deleteOriginalsEnabled();
+      final currentDisguise = await DisguiseService.instance.getCurrent();
       if (!mounted) return;
       setState(() {
         _appLockEnabled = prefs.getBool('appLock') ?? false;
@@ -92,6 +95,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _intrusionEnabled = intrusionEnabled;
         _intrusionCount = intrusionCount;
         _deleteOriginals = deleteOriginals;
+        _currentDisguise = currentDisguise;
       });
     } catch (e) {
       _showSnackBar('Failed to load security settings', LiquidColors.error);
@@ -669,6 +673,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                     const SizedBox(height: 24),
 
+                    _buildDisguiseCard(),
+
+                    const SizedBox(height: 24),
+
                     _buildSecurityInfoCard(),
 
                     const SizedBox(height: 24),
@@ -685,6 +693,229 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _selectDisguise(DisguiseOption option) async {
+    if (option.key == _currentDisguise) return;
+    if (!DisguiseService.instance.isSupported) {
+      _showSnackBar(
+        'Disguise mode is Android-only for now',
+        LiquidColors.warning,
+      );
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: LiquidColors.backgroundLight,
+        title: Text(
+          'Switch to ${option.label}?',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'Your home screen icon will change to "${option.label}". Some launchers may take a moment to update. The package name and Settings → Apps entry stay the same.',
+          style: TextStyle(color: Colors.grey.shade300, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel',
+                style: TextStyle(color: Colors.grey.shade400)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Switch',
+                style: TextStyle(color: LiquidColors.accentBlue)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final success = await DisguiseService.instance.set(option.key);
+    if (!mounted) return;
+    if (success) {
+      setState(() => _currentDisguise = option.key);
+      _showSnackBar(
+        'Icon switched to ${option.label}',
+        LiquidColors.success,
+      );
+    } else {
+      _showSnackBar('Failed to change icon', LiquidColors.error);
+    }
+  }
+
+  Widget _buildDisguiseCard() {
+    final supported = DisguiseService.instance.isSupported;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: .9),
+            LiquidColors.backgroundMid.withValues(alpha: .95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: LiquidColors.accentPink.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      LiquidColors.accentPink,
+                      LiquidColors.accentPurple,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.face_retouching_natural,
+                      color: Colors.white, size: 22),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'DISGUISE',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            supported
+                ? 'Hide the app behind a different home-screen icon and label.'
+                : 'Disguise mode is Android-only for now. iOS support coming in a future update.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade400,
+              height: 1.4,
+            ),
+          ),
+          if (supported) ...[
+            const SizedBox(height: 16),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 3,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.85,
+              children: DisguiseService.options
+                  .map((o) => _disguiseTile(o))
+                  .toList(),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: LiquidColors.warning.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: LiquidColors.warning.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      color: LiquidColors.warning, size: 14),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'A determined snooper can still find Secure Player in Settings → Apps. This is a deterrent, not perfect hiding.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade300,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _disguiseTile(DisguiseOption option) {
+    final selected = option.key == _currentDisguise;
+    return GestureDetector(
+      onTap: () => _selectDisguise(option),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: selected
+              ? LiquidColors.accentPink.withValues(alpha: 0.18)
+              : LiquidColors.backgroundDeep,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? LiquidColors.accentPink
+                : Colors.white.withValues(alpha: 0.06),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    option.assetIcon,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: LiquidColors.backgroundLight,
+                      child: const Icon(Icons.image_not_supported_rounded,
+                          color: Colors.grey),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              option.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected ? Colors.white : Colors.grey.shade400,
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );
