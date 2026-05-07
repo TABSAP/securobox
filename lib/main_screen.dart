@@ -130,13 +130,17 @@ class _MainScreenState extends State<MainScreen>
 
     _isShowingLockScreen = true;
     await VaultCrypto.instance.wipeTempCache();
+    if (!mounted) {
+      _isShowingLockScreen = false;
+      return;
+    }
     await Navigator.of(context).push(
       PageRouteBuilder(
         opaque: true,
         fullscreenDialog: true,
         transitionDuration: const Duration(milliseconds: 250),
-        pageBuilder: (_, __, ___) => const AppLockScreen(isOverlay: true),
-        transitionsBuilder: (_, anim, __, child) =>
+        pageBuilder: (_, _, _) => const AppLockScreen(isOverlay: true),
+        transitionsBuilder: (_, anim, _, child) =>
             FadeTransition(opacity: anim, child: child),
       ),
     );
@@ -349,7 +353,7 @@ class _NavigationButton extends StatelessWidget {
               curve: Curves.easeInOut,
               transform: Matrix4.identity()
                 ..
-              scale(isSelected ? 1.0 : 0.9, isSelected ? 1.0 : 0.9),
+              scaleByDouble(isSelected ? 1.0 : 0.9, isSelected ? 1.0 : 0.9,isSelected ? 1.0:0.9,isSelected ? 1.0:0.9),
               child: Text(
                 item.label,
                 style: TextStyle(

@@ -57,20 +57,20 @@ class _LiquidInfoCardState extends State<LiquidInfoCard>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  LiquidColors.backgroundLight.withOpacity(0.9),
-                  LiquidColors.backgroundMid.withOpacity(0.95),
+                  LiquidColors.backgroundLight.withValues(alpha: 0.9),
+                  LiquidColors.backgroundMid.withValues(alpha: 0.95),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: widget.color.withOpacity(0.3),
+                color: widget.color.withValues(alpha: 0.3),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.color.withOpacity(0.1),
+                  color: widget.color.withValues(alpha: 0.1),
                   blurRadius: 15,
                   spreadRadius: 0,
                   offset: const Offset(0, 4),
@@ -85,8 +85,8 @@ class _LiquidInfoCardState extends State<LiquidInfoCard>
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
                       colors: [
-                        widget.color.withOpacity(0.3),
-                        widget.color.withOpacity(0.1),
+                        widget.color.withValues(alpha: 0.3),
+                        widget.color.withValues(alpha: 0.1),
                       ],
                       center: Alignment.center,
                       radius: 0.8,

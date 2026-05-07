@@ -1,16 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:video_player_app/download_screen/widgets/view.dart';
+import 'package:video_player_app/utils/liquid_circular_progress.dart';
+import 'package:video_player_app/utils/recovery_service.dart';
 import 'package:video_player_app/views/screens/deleted_video_screen/widgets/view.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
-import 'package:intl/intl.dart';
 
 class DeletedVideosScreen extends StatefulWidget {
   final VoidCallback? onVideosChanged;
 
-  const DeletedVideosScreen({
-    super.key,
-    this.onVideosChanged,
-  });
+  const DeletedVideosScreen({super.key, this.onVideosChanged});
 
   @override
   State<DeletedVideosScreen> createState() => _DeletedVideosScreenState();
@@ -18,7 +17,7 @@ class DeletedVideosScreen extends StatefulWidget {
 
 class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     with SingleTickerProviderStateMixin {
-  List<VideoItem> _deletedVideos = [];
+  final List<VideoItem> _deletedVideos = [];
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
 
@@ -42,6 +41,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   void dispose() {
     _searchController.dispose();
     _animationController.dispose();
+
     super.dispose();
   }
 
@@ -53,12 +53,13 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
-    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
     _animationController.forward();
   }
 
@@ -66,7 +67,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     try {
       final now = DateTime.now();
       final thirtyDaysAgo = now.subtract(const Duration(days: 30));
-      bool hasDeleted = false;
+      bool hasHidden = false;
 
       final prefs = await SharedPreferences.getInstance();
       final mediaList = prefs.getStringList('videoLibrary') ?? [];
@@ -76,37 +77,35 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         try {
           final video = VideoItem.fromStorageString(mediaData);
 
-          if (video.isDeleted && video.deletedDate != null) {
-            if (video.deletedDate!.isBefore(thirtyDaysAgo)) {
-
-              try {
-                final file = File(video.path);
-                if (await file.exists()) {
-                  await file.delete();
-                }
-              } catch (e) {
-              }
-              hasDeleted = true;
-              continue;
-            }
+          if (video.isDeleted &&
+              !video.isHidden &&
+              video.deletedDate != null &&
+              video.deletedDate!.isBefore(thirtyDaysAgo)) {
+            video.isHidden = true;
+            updatedMediaList.add(video.toStorageString());
+            hasHidden = true;
+          } else {
+            updatedMediaList.add(mediaData);
           }
-          updatedMediaList.add(mediaData);
         } catch (e) {
+          debugPrint('$e');
+          updatedMediaList.add(mediaData);
         }
       }
 
-      if (hasDeleted) {
+      if (hasHidden) {
         await prefs.setStringList('videoLibrary', updatedMediaList);
         await _loadDeletedVideos();
 
         if (mounted) {
-          _showSnackBar(
-            'Old files (30+ days) auto-deleted',
-            LiquidColors.error,
+          FlushBarHelper.flushBarErrorMessage(
+            'Old files (30+ days) hidden — recoverable via email',
+            context,
           );
         }
       }
     } catch (e) {
+      debugPrint('$e');
     }
   }
 
@@ -124,10 +123,11 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         for (final mediaData in mediaList) {
           try {
             final video = VideoItem.fromStorageString(mediaData);
-            if (video.isDeleted) {
+            if (video.isDeleted && !video.isHidden) {
               _deletedVideos.add(video);
             }
           } catch (e) {
+            debugPrint('$e');
           }
         }
 
@@ -156,6 +156,531 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     }).toList();
   }
 
+  Future<void> _showRecoveryStateDialog({
+    required String title,
+    required String body,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: LiquidColors.backgroundLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: LiquidColors.accentBlue.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.lock_open_rounded,
+                color: LiquidColors.accentBlue,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          body,
+          style: TextStyle(
+            color: Colors.grey.shade300,
+            height: 1.5,
+            fontSize: 13,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+            child: const Text(
+              'Got it',
+              style: TextStyle(
+                color: LiquidColors.accentBlue,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _recoverHiddenData() async {
+    HapticFeedback.lightImpact();
+
+    final enabled = await RecoveryService.instance.isEnabled();
+    if (!mounted) return;
+
+    final storedEmail = enabled
+        ? (await RecoveryService.instance.getEmail() ?? '').trim()
+        : '';
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final mediaList = prefs.getStringList('videoLibrary') ?? [];
+    int hiddenCount = 0;
+    for (final mediaData in mediaList) {
+      try {
+        final v = VideoItem.fromStorageString(mediaData);
+        if (v.isHidden) hiddenCount++;
+      } catch (_) {}
+    }
+    if (!mounted) return;
+
+    if (!enabled || storedEmail.isEmpty) {
+      await _showRecoveryStateDialog(
+        title: 'Recovery not set up',
+        body:
+            'To recover hidden files, first set up a recovery email. '
+            'Open Settings → PIN Recovery → Set up recovery, then come back here.',
+      );
+      return;
+    }
+
+    if (hiddenCount == 0) {
+      await _showRecoveryStateDialog(
+        title: 'Nothing to recover',
+        body:
+            'No files have been hidden yet. When you tap the trash icon '
+            'on a deleted item, it gets hidden — and this screen lets you '
+            'bring it back with your recovery email.',
+      );
+      return;
+    }
+
+    final controller = TextEditingController();
+    final target = storedEmail.toLowerCase();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final entered = controller.text.trim().toLowerCase();
+          final matches = entered.isNotEmpty && entered == target;
+          return AlertDialog(
+            backgroundColor: LiquidColors.backgroundLight,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            title: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: LiquidColors.success.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.lock_open_rounded,
+                    color: LiquidColors.success,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Recover deleted data',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$hiddenCount hidden ${hiddenCount == 1 ? "file" : "files"} can be brought back. '
+                  'Type your recovery email exactly to restore everything to your library.',
+                  style: TextStyle(
+                    color: Colors.grey.shade300,
+                    height: 1.5,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    'Hint: ${RecoveryService.mask(storedEmail)}',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (_) => setDialogState(() {}),
+                  cursorColor: LiquidColors.success,
+                  style: TextStyle(
+                    color: matches ? LiquidColors.success : Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'you@example.com',
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.04),
+                    prefixIcon: Icon(
+                      Icons.alternate_email_rounded,
+                      color: matches
+                          ? LiquidColors.success
+                          : Colors.grey.shade500,
+                      size: 18,
+                    ),
+                    suffixIcon: matches
+                        ? const Icon(
+                            Icons.check_circle_rounded,
+                            color: LiquidColors.success,
+                            size: 18,
+                          )
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: matches
+                            ? LiquidColors.success
+                            : LiquidColors.accentBlue,
+                        width: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: matches
+                    ? () => Navigator.of(dialogContext).pop(true)
+                    : null,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                child: Text(
+                  'Recover all',
+                  style: TextStyle(
+                    color: matches
+                        ? LiquidColors.success
+                        : Colors.grey.shade600,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (ok != true || !mounted) return;
+
+    final freshList = prefs.getStringList('videoLibrary') ?? [];
+    final updatedMediaList = <String>[];
+    int restored = 0;
+    for (final mediaData in freshList) {
+      try {
+        final v = VideoItem.fromStorageString(mediaData);
+        if (v.isHidden) {
+          v.isHidden = false;
+          v.isDeleted = false;
+          v.deletedDate = null;
+          updatedMediaList.add(v.toStorageString());
+          restored++;
+        } else {
+          updatedMediaList.add(mediaData);
+        }
+      } catch (_) {
+        updatedMediaList.add(mediaData);
+      }
+    }
+    await prefs.setStringList('videoLibrary', updatedMediaList);
+    if (!mounted) return;
+    FlushBarHelper.flushBarSuccessMessage(
+      '$restored ${restored == 1 ? "file" : "files"} restored to your library',
+      context,
+    );
+    await _loadDeletedVideos();
+    if (widget.onVideosChanged != null) {
+      widget.onVideosChanged!();
+    }
+  }
+
+  Future<void> _confirmRestore(VideoItem video) async {
+    final enabled = await RecoveryService.instance.isEnabled();
+    if (!mounted) return;
+
+    if (!enabled) {
+      await _restoreVideo(video);
+      return;
+    }
+
+    final storedEmail = (await RecoveryService.instance.getEmail() ?? '')
+        .trim();
+    if (!mounted) return;
+    if (storedEmail.isEmpty) {
+      await _restoreVideo(video);
+      return;
+    }
+
+    final controller = TextEditingController();
+    final target = storedEmail.toLowerCase();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final entered = controller.text.trim().toLowerCase();
+          final matches = entered.isNotEmpty && entered == target;
+          return AlertDialog(
+            backgroundColor: LiquidColors.backgroundLight,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            title: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: LiquidColors.success.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.restore_rounded,
+                    color: LiquidColors.success,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Confirm restore',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Restoring deleted items requires your recovery email. '
+                  'Type it exactly as you set it up to bring "${video.title}" back to your library.',
+                  style: TextStyle(
+                    color: Colors.grey.shade300,
+                    height: 1.5,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    'Hint: ${RecoveryService.mask(storedEmail)}',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                TextField(
+                  smartDashesType: SmartDashesType.disabled,
+                  smartQuotesType: SmartQuotesType.disabled,
+                  controller: controller,
+                  autofocus: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  enableIMEPersonalizedLearning: false,
+                  autofillHints: const <String>[],
+                  keyboardType: TextInputType.visiblePassword,
+                  focusNode: FocusNode(skipTraversal: true),
+                  onChanged: (_) => setDialogState(() {}),
+                  cursorColor: LiquidColors.success,
+                  style: TextStyle(
+                    color: matches ? LiquidColors.success : Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'you@tabsap.com',
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.04),
+                    prefixIcon: Icon(
+                      Icons.alternate_email_rounded,
+                      color: matches
+                          ? LiquidColors.success
+                          : Colors.grey.shade500,
+                      size: 18,
+                    ),
+                    suffixIcon: matches
+                        ? const Icon(
+                            Icons.check_circle_rounded,
+                            color: LiquidColors.success,
+                            size: 18,
+                          )
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: matches
+                            ? LiquidColors.success
+                            : LiquidColors.accentBlue,
+                        width: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: matches
+                    ? () => Navigator.of(dialogContext).pop(true)
+                    : null,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                child: Text(
+                  'Restore',
+                  style: TextStyle(
+                    color: matches
+                        ? LiquidColors.success
+                        : Colors.grey.shade600,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (ok != true || !mounted) return;
+    await _restoreVideo(video);
+  }
+
   Future<void> _restoreVideo(VideoItem video) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -163,28 +688,28 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       final updatedMediaList = <String>[];
 
       for (final mediaData in mediaList) {
-        final parts = mediaData.split('|');
-        if (parts[0] == video.id) {
-          final restoredVideo = VideoItem(
-            id: parts[0],
-            title: parts[1],
-            path: parts[2],
-            type: parts[3],
-            isLocked: parts[4] == 'true',
-            category: parts[5],
-            isDeleted: false,
-            deletedDate: null,
-          ).toStorageString();
-          updatedMediaList.add(restoredVideo);
-        } else {
+        try {
+          final v = VideoItem.fromStorageString(mediaData);
+          if (v.id == video.id) {
+            v.isDeleted = false;
+            v.deletedDate = null;
+            v.isHidden = false;
+            updatedMediaList.add(v.toStorageString());
+          } else {
+            updatedMediaList.add(mediaData);
+          }
+        } catch (e) {
+          debugPrint('$e');
           updatedMediaList.add(mediaData);
         }
       }
 
       await prefs.setStringList('videoLibrary', updatedMediaList);
-
-      _showSnackBar('"${video.title}" restored successfully', LiquidColors.success);
-
+      if (!mounted) return;
+      FlushBarHelper.flushBarSuccessMessage(
+        '"${video.title}" restored successfully',
+        context,
+      );
       await _loadDeletedVideos();
 
       if (widget.onVideosChanged != null) {
@@ -202,30 +727,33 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       final updatedMediaList = <String>[];
 
       for (final mediaData in mediaList) {
-        final parts = mediaData.split('|');
-        if (parts[0] != video.id) {
-          updatedMediaList.add(mediaData);
-        } else {
-          try {
-            final file = File(video.path);
-            if (await file.exists()) {
-              await file.delete();
-            }
-          } catch (e) {
+        try {
+          final v = VideoItem.fromStorageString(mediaData);
+          if (v.id == video.id) {
+            v.isHidden = true;
+            updatedMediaList.add(v.toStorageString());
+          } else {
+            updatedMediaList.add(mediaData);
           }
+        } catch (e) {
+          debugPrint('$e');
+          updatedMediaList.add(mediaData);
         }
       }
 
       await prefs.setStringList('videoLibrary', updatedMediaList);
-      _showSnackBar('"${video.title}" permanently deleted', LiquidColors.error);
+      if (!mounted) return;
+      FlushBarHelper.flushBarErrorMessage(
+        '"${video.title}" hidden — recoverable via email',
+        context,
+      );
       await _loadDeletedVideos();
 
       if (widget.onVideosChanged != null) {
         widget.onVideosChanged!();
       }
-
     } catch (e) {
-      _showErrorDialog('Failed to delete video');
+      _showErrorDialog('Failed to hide file');
     }
   }
 
@@ -237,34 +765,34 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       final mediaList = prefs.getStringList('videoLibrary') ?? [];
       final updatedMediaList = <String>[];
 
-      for (final video in _deletedVideos) {
-        try {
-          final file = File(video.path);
-          if (await file.exists()) {
-            await file.delete();
-          }
-        } catch (e) {
-        }
-      }
-
       for (final mediaData in mediaList) {
         try {
-          final video = VideoItem.fromStorageString(mediaData);
-          if (!video.isDeleted) {
+          final v = VideoItem.fromStorageString(mediaData);
+          if (v.isDeleted && !v.isHidden) {
+            v.isHidden = true;
+            updatedMediaList.add(v.toStorageString());
+          } else {
             updatedMediaList.add(mediaData);
           }
         } catch (e) {
+          if (kDebugMode) {
+            print('$e');
+          }
+          updatedMediaList.add(mediaData);
         }
       }
 
       await prefs.setStringList('videoLibrary', updatedMediaList);
-      _showSnackBar('Trash emptied successfully', LiquidColors.error);
+      if (!mounted) return;
+      FlushBarHelper.flushBarSuccessMessage(
+        'Trash hidden — recoverable via email',
+        context,
+      );
       await _loadDeletedVideos();
 
       if (widget.onVideosChanged != null) {
         widget.onVideosChanged!();
       }
-
     } catch (e) {
       _showErrorDialog('Failed to empty trash');
     }
@@ -326,17 +854,17 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade400,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: LiquidColors.accentBlue,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -346,35 +874,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              color == LiquidColors.success ? Icons.restore : Icons.delete_forever,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                message,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -419,7 +918,11 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Center(
-                  child: Icon(Icons.delete_sweep, color: LiquidColors.error, size: 30),
+                  child: Icon(
+                    Icons.delete_sweep,
+                    color: LiquidColors.error,
+                    size: 30,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -433,7 +936,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               ),
               const SizedBox(height: 12),
               Text(
-                'All ${_deletedVideos.length} deleted files will be permanently removed. This action cannot be undone.',
+                'All ${_deletedVideos.length} files will be hidden from the app. You can bring them back anytime using your recovery email.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -553,10 +1056,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                LiquidColors.backgroundDeep,
-                LiquidColors.backgroundMid,
-              ],
+              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -600,7 +1100,11 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                       ],
                     ),
                     child: const Center(
-                      child: Icon(Icons.delete_outline, color: Colors.white, size: 22),
+                      child: Icon(
+                        Icons.delete_outline,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -616,11 +1120,15 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                         ),
                       ),
                       if (_deletedVideos.isNotEmpty)
-                        Text(
-                          'Auto-delete after 30 days',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade400,
+                        Flexible(
+                          child: Text(
+                            'Auto-delete after 30 days',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade400,
+                            ),
                           ),
                         ),
                     ],
@@ -631,6 +1139,24 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           },
         ),
         actions: [
+          TweenAnimationBuilder(
+            tween: Tween<double>(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.elasticOut,
+            builder: (context, double value, child) {
+              return Transform.scale(
+                scale: value,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.lock_open_rounded,
+                    color: Colors.white,
+                  ),
+                  tooltip: 'Recover Deleted Data',
+                  onPressed: _recoverHiddenData,
+                ),
+              );
+            },
+          ),
           if (_deletedVideos.isNotEmpty)
             TweenAnimationBuilder(
               tween: Tween<double>(begin: 0, end: 1),
@@ -675,9 +1201,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                       ? _buildLoadingState()
                       : _filteredVideos.isEmpty
                       ? LiquidDeletedEmptyState(
-                    hasSearch: _searchController.text.isNotEmpty,
-                    onBackPressed: () => Navigator.pop(context),
-                  )
+                          hasSearch: _searchController.text.isNotEmpty,
+                          onBackPressed: () => Navigator.pop(context),
+                        )
                       : _buildList(),
                 ),
               ],
@@ -777,20 +1303,14 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         children: [
           Text(
             '${_filteredVideos.length} ${_filteredVideos.length == 1 ? 'file' : 'files'}',
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
           ),
           if (_searchController.text.isNotEmpty)
             TextButton(
               onPressed: () => _searchController.clear(),
               child: Text(
                 'Clear search',
-                style: TextStyle(
-                  color: LiquidColors.error,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: LiquidColors.error, fontSize: 12),
               ),
             ),
         ],
@@ -810,26 +1330,15 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             builder: (context, double value, child) {
               return Transform.scale(
                 scale: value,
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    gradient: RadialGradient(
-                      colors: [
-                        LiquidColors.error.withValues(alpha: 0.3),
-                        LiquidColors.error.withValues(alpha: 0.1),
-                      ],
-                      center: Alignment.center,
-                      radius: 0.8,
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: CircularProgressIndicator(
-                      color: LiquidColors.error,
-                      strokeWidth: 3,
-                    ),
-                  ),
+                child: const LiquidCircularProgress(
+                  size: 96,
+                  strokeWidth: 6,
+                  colors: [
+                    LiquidColors.error,
+                    LiquidColors.accentOrange,
+                    LiquidColors.warning,
+                  ],
+                  glowColor: LiquidColors.error,
                 ),
               );
             },
@@ -837,10 +1346,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           const SizedBox(height: 20),
           Text(
             'Loading deleted files...',
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
           ),
         ],
       ),
@@ -865,7 +1371,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           return LiquidDeletedCard(
             video: video,
             daysRemaining: daysRemaining,
-            onRestore: () => _restoreVideo(video),
+            onRestore: () => _confirmRestore(video),
             onDelete: () => _permanentDelete(video),
             formatDate: _formatDate,
             getIcon: _getMediaIcon,

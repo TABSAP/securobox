@@ -223,7 +223,7 @@ class _IntrusionLogScreenState extends State<IntrusionLogScreen> {
                         : Image.file(
                             File(path),
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            errorBuilder: (_, _, _) => Container(
                               color: LiquidColors.backgroundDeep,
                               child: Icon(Icons.broken_image_rounded,
                                   color: Colors.grey.shade600, size: 32),

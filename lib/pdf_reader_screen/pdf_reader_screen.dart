@@ -236,7 +236,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: _isDarkMode ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
+            color: _isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300,
             width: 1,
           ),
         ),
@@ -406,7 +406,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF4788FF).withOpacity(0.2),
+                  color: const Color(0xFF4788FF).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -542,7 +542,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         color: _isDarkMode ? const Color(0xFF141432) : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(25),
         border: Border.all(
-          color: const Color(0xFF4788FF).withOpacity(0.3),
+          color: const Color(0xFF4788FF).withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -653,10 +653,10 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(40),
                   border: Border.all(
-                    color: Colors.red.withOpacity(0.3),
+                    color: Colors.red.withValues(alpha: 0.3),
                     width: 2,
                   ),
                 ),
@@ -780,10 +780,10 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(40),
                 border: Border.all(
-                  color: Colors.red.withOpacity(0.3),
+                  color: Colors.red.withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),
@@ -830,12 +830,12 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         color: _isDarkMode ? const Color(0xFF1A1A3E) : Colors.white,
         border: Border(
           top: BorderSide(
-            color: _isDarkMode ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
+            color: _isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -977,7 +977,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF4788FF).withOpacity(0.3),
+                          color: const Color(0xFF4788FF).withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -1066,7 +1066,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: _isDarkMode ? Colors.white.withOpacity(0.1) : Colors.grey.shade300,
+              color: _isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade300,
               width: 1,
             ),
           ),
@@ -1082,10 +1082,10 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: Colors.red.withOpacity(0.3),
+                          color: Colors.red.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),

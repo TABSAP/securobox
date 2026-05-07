@@ -71,7 +71,7 @@ class _LiquidProgressState extends State<LiquidProgress>
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: LiquidColors.primaryStart.withOpacity(0.5),
+                        color: LiquidColors.primaryStart.withValues(alpha: 0.5),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -90,8 +90,8 @@ class _LiquidProgressState extends State<LiquidProgress>
                             borderRadius: BorderRadius.circular(10),
                             gradient: LinearGradient(
                               colors: [
-                                Colors.white.withOpacity(0.8),
-                                Colors.white.withOpacity(0.5),
+                                Colors.white.withValues(alpha: 0.8),
+                                Colors.white.withValues(alpha: 0.5),
                               ],
                             ),
                           ),

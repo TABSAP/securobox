@@ -7,7 +7,8 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="29" />
+        android:maxSdkVersion="29"
+        tools:replace="android:maxSdkVersion" />
 
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -47,21 +48,11 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-        </activity>
-
-        <!-- Default launcher (shown out of the box) -->
-        <activity-alias
-            android:name=".DefaultAlias"
-            android:targetActivity=".MainActivity"
-            android:exported="true"
-            android:enabled="true"
-            android:icon="@mipmap/ic_launcher"
-            android:label="Secure Player">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-        </activity-alias>
+        </activity>
 
         <!-- Disguise: Calculator -->
         <activity-alias
@@ -141,6 +132,14 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO"/>
+            <data android:scheme="mailto"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND"/>
+            <data android:mimeType="*/*"/>
         </intent>
     </queries>
 </manifest>

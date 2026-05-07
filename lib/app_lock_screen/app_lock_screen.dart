@@ -7,7 +7,7 @@ import 'package:video_player_app/app_lock_screen/widgets/liquid_action_button.da
 import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
-import 'package:video_player_app/utils/flush_bar_helper.dart';
+import 'package:video_player_app/onboarding_screen/forgot_pin_screen.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
@@ -182,27 +182,138 @@ class _AppLockScreenState extends State<AppLockScreen>
     try {
       final isSupported = await _localAuth.isDeviceSupported();
       final canCheck = await _localAuth.canCheckBiometrics;
+      if (!mounted) return;
 
       if (!isSupported || !canCheck) {
-        FlushBarHelper.flushBarErrorMessage('Biometric not available', context);
+        await _showAuthFailureDialog(
+          title: 'Biometric Not Available',
+          message:
+              'This device doesn\'t support biometric authentication, or no biometrics have been enrolled in system settings.',
+        );
         return;
       }
 
-      final authenticated = await _localAuth.authenticate(
-        localizedReason: 'Unlock Secure Player',
-        biometricOnly: true,
-
-        sensitiveTransaction: true,
+      final authenticated = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => _CustomAuthDialog(
+          localAuth: _localAuth,
+        ),
       );
+      if (!mounted) return;
 
-      if (authenticated && mounted) {
+      if (authenticated == true) {
         _unlockApp();
+      } else if (authenticated == false) {
+        await _showAuthFailureDialog(
+          title: 'Authentication Failed',
+          message:
+              'We couldn\'t verify your identity. Please try again or use your PIN.',
+        );
       }
-    } catch (e) {
-      FlushBarHelper.flushBarErrorMessage('Biometric error', context);
+    } catch (_) {
+      if (!mounted) return;
+      await _showAuthFailureDialog(
+        title: 'Authentication Error',
+        message: 'Something went wrong. Please try again or use your PIN.',
+      );
     } finally {
       if (mounted) setState(() => _isAuthenticating = false);
     }
+  }
+
+  Future<void> _showAuthFailureDialog({
+    required String title,
+    required String message,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1D2E),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: LiquidColors.error.withValues(alpha: 0.3),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: LiquidColors.error.withValues(alpha: 0.2),
+                blurRadius: 26,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: LiquidColors.error.withValues(alpha: 0.16),
+                  border: Border.all(
+                    color: LiquidColors.error.withValues(alpha: 0.4),
+                    width: 1.4,
+                  ),
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  color: LiquidColors.error,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: LiquidColors.accentBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -292,19 +403,20 @@ class _AppLockScreenState extends State<AppLockScreen>
                         itemCount: 12,
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          mainAxisSpacing: 16,
-                          crossAxisSpacing: 16,
-                          childAspectRatio: 1.2,
-                        ),
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 3,
+                              mainAxisSpacing: 16,
+                              crossAxisSpacing: 16,
+                              childAspectRatio: 1.2,
+                            ),
                         itemBuilder: (context, index) {
                           if (index == 9) {
                             return LiquidActionButton(
                               icon: Icons.fingerprint,
                               color: LiquidColors.success,
                               onPressed: _useBiometric,
-                              isEnabled: _biometricEnabled && !_isAuthenticating,
+                              isEnabled:
+                                  _biometricEnabled && !_isAuthenticating,
                             );
                           }
                           if (index == 10) {
@@ -384,21 +496,23 @@ class _AppLockScreenState extends State<AppLockScreen>
                           return Transform.scale(
                             scale: value,
                             child: TextButton.icon(
-                              onPressed: _isAuthenticating ? null : _useBiometric,
+                              onPressed: _isAuthenticating
+                                  ? null
+                                  : _useBiometric,
                               icon: _isAuthenticating
                                   ? SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: LiquidColors.success,
-                                ),
-                              )
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: LiquidColors.success,
+                                      ),
+                                    )
                                   : Icon(
-                                Icons.fingerprint,
-                                color: LiquidColors.success,
-                                size: 24,
-                              ),
+                                      Icons.fingerprint,
+                                      color: LiquidColors.success,
+                                      size: 24,
+                                    ),
                               label: Text(
                                 _isAuthenticating
                                     ? 'Authenticating...'
@@ -422,11 +536,247 @@ class _AppLockScreenState extends State<AppLockScreen>
                           );
                         },
                       ),
+
+                    const SizedBox(height: 8),
+
+                    TextButton.icon(
+                      onPressed: _isAuthenticating
+                          ? null
+                          : () {
+                              HapticFeedback.lightImpact();
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPinScreen(),
+                                ),
+                              );
+                            },
+                      icon: Icon(
+                        Icons.help_outline_rounded,
+                        size: 16,
+                        color: Colors.grey.shade400,
+                      ),
+                      label: Text(
+                        'Forgot PIN?',
+                        style: TextStyle(
+                          color: Colors.grey.shade300,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CustomAuthDialog extends StatefulWidget {
+  final LocalAuthentication localAuth;
+
+  const _CustomAuthDialog({required this.localAuth});
+
+  @override
+  State<_CustomAuthDialog> createState() => _CustomAuthDialogState();
+}
+
+class _CustomAuthDialogState extends State<_CustomAuthDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
+  bool _running = false;
+  String _status = 'Place your finger on the sensor';
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.92, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _runAuth());
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _runAuth() async {
+    if (_running) return;
+    setState(() {
+      _running = true;
+      _failed = false;
+      _status = 'Place your finger on the sensor';
+    });
+    try {
+      final ok = await widget.localAuth.authenticate(
+        localizedReason: 'Unlock Secure Player',
+        biometricOnly: true,
+        sensitiveTransaction: true,
+      );
+      if (!mounted) return;
+      if (ok) {
+        setState(() => _status = 'Verified');
+        await Future.delayed(const Duration(milliseconds: 350));
+        if (mounted) Navigator.of(context).pop(true);
+      } else {
+        setState(() {
+          _running = false;
+          _failed = true;
+          _status = 'Authentication cancelled';
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _running = false;
+        _failed = true;
+        _status = 'Couldn\'t verify. Try again.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = _failed ? LiquidColors.error : LiquidColors.success;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1D2E),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: accent.withValues(alpha: 0.35)),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.25),
+              blurRadius: 30,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ScaleTransition(
+              scale: _running
+                  ? _pulseAnimation
+                  : const AlwaysStoppedAnimation(1.0),
+              child: Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      accent.withValues(alpha: 0.35),
+                      accent.withValues(alpha: 0.08),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.6),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  _failed
+                      ? Icons.error_outline_rounded
+                      : Icons.fingerprint_rounded,
+                  color: accent,
+                  size: 46,
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Authenticate',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 6),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Text(
+                _status,
+                key: ValueKey(_status),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _failed ? LiquidColors.error : Colors.grey.shade400,
+                  fontSize: 13,
+                  height: 1.4,
+                  fontWeight:
+                      _failed ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 22),
+            if (_failed) ...[
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _runAuth,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text(
+                    'Try Again',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: LiquidColors.accentBlue,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(null),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              child: Text(
+                'Use PIN instead',
+                style: TextStyle(
+                  color: Colors.grey.shade400,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+import 'package:video_player_app/utils/vault_crypto.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoPath;
@@ -25,7 +26,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _isFullScreen = false;
   bool _showOverlay = true;
   double _playbackSpeed = 1.0;
-  Orientation? _currentOrientation;
+  String? _errorDetail;
 
   final List<double> _playbackSpeeds = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
@@ -78,8 +79,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           materialProgressColors: ChewieProgressColors(
             playedColor: const Color(0xFF4788FF),
             handleColor: const Color(0xFF4788FF),
-            backgroundColor: Colors.white.withOpacity(0.2),
-            bufferedColor: Colors.white.withOpacity(0.1),
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            bufferedColor: Colors.white.withValues(alpha: 0.1),
           ),
           placeholder: Container(
             color: const Color(0xFF0A0A1F),
@@ -97,7 +98,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           _isInitialized = true;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
+      String fileInfo = 'File: ${widget.videoPath}';
+      try {
+        final f = File(widget.videoPath);
+        if (await f.exists()) {
+          final size = await f.length();
+          final raf = await f.open();
+          final head = await raf.read(16);
+          await raf.close();
+          final hex = head
+              .map((b) => b.toRadixString(16).padLeft(2, '0'))
+              .join(' ');
+          fileInfo = 'File: ${widget.videoPath}\nSize: $size bytes\nHead: $hex';
+        } else {
+          fileInfo = 'File: ${widget.videoPath}\n(file does not exist)';
+        }
+      } catch (_) {}
+      final selfTest =
+          'Crypto self-test: ${VaultCrypto.lastSelfTestResult ?? "not run"}';
+      _errorDetail = '$e\n\n$fileInfo\n\n$selfTest\n\n$st';
       if (mounted) {
         _showErrorDialog();
       }
@@ -193,11 +213,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Unable to play video file',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey,
+              Container(
+                constraints: const BoxConstraints(maxHeight: 240),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    _errorDetail ?? 'Unable to play video file',
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 30),
@@ -265,10 +292,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.black.withOpacity(0.7),
+              Colors.black.withValues(alpha: 0.7),
               Colors.transparent,
               Colors.transparent,
-              Colors.black.withOpacity(0.7),
+              Colors.black.withValues(alpha: 0.7),
             ],
           ),
         ),
@@ -302,7 +329,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Icon(
@@ -352,7 +379,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Icon(
@@ -378,7 +405,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -395,11 +422,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4788FF).withOpacity(0.8),
+                          color: const Color(0xFF4788FF).withValues(alpha: 0.8),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4788FF).withOpacity(0.5),
+                              color: const Color(0xFF4788FF).withValues(alpha: 0.5),
                               blurRadius: 15,
                               spreadRadius: 5,
                             ),
@@ -421,7 +448,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -479,7 +506,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -500,7 +527,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Icon(
@@ -572,7 +599,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       border: Border.all(
                         color: isSelected
                             ? const Color(0xFF4788FF)
-                            : Colors.white.withOpacity(0.1),
+                            : Colors.white.withValues(alpha: 0.1),
                         width: 2,
                       ),
                     ),
@@ -670,7 +697,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
+                        color: Colors.black.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -700,21 +727,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Widget _buildVideoPlayerWithOrientationHandler() {
-    return WillPopScope(
-      onWillPop: () async {
-
+    return PopScope(
+      onPopInvokedWithResult: (text, _)async{
         if (_isFullScreen) {
           await SystemChrome.setPreferredOrientations([
             DeviceOrientation.portraitUp,
             DeviceOrientation.portraitDown,
           ]);
         }
-        return true;
+        return ;
       },
       child: OrientationBuilder(
         builder: (context, orientation) {
 
-          _currentOrientation = orientation;
 
           return AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -744,7 +769,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Icon(

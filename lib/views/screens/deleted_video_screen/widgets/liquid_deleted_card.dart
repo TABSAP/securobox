@@ -43,29 +43,20 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
       duration: const Duration(milliseconds: 600),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.elasticOut,
-      ),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     Future.delayed(Duration(milliseconds: widget.index * 100), () {
       if (mounted) _controller.forward();
@@ -108,8 +99,8 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    LiquidColors.backgroundLight.withOpacity(0.9),
-                    LiquidColors.backgroundMid.withOpacity(0.95),
+                    LiquidColors.backgroundLight.withValues(alpha: 0.9),
+                    LiquidColors.backgroundMid.withValues(alpha: 0.95),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -117,13 +108,14 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isLocked
-                      ? LiquidColors.warning.withOpacity(0.3)
-                      : iconColor.withOpacity(0.3),
+                      ? LiquidColors.warning.withValues(alpha: 0.3)
+                      : iconColor.withValues(alpha: 0.3),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (isLocked ? LiquidColors.warning : iconColor).withOpacity(0.1),
+                    color: (isLocked ? LiquidColors.warning : iconColor)
+                        .withValues(alpha: 0.1),
                     blurRadius: 15,
                     spreadRadius: 0,
                     offset: const Offset(0, 8),
@@ -136,7 +128,9 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
                   children: [
                     _buildIcon(iconData, iconColor, isLocked),
                     const SizedBox(width: 16),
-                    Expanded(child: _buildInfo(iconColor, isLocked, daysRemaining)),
+                    Expanded(
+                      child: _buildInfo(iconColor, isLocked, daysRemaining),
+                    ),
                     _buildActionButtons(),
                   ],
                 ),
@@ -163,21 +157,21 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
               gradient: RadialGradient(
                 colors: isLocked
                     ? [
-                  LiquidColors.warning.withOpacity(0.3),
-                  LiquidColors.warning.withOpacity(0.1),
-                ]
+                        LiquidColors.warning.withValues(alpha: 0.3),
+                        LiquidColors.warning.withValues(alpha: 0.1),
+                      ]
                     : [
-                  iconColor.withOpacity(0.3),
-                  iconColor.withOpacity(0.1),
-                ],
+                        iconColor.withValues(alpha: 0.3),
+                        iconColor.withValues(alpha: 0.1),
+                      ],
                 center: Alignment.center,
                 radius: 0.8,
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isLocked
-                    ? LiquidColors.warning.withOpacity(0.3)
-                    : iconColor.withOpacity(0.3),
+                    ? LiquidColors.warning.withValues(alpha: 0.3)
+                    : iconColor.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -216,10 +210,10 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: daysColor.withOpacity(0.1),
+              color: daysColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: daysColor.withOpacity(0.3),
+                color: daysColor.withValues(alpha: 0.3),
                 width: 0.5,
               ),
             ),
@@ -253,18 +247,11 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
         if (widget.video.deletedDate != null)
           Row(
             children: [
-              Icon(
-                Icons.access_time,
-                size: 14,
-                color: Colors.grey.shade500,
-              ),
+              Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
               const SizedBox(width: 4),
               Text(
                 'Deleted ${widget.formatDate(widget.video.deletedDate!)}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade500,
-                ),
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
               ),
             ],
           ),
@@ -287,18 +274,12 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.2),
-            color.withOpacity(0.1),
-          ],
+          colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 0.5,
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
       ),
       child: Text(
         label,
@@ -347,20 +328,17 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
             decoration: BoxDecoration(
               gradient: RadialGradient(
                 colors: [
-                  color.withOpacity(0.2),
-                  color.withOpacity(0.1),
+                  color.withValues(alpha: 0.2),
+                  color.withValues(alpha: 0.1),
                 ],
                 center: Alignment.center,
                 radius: 0.8,
               ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: color.withOpacity(0.3),
-                width: 1,
-              ),
+              border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   blurRadius: 10,
                   spreadRadius: 0,
                   offset: const Offset(0, 4),
@@ -387,22 +365,18 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [
-            color,
-            color.withOpacity(0.8),
-          ],
+          colors: [color, color.withValues(alpha: 0.8)],
           begin: isLeft ? Alignment.centerLeft : Alignment.centerRight,
           end: isLeft ? Alignment.centerRight : Alignment.centerLeft,
         ),
         borderRadius: BorderRadius.circular(16),
       ),
       alignment: isLeft ? Alignment.centerLeft : Alignment.centerRight,
-      padding: EdgeInsets.only(
-        left: isLeft ? 20 : 0,
-        right: isLeft ? 0 : 20,
-      ),
+      padding: EdgeInsets.only(left: isLeft ? 20 : 0, right: isLeft ? 0 : 20),
       child: Row(
-        mainAxisAlignment: isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
+        mainAxisAlignment: isLeft
+            ? MainAxisAlignment.start
+            : MainAxisAlignment.end,
         children: [
           if (isLeft) ...[
             Icon(icon, color: Colors.white, size: 28),
@@ -434,11 +408,9 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
 
   Future<bool?> _confirmDismiss(DismissDirection direction) async {
     if (direction == DismissDirection.startToEnd) {
-
       widget.onRestore();
       return false;
     } else {
-
       final confirm = await showDialog<bool>(
         context: context,
         builder: (context) => _buildDeleteDialog(),
@@ -457,16 +429,13 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              LiquidColors.backgroundLight,
-              LiquidColors.backgroundMid,
-            ],
+            colors: [LiquidColors.backgroundLight, LiquidColors.backgroundMid],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: LiquidColors.error.withOpacity(0.3),
+            color: LiquidColors.error.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -479,8 +448,8 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   colors: [
-                    LiquidColors.error.withOpacity(0.3),
-                    LiquidColors.error.withOpacity(0.1),
+                    LiquidColors.error.withValues(alpha: 0.3),
+                    LiquidColors.error.withValues(alpha: 0.1),
                   ],
                   center: Alignment.center,
                   radius: 0.8,
@@ -497,7 +466,7 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
             ),
             const SizedBox(height: 20),
             const Text(
-              'Delete Permanently?',
+              'Hide File?',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -506,12 +475,9 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
             ),
             const SizedBox(height: 12),
             Text(
-              'Delete "${widget.video.title}" permanently? This action cannot be undone.',
+              '"${widget.video.title}" will be hidden from the app. You can recover it later using your recovery email.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade400,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
             ),
             const SizedBox(height: 24),
             Row(

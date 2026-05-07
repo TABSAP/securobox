@@ -20,7 +20,7 @@ class DownloadDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -40,7 +40,7 @@ class DownloadDialog extends StatelessWidget {
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Color(0xFF4788FF).withOpacity(0.3),
+                  color: Color(0xFF4788FF).withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),

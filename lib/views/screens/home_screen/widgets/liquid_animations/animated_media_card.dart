@@ -90,7 +90,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: (isLocked ? LiquidColors.warning : mediaColor).withOpacity(0.3),
+              color: (isLocked ? LiquidColors.warning : mediaColor).withValues(alpha: 0.3),
               blurRadius: 15,
               spreadRadius: 0,
               offset: const Offset(0, 8),
@@ -101,15 +101,15 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  LiquidColors.backgroundLight.withOpacity(0.9),
-                  LiquidColors.backgroundMid.withOpacity(0.95),
+                  LiquidColors.backgroundLight.withValues(alpha: 0.9),
+                  LiquidColors.backgroundMid.withValues(alpha: 0.95),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: (isLocked ? LiquidColors.warning : mediaColor).withOpacity(0.3),
+                color: (isLocked ? LiquidColors.warning : mediaColor).withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
@@ -147,7 +147,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: (isLocked ? LiquidColors.warning : LiquidColors.primaryStart).withOpacity(0.4),
+                  color: (isLocked ? LiquidColors.warning : LiquidColors.primaryStart).withValues(alpha: 0.4),
                   blurRadius: 15,
                   spreadRadius: 1,
                   offset: const Offset(0, 5),
@@ -180,7 +180,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
               fontWeight: FontWeight.w600,
               shadows: [
                 Shadow(
-                  color: (isLocked ? LiquidColors.warning : mediaColor).withOpacity(0.3),
+                  color: (isLocked ? LiquidColors.warning : mediaColor).withValues(alpha: 0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -227,12 +227,12 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [color.withOpacity(0.2), color.withOpacity(0.1)],
+                colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withOpacity(0.3), width: 1),
+              border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
             ),
             child: Text(
               label,
@@ -321,14 +321,14 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
                 ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: color.withOpacity(isDisabled ? 0.1 : 0.3),
+                  color: color.withValues(alpha:isDisabled ? 0.1 : 0.3),
                   width: 1,
                 ),
                 boxShadow: isDisabled
                     ? null
                     : [
                   BoxShadow(
-                    color: color.withOpacity(0.3),
+                    color: color.withValues(alpha: 0.3),
                     blurRadius: 8,
                     spreadRadius: 0,
                     offset: const Offset(0, 2),
@@ -365,7 +365,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       color: LiquidColors.backgroundLight,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: LiquidColors.primaryStart.withOpacity(0.3), width: 1),
+        side: BorderSide(color: LiquidColors.primaryStart.withValues(alpha: 0.3), width: 1),
       ),
       items: widget.categories
           .where((c) => c != "All")

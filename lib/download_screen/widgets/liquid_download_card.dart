@@ -1,6 +1,94 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
+
+class _FileKind {
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _FileKind(this.label, this.icon, this.color);
+
+  static const _video = _FileKind(
+    'Video',
+    Icons.movie_outlined,
+    LiquidColors.accentBlue,
+  );
+  static const _audio = _FileKind(
+    'Audio',
+    Icons.audiotrack_rounded,
+    LiquidColors.accentPurple,
+  );
+  static const _image = _FileKind(
+    'Photo',
+    Icons.image_outlined,
+    LiquidColors.success,
+  );
+  static const _document = _FileKind(
+    'Document',
+    Icons.description_outlined,
+    LiquidColors.accentOrange,
+  );
+  static const _archive = _FileKind(
+    'Archive',
+    Icons.folder_zip_outlined,
+    LiquidColors.warning,
+  );
+  static const _code = _FileKind(
+    'Code',
+    Icons.code_rounded,
+    LiquidColors.accentPink,
+  );
+  static const _other = _FileKind(
+    'File',
+    Icons.insert_drive_file_outlined,
+    Color(0xFF9CA3AF),
+  );
+
+  static _FileKind from(String path) {
+    final dot = path.lastIndexOf('.');
+    if (dot < 0) return _other;
+    final ext = path.substring(dot + 1).toLowerCase();
+    if (const {
+      'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v',
+      'mpg', 'mpeg', '3gp', 'webm', 'ts', 'mts', 'm2ts',
+    }.contains(ext)) {
+      return _video;
+    }
+    if (const {
+      'mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma',
+      'aiff', 'alac', 'opus', 'mid', 'midi', 'amr', 'ape',
+      'ra', 'rm', 'mka', 'm4b', 'm4p', 'ac3', 'dts',
+    }.contains(ext)) {
+      return _audio;
+    }
+    if (const {
+      'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif',
+      'svg', 'ico', 'heic', 'heif', 'raw', 'cr2', 'nef', 'arw', 'dng',
+    }.contains(ext)) {
+      return _image;
+    }
+    if (const {
+      'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'ppt', 'pptx',
+      'xls', 'xlsx', 'csv', 'md', 'markdown', 'html', 'htm',
+      'epub', 'mobi', 'azw3', 'tex', 'latex', 'xml', 'json', 'yaml', 'yml',
+    }.contains(ext)) {
+      return _document;
+    }
+    if (const {
+      'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz',
+      'iso', 'dmg', 'pkg', 'deb', 'rpm', 'cab',
+    }.contains(ext)) {
+      return _archive;
+    }
+    if (const {
+      'dart', 'java', 'cpp', 'c', 'h', 'py', 'js', 'ts',
+      'php', 'rb', 'go', 'rs', 'swift', 'kt', 'cs',
+    }.contains(ext)) {
+      return _code;
+    }
+    return _other;
+  }
+}
 
 class LiquidDownloadCard extends StatefulWidget {
   final String fileName;
@@ -111,7 +199,7 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
   @override
   Widget build(BuildContext context) {
     final isCompleted = widget.status.toLowerCase() == 'completed';
-    final statusColor = isCompleted ? LiquidColors.success : LiquidColors.warning;
+    final kind = _FileKind.from(widget.videoPath);
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -124,20 +212,20 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  LiquidColors.backgroundLight.withOpacity(0.9),
-                  LiquidColors.backgroundMid.withOpacity(0.95),
+                  LiquidColors.backgroundLight.withValues(alpha: 0.9),
+                  LiquidColors.backgroundMid.withValues(alpha: 0.95),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: statusColor.withOpacity(0.2),
+                color: kind.color.withValues(alpha: 0.25),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: statusColor.withOpacity(0.1),
+                  color: kind.color.withValues(alpha: 0.12),
                   blurRadius: 15,
                   spreadRadius: 0,
                   offset: const Offset(0, 8),
@@ -148,11 +236,9 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  _buildStatusIcon(isCompleted, statusColor),
+                  _buildTypeIcon(kind, isCompleted),
                   const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildInfoSection(isCompleted, statusColor),
-                  ),
+                  Expanded(child: _buildInfoSection(kind, isCompleted)),
                   _buildActionButtons(),
                 ],
               ),
@@ -163,46 +249,67 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
     );
   }
 
-  Widget _buildStatusIcon(bool isCompleted, Color statusColor) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.elasticOut,
-      builder: (context, double value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                colors: [
-                  statusColor.withOpacity(0.3),
-                  statusColor.withOpacity(0.1),
-                ],
-                center: Alignment.center,
-                radius: 0.8,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: statusColor.withOpacity(0.3),
-                width: 1,
-              ),
+  Widget _buildTypeIcon(_FileKind kind, bool isCompleted) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                kind.color.withValues(alpha: 0.32),
+                kind.color.withValues(alpha: 0.10),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: Center(
-              child: Icon(
-                isCompleted ? Icons.check_circle_rounded : Icons.download_done_rounded,
-                color: statusColor,
-                size: 32,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: kind.color.withValues(alpha: 0.4),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: kind.color.withValues(alpha: 0.25),
+                blurRadius: 12,
+                spreadRadius: -2,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Icon(kind.icon, color: kind.color, size: 32),
+          ),
+        ),
+        if (isCompleted)
+          Positioned(
+            right: -2,
+            bottom: -2,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: LiquidColors.success,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: LiquidColors.backgroundLight,
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 12,
               ),
             ),
           ),
-        );
-      },
+      ],
     );
   }
 
-  Widget _buildInfoSection(bool isCompleted, Color statusColor) {
+  Widget _buildInfoSection(_FileKind kind, bool isCompleted) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -223,49 +330,62 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
           runSpacing: 4,
           children: [
             _buildChip(
-              widget.status.toUpperCase(),
-              statusColor,
+              kind.label.toUpperCase(),
+              kind.color,
+              icon: kind.icon,
+              prominent: true,
             ),
-            _buildChip(
-              widget.fileSize,
-              LiquidColors.accentBlue,
-            ),
-            _buildChip(
-              _formatDate(widget.date),
-              LiquidColors.accentPurple,
-            ),
+            _buildChip(widget.fileSize, LiquidColors.accentBlue),
+            _buildChip(_formatDate(widget.date), LiquidColors.accentPurple),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildChip(String label, Color color) {
+  Widget _buildChip(
+    String label,
+    Color color, {
+    IconData? icon,
+    bool prominent = false,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: prominent ? 9 : 10,
+        vertical: prominent ? 5 : 4,
+      ),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            color.withOpacity(0.2),
-            color.withOpacity(0.1),
+            color.withValues(alpha: prominent ? 0.28 : 0.2),
+            color.withValues(alpha: prominent ? 0.14 : 0.1),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(0.3),
-          width: 0.5,
+          color: color.withValues(alpha: prominent ? 0.5 : 0.3),
+          width: prominent ? 1 : 0.5,
         ),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-          letterSpacing: 0.5,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: prominent ? FontWeight.w800 : FontWeight.w600,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -308,20 +428,20 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
             decoration: BoxDecoration(
               gradient: RadialGradient(
                 colors: [
-                  color.withOpacity(0.2),
-                  color.withOpacity(0.1),
+                  color.withValues(alpha: 0.2),
+                  color.withValues(alpha: 0.1),
                 ],
                 center: Alignment.center,
                 radius: 0.8,
               ),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: color.withOpacity(0.3),
+                color: color.withValues(alpha: 0.3),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   blurRadius: 10,
                   spreadRadius: 0,
                   offset: const Offset(0, 4),

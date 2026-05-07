@@ -3,8 +3,10 @@ import '../../utils/liquid_colors.dart';
 
 class LiquidPinInput extends StatefulWidget {
   final bool confirmMode;
+  final bool verifyOldMode;
   final List<String> newPin;
   final List<String> confirmPin;
+  final List<String> oldPin;
   final int totalLength;
   final String? error;
   final Function(String) onNumberPressed;
@@ -16,6 +18,8 @@ class LiquidPinInput extends StatefulWidget {
     required this.confirmMode,
     required this.newPin,
     required this.confirmPin,
+    this.verifyOldMode = false,
+    this.oldPin = const [],
     this.totalLength = 4,
     this.error,
     required this.onNumberPressed,
@@ -53,20 +57,20 @@ class _LiquidPinInputState extends State<LiquidPinInput>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            LiquidColors.backgroundLight.withOpacity(0.9),
-            LiquidColors.backgroundMid.withOpacity(0.95),
+            LiquidColors.backgroundLight.withValues(alpha: 0.9),
+            LiquidColors.backgroundMid.withValues(alpha: 0.95),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: LiquidColors.accentBlue.withOpacity(0.3),
+          color: LiquidColors.accentBlue.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: LiquidColors.accentBlue.withOpacity(0.2),
+            color: LiquidColors.accentBlue.withValues(alpha: 0.2),
             blurRadius: 20,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -90,10 +94,22 @@ class _LiquidPinInputState extends State<LiquidPinInput>
   }
 
   Widget _buildHeader() {
+    final String title;
+    final String subtitle;
+    if (widget.verifyOldMode) {
+      title = 'ENTER CURRENT PIN';
+      subtitle = 'Verify your existing ${widget.totalLength}-digit PIN to continue';
+    } else if (widget.confirmMode) {
+      title = 'CONFIRM NEW PIN';
+      subtitle = 'Enter the same ${widget.totalLength}-digit PIN again';
+    } else {
+      title = 'ENTER NEW PIN';
+      subtitle = 'Create a new ${widget.totalLength}-digit security PIN';
+    }
     return Column(
       children: [
         Text(
-          widget.confirmMode ? 'CONFIRM NEW PIN' : 'ENTER NEW PIN',
+          title,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -103,19 +119,21 @@ class _LiquidPinInputState extends State<LiquidPinInput>
         ),
         const SizedBox(height: 8),
         Text(
-          widget.confirmMode
-              ? 'Enter the same ${widget.totalLength}-digit PIN again'
-              : 'Create a new ${widget.totalLength}-digit security PIN',
-          style: TextStyle(
-            color: Colors.grey.shade400,
-            fontSize: 12,
-          ),
+          subtitle,
+          style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
         ),
       ],
     );
   }
 
   Widget _buildPinIndicators() {
+    if (widget.verifyOldMode) {
+      return _buildPinIndicator(
+        pin: widget.oldPin,
+        label: 'Current PIN',
+        color: LiquidColors.warning,
+      );
+    }
     return Column(
       children: [
         _buildPinIndicator(
@@ -167,7 +185,7 @@ class _LiquidPinInputState extends State<LiquidPinInput>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: index < pin.length
-                            ? [color, color.withOpacity(0.5)]
+                            ? [color, color.withValues(alpha:0.5)]
                             : [Colors.grey.shade800, Colors.grey.shade900],
                         center: Alignment.center,
                         radius: 0.8,
@@ -175,7 +193,7 @@ class _LiquidPinInputState extends State<LiquidPinInput>
                       boxShadow: index < pin.length
                           ? [
                         BoxShadow(
-                          color: color.withOpacity(0.5),
+                          color: color.withValues(alpha: 0.5),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
@@ -198,15 +216,15 @@ class _LiquidPinInputState extends State<LiquidPinInput>
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            LiquidColors.error.withOpacity(0.1),
-            LiquidColors.error.withOpacity(0.05),
+            LiquidColors.error.withValues(alpha: 0.1),
+            LiquidColors.error.withValues(alpha: 0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: LiquidColors.error.withOpacity(0.3),
+          color: LiquidColors.error.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -274,20 +292,20 @@ class _LiquidPinInputState extends State<LiquidPinInput>
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   colors: [
-                    LiquidColors.backgroundLight.withOpacity(0.5),
-                    LiquidColors.backgroundMid.withOpacity(0.5),
+                    LiquidColors.backgroundLight.withValues(alpha: 0.5),
+                    LiquidColors.backgroundMid.withValues(alpha: 0.5),
                   ],
                   center: Alignment.center,
                   radius: 0.8,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: LiquidColors.accentBlue.withOpacity(0.1),
+                    color: LiquidColors.accentBlue.withValues(alpha: 0.1),
                     blurRadius: 8,
                     spreadRadius: 0,
                     offset: const Offset(0, 4),
@@ -329,20 +347,20 @@ class _LiquidPinInputState extends State<LiquidPinInput>
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   colors: [
-                    color.withOpacity(0.2),
-                    color.withOpacity(0.1),
+                    color.withValues(alpha: 0.2),
+                    color.withValues(alpha: 0.1),
                   ],
                   center: Alignment.center,
                   radius: 0.8,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: color.withOpacity(0.3),
+                  color: color.withValues(alpha: 0.3),
                   width: 1,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.2),
                     blurRadius: 8,
                     spreadRadius: 0,
                     offset: const Offset(0, 4),

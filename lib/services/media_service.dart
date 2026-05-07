@@ -1,8 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -365,8 +362,7 @@ class MediaService {
           }
         }
       }
-    } catch (e) {
-    }
+    } catch (_) {}
     return '';
   }
 
@@ -385,30 +381,30 @@ class MediaService {
         return false;
       }
 
-      final ext = filePath.split('.').last.toLowerCase();
+      final ext = fileName.contains('.')
+          ? fileName.split('.').last.toLowerCase()
+          : '';
 
       final fileSize = await file.length();
       final fileSizeStr = _formatBytes(fileSize);
 
-      await _addToDownloadHistory(
-        fileName: fileName,
-        filePath: filePath,
-        fileSize: fileSizeStr,
-      );
+      bool saved = false;
 
-      if (['mp4', 'mkv', 'avi', 'mov'].contains(ext)) {
+      if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].contains(ext)) {
         await PhotoManager.editor.saveVideo(
           file,
           title: fileName,
           relativePath: 'Movies/SecureVideo',
         );
-      } else if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
+        saved = true;
+      } else if (['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) {
         await PhotoManager.editor.saveImage(
           await file.readAsBytes(),
           title: fileName,
           relativePath: 'Pictures/SecureImages',
-          filename: 'images',
+          filename: fileName,
         );
+        saved = true;
       } else if (Platform.isAndroid) {
         final folder = ['mp3', 'wav', 'aac', 'ogg', 'm4a'].contains(ext)
             ? 'Music/SecureVideo'
@@ -419,12 +415,24 @@ class MediaService {
         }
         final newFile = File('${dir.path}/$fileName');
         await file.copy(newFile.path);
+        saved = await newFile.exists();
       } else {
-        await Share.shareXFiles([XFile(filePath)], subject: fileName);
+        await SharePlus.instance.share(
+          ShareParams(files: [XFile(filePath)], subject: fileName),
+        );
+        saved = true;
       }
 
-      return true;
-    } catch (e) {
+      if (saved) {
+        await _addToDownloadHistory(
+          fileName: fileName,
+          filePath: filePath,
+          fileSize: fileSizeStr,
+        );
+      }
+
+      return saved;
+    } catch (_) {
       return false;
     }
   }
@@ -444,8 +452,7 @@ class MediaService {
 
       downloadList.add(downloadData);
       await prefs.setStringList(_downloadHistoryKey, downloadList);
-    } catch (e) {
-    }
+    } catch (_) {}
   }
 
   String _formatBytes(int bytes) {

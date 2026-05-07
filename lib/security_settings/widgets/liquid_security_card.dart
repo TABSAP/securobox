@@ -94,14 +94,14 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: widget.gradient[0].withOpacity(0.4),
+                  color: widget.gradient[0].withValues(alpha: 0.4),
                   blurRadius: 20,
                   spreadRadius: 2,
                   offset: const Offset(0, 8),
                 ),
               ],
               border: Border.all(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -138,15 +138,15 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
             decoration: BoxDecoration(
               gradient: RadialGradient(
                 colors: [
-                  Colors.white.withOpacity(0.3),
-                  Colors.white.withOpacity(0.1),
+                  Colors.white.withValues(alpha: 0.3),
+                  Colors.white.withValues(alpha: 0.1),
                 ],
                 center: Alignment.center,
                 radius: 0.8,
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 width: 2,
               ),
             ),
@@ -187,7 +187,7 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
         Text(
           widget.subtitle,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             fontSize: 12,
           ),
         ),
@@ -210,8 +210,8 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
           child: Switch.adaptive(
             value: widget.value,
             onChanged: widget.onChanged,
-            activeColor: Colors.white,
-            activeTrackColor: Colors.white.withOpacity(0.5),
+            activeThumbColor: Colors.white,
+            activeTrackColor: Colors.white.withValues(alpha: 0.5),
             inactiveThumbColor: Colors.grey.shade300,
             inactiveTrackColor: Colors.grey.shade600,
           ),

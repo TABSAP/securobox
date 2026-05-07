@@ -36,7 +36,7 @@ class LiquidPinDots extends StatelessWidget {
                   gradient: RadialGradient(
                     colors: index < enteredLength
                         ? hasError
-                        ? [LiquidColors.error, LiquidColors.error.withOpacity(0.5)]
+                        ? [LiquidColors.error, LiquidColors.error.withValues(alpha:0.5)]
                         : [LiquidColors.accentBlue, LiquidColors.primaryMid]
                         : [Colors.white24, Colors.white12],
                     center: Alignment.center,
@@ -45,7 +45,7 @@ class LiquidPinDots extends StatelessWidget {
                   boxShadow: index < enteredLength && !hasError
                       ? [
                     BoxShadow(
-                      color: LiquidColors.accentBlue.withOpacity(0.5),
+                      color: LiquidColors.accentBlue.withValues(alpha: 0.5),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),

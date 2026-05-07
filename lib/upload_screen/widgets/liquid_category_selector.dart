@@ -61,20 +61,20 @@ class _LiquidCategorySelectorState extends State<LiquidCategorySelector>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  LiquidColors.backgroundLight.withOpacity(0.9),
-                  LiquidColors.backgroundMid.withOpacity(0.95),
+                  LiquidColors.backgroundLight.withValues(alpha: 0.9),
+                  LiquidColors.backgroundMid.withValues(alpha: 0.95),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: widget.getColor(widget.selectedCategory).withOpacity(0.3),
+                color: widget.getColor(widget.selectedCategory).withValues(alpha: 0.3),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.getColor(widget.selectedCategory).withOpacity(0.2),
+                  color: widget.getColor(widget.selectedCategory).withValues(alpha: 0.2),
                   blurRadius: 15,
                   spreadRadius: 0,
                   offset: const Offset(0, 4),

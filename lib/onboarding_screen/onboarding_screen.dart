@@ -6,6 +6,10 @@ import 'package:video_player_app/main_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
+import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart';
+import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
+import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
+import 'package:video_player_app/app_lock_screen/widgets/liquid_action_button.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -17,10 +21,10 @@ class OnboardingScreen extends StatefulWidget {
 enum _Step { welcome, pickLength, setPin, confirmPin, biometric }
 
 class _OnboardingScreenState extends State<OnboardingScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   _Step _step = _Step.welcome;
-  final List<String> _newPin = [];
-  final List<String> _confirmPin = [];
+  String _newPin = '';
+  String _confirmPin = '';
   int _pinLength = 4;
   String? _error;
   bool _biometricAvailable = false;
@@ -28,8 +32,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late AnimationController _ctrl;
   late Animation<double> _fade;
   late Animation<Offset> _slide;
+  late AnimationController _errorController;
+  late Animation<double> _shakeAnimation;
 
-  final _localAuth = LocalAuthentication();
+  final LocalAuthentication _localAuth = LocalAuthentication();
 
   @override
   void initState() {
@@ -42,12 +48,22 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _slide = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
     _ctrl.forward();
+
+    _errorController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _shakeAnimation = Tween<double>(begin: -10.0, end: 10.0).animate(
+      CurvedAnimation(parent: _errorController, curve: Curves.elasticIn),
+    );
+
     _checkBiometricAvailability();
   }
 
   @override
   void dispose() {
     _ctrl.dispose();
+    _errorController.dispose();
     super.dispose();
   }
 
@@ -75,10 +91,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     setState(() {
       _error = null;
       if (_step == _Step.setPin) {
-        if (_newPin.length < _pinLength) _newPin.add(d);
+        if (_newPin.length < _pinLength) _newPin += d;
         if (_newPin.length == _pinLength) _validatePinStrength();
       } else if (_step == _Step.confirmPin) {
-        if (_confirmPin.length < _pinLength) _confirmPin.add(d);
+        if (_confirmPin.length < _pinLength) _confirmPin += d;
         if (_confirmPin.length == _pinLength) _confirmAndSave();
       }
     });
@@ -88,19 +104,37 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     HapticFeedback.selectionClick();
     setState(() {
       _error = null;
-      if (_step == _Step.setPin && _newPin.isNotEmpty) _newPin.removeLast();
+      if (_step == _Step.setPin && _newPin.isNotEmpty) {
+        _newPin = _newPin.substring(0, _newPin.length - 1);
+      }
       if (_step == _Step.confirmPin && _confirmPin.isNotEmpty) {
-        _confirmPin.removeLast();
+        _confirmPin = _confirmPin.substring(0, _confirmPin.length - 1);
       }
     });
   }
 
+  void _onBackStep() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _error = null;
+      if (_step == _Step.confirmPin) {
+        _confirmPin = '';
+        _newPin = '';
+        _step = _Step.setPin;
+      } else if (_step == _Step.setPin) {
+        _newPin = '';
+        _step = _Step.pickLength;
+      }
+    });
+    _animateForward();
+  }
+
   void _validatePinStrength() {
-    final pin = _newPin.join();
+    final pin = _newPin;
     if (_isWeakPin(pin)) {
       setState(() {
         _error = 'PIN too weak — try something less obvious';
-        _newPin.clear();
+        _newPin = '';
       });
       return;
     }
@@ -127,19 +161,23 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _confirmAndSave() async {
-    if (_newPin.join() != _confirmPin.join()) {
+    if (_newPin != _confirmPin) {
       HapticFeedback.heavyImpact();
+      _errorController.forward().then((_) {
+        if (mounted) _errorController.reverse();
+      });
+
       setState(() {
         _error = 'PINs do not match — try again';
-        _newPin.clear();
-        _confirmPin.clear();
+        _newPin = '';
+        _confirmPin = '';
         _step = _Step.setPin;
       });
       _animateForward();
       return;
     }
 
-    final pin = _newPin.join();
+    final pin = _newPin;
     await PinCrypto.instance.setPin(pin);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('appLock', true);
@@ -206,12 +244,122 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         return _lengthPicker();
       case _Step.setPin:
       case _Step.confirmPin:
-        return _pinEntry();
+        return _pinEntryScreen();
       case _Step.biometric:
         return _biometricPrompt();
     }
   }
 
+  // ============ WELCOME SCREEN ============
+  Widget _welcome() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          children: [
+            const SizedBox(height: 40),
+            Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                gradient: LiquidColors.primaryGradient,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: LiquidColors.primaryStart.withValues(alpha: 0.4),
+                    blurRadius: 30,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.shield_rounded, color: Colors.white, size: 60),
+            ),
+            const SizedBox(height: 36),
+            const Text(
+              'Welcome to Secure Player',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.3),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'A private offline vault for your videos, photos, audio and documents. Files stay on your device — protected by a PIN you control.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15, color: Colors.grey.shade400, height: 1.5),
+            ),
+            const SizedBox(height: 36),
+            _featureRow(Icons.lock_outline_rounded, 'AES-256 encryption for every file'),
+            const SizedBox(height: 14),
+            _featureRow(Icons.fingerprint_rounded, 'PIN + biometric unlock'),
+            const SizedBox(height: 14),
+            _featureRow(Icons.cloud_off_rounded, '100% offline — no cloud, no tracking'),
+            const SizedBox(height: 28),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: LiquidColors.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: LiquidColors.warning.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: LiquidColors.warning, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Important — your PIN cannot be recovered. Lose it and your vault contents are permanently inaccessible. By design.',
+                      style: TextStyle(color: Colors.grey.shade300, fontSize: 12, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  setState(() => _step = _Step.pickLength);
+                  _animateForward();
+                },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  backgroundColor: LiquidColors.accentBlue,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: const Text('Get Started',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _featureRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: LiquidColors.accentBlue.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: LiquidColors.accentBlue, size: 20),
+        ),
+        const SizedBox(width: 14),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 14, color: Colors.grey.shade300))),
+      ],
+    );
+  }
+
+  // ============ LENGTH PICKER ============
   Widget _lengthPicker() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -232,37 +380,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: const Icon(Icons.pin_outlined, color: Colors.white, size: 50),
           ),
           const SizedBox(height: 28),
-          const Text(
-            'Choose Your PIN Length',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
+          const Text('Choose Your PIN Length',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
           const SizedBox(height: 10),
-          Text(
-            'Longer PINs are exponentially harder to guess',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade400,
-            ),
-          ),
+          Text('Longer PINs are exponentially harder to guess',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
           const SizedBox(height: 32),
-          _lengthOption(
-            digits: 4,
-            label: '4-digit PIN',
-            sub: 'Quicker to type — 10,000 combinations',
-          ),
+          _lengthOption(digits: 4, label: '4-digit PIN', sub: 'Quicker to type — 10,000 combinations'),
           const SizedBox(height: 12),
-          _lengthOption(
-            digits: 6,
-            label: '6-digit PIN',
-            sub: 'Recommended — 1,000,000 combinations',
-            recommended: true,
-          ),
+          _lengthOption(digits: 6, label: '6-digit PIN', sub: 'Recommended — 1,000,000 combinations', recommended: true),
           const Spacer(flex: 3),
           SizedBox(
             width: double.infinity,
@@ -275,19 +403,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 backgroundColor: LiquidColors.accentBlue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: const Text(
-                'Continue',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
+              child: const Text('Continue',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),
           const SizedBox(height: 16),
@@ -296,12 +416,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  Widget _lengthOption({
-    required int digits,
-    required String label,
-    required String sub,
-    bool recommended = false,
-  }) {
+  Widget _lengthOption({required int digits, required String label, required String sub, bool recommended = false}) {
     final selected = _pinLength == digits;
     return GestureDetector(
       onTap: () {
@@ -312,14 +427,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: selected
-              ? LiquidColors.accentBlue.withValues(alpha: 0.18)
-              : LiquidColors.backgroundLight.withValues(alpha: 0.6),
+          color: selected ? LiquidColors.accentBlue.withValues(alpha: 0.18) : LiquidColors.backgroundLight.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected
-                ? LiquidColors.accentBlue
-                : Colors.white.withValues(alpha: 0.08),
+            color: selected ? LiquidColors.accentBlue : Colors.white.withValues(alpha: 0.08),
             width: selected ? 2 : 1,
           ),
         ),
@@ -330,15 +441,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? LiquidColors.accentBlue : Colors.grey.shade600,
-                  width: 2,
-                ),
+                border: Border.all(color: selected ? LiquidColors.accentBlue : Colors.grey.shade600, width: 2),
                 color: selected ? LiquidColors.accentBlue : Colors.transparent,
               ),
-              child: selected
-                  ? const Icon(Icons.check, color: Colors.white, size: 16)
-                  : null,
+              child: selected ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -347,43 +453,23 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 children: [
                   Row(
                     children: [
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                       if (recommended) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: LiquidColors.success.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            'BEST',
-                            style: TextStyle(
-                              color: LiquidColors.success,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          child: Text('BEST',
+                              style: TextStyle(color: LiquidColors.success, fontSize: 10, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    sub,
-                    style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 12,
-                    ),
-                  ),
+                  Text(sub, style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
                 ],
               ),
             ),
@@ -393,267 +479,154 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  Widget _welcome() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const Spacer(flex: 2),
-          Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              gradient: LiquidColors.primaryGradient,
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: LiquidColors.primaryStart.withValues(alpha: 0.4),
-                  blurRadius: 30,
-                  spreadRadius: 4,
-                ),
+  // ============ PIN ENTRY SCREEN (AppLockScreen Style) ============
+  Widget _pinEntryScreen() {
+    final isConfirm = _step == _Step.confirmPin;
+    final entered = isConfirm ? _confirmPin : _newPin;
+    final size = MediaQuery.of(context).size;
+
+    return Center(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(24),
+        child: Container(
+          width: size.width > 420 ? 420 : double.infinity,
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                LiquidColors.backgroundLight.withValues(alpha: .3),
+                LiquidColors.backgroundMid.withValues(alpha: .4),
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            child: const Icon(Icons.shield_rounded, color: Colors.white, size: 60),
+            borderRadius: BorderRadius.circular(32),
+            border: Border.all(color: LiquidColors.accentBlue.withValues(alpha: .2), width: 1),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: .3), blurRadius: 30, spreadRadius: 5),
+              BoxShadow(color: LiquidColors.accentBlue.withValues(alpha: .1), blurRadius: 20, spreadRadius: 2),
+            ],
           ),
-          const SizedBox(height: 36),
-          const Text(
-            'Welcome to Secure Player',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              letterSpacing: 0.3,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'A private offline vault for your videos, photos, audio and documents. Files stay on your device — protected by a PIN you control.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15,
-              color: Colors.grey.shade400,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 36),
-          _featureRow(Icons.lock_outline_rounded, 'AES-256 encryption for every file'),
-          const SizedBox(height: 14),
-          _featureRow(Icons.fingerprint_rounded, 'PIN + biometric unlock'),
-          const SizedBox(height: 14),
-          _featureRow(Icons.cloud_off_rounded, '100% offline — no cloud, no tracking'),
-          const Spacer(flex: 2),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: LiquidColors.warning.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: LiquidColors.warning.withValues(alpha: 0.3),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header (using same LiquidLockHeader as AppLockScreen)
+              LiquidLockHeader(
+                title: isConfirm ? 'Confirm PIN' : 'Create PIN',
+                subtitle: isConfirm
+                    ? 'Re-enter your $_pinLength-digit PIN'
+                    : 'Choose a $_pinLength-digit secure PIN',
               ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.warning_amber_rounded,
-                    color: LiquidColors.warning, size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Important — your PIN cannot be recovered. Lose it and your vault contents are permanently inaccessible. By design.',
-                    style: TextStyle(
-                      color: Colors.grey.shade300,
-                      fontSize: 12,
-                      height: 1.4,
+
+              const SizedBox(height: 32),
+
+              // PIN Dots with shake animation (using LiquidPinDots)
+              AnimatedBuilder(
+                animation: _errorController,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(_shakeAnimation.value, 0),
+                    child: LiquidPinDots(
+                      enteredLength: entered.length,
+                      totalLength: _pinLength,
+                      hasError: _error != null,
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 32),
+
+              // Error Message
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          LiquidColors.error.withValues(alpha: 0.15),
+                          LiquidColors.error.withValues(alpha: 0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: LiquidColors.error.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: LiquidColors.error.withValues(alpha: 0.2),
+                          ),
+                          child: Icon(Icons.error_outline_rounded, color: LiquidColors.error, size: 16),
+                        ),
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(_error!,
+                              style: TextStyle(color: LiquidColors.error, fontSize: 13, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ],
-            ),
+
+              _buildNumberPad(),
+            ],
           ),
-          const Spacer(flex: 1),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                setState(() => _step = _Step.pickLength);
-                _animateForward();
-              },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                backgroundColor: LiquidColors.accentBlue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                'Get Started',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _featureRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: LiquidColors.accentBlue.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: LiquidColors.accentBlue, size: 20),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade300),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _pinEntry() {
-    final isConfirm = _step == _Step.confirmPin;
-    final entered = isConfirm ? _confirmPin : _newPin;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 24),
-          Text(
-            isConfirm ? 'Confirm Your PIN' : 'Create Your PIN',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            isConfirm
-                ? 'Enter the same $_pinLength-digit PIN to confirm'
-                : 'Choose a $_pinLength-digit PIN to lock the app',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
-          ),
-          const SizedBox(height: 36),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_pinLength, (i) {
-              final filled = i < entered.length;
-              return Container(
-                margin: EdgeInsets.symmetric(
-                  horizontal: _pinLength == 6 ? 7 : 10,
-                ),
-                width: _pinLength == 6 ? 16 : 18,
-                height: _pinLength == 6 ? 16 : 18,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: filled
-                      ? LiquidColors.accentBlue
-                      : Colors.transparent,
-                  border: Border.all(
-                    color: _error != null
-                        ? LiquidColors.error
-                        : LiquidColors.accentBlue.withValues(alpha: 0.5),
-                    width: 2,
-                  ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 18),
-          if (_error != null)
-            Text(
-              _error!,
-              style: TextStyle(color: LiquidColors.error, fontSize: 13),
-            ),
-          const Spacer(),
-          _numberPad(),
-          const SizedBox(height: 24),
-        ],
+  // ============ NUMBER PAD (AppLockScreen Style) ============
+  Widget _buildNumberPad() {
+    return GridView.builder(
+      shrinkWrap: true,
+      itemCount: 12,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
+        childAspectRatio: 1.2,
       ),
+      itemBuilder: (context, index) {
+        if (index == 9) {
+          return LiquidActionButton(
+            icon: Icons.arrow_back_rounded,
+            color: LiquidColors.accentBlue,
+            onPressed: _onBackStep,
+          );
+        }
+        if (index == 10) {
+          return LiquidNumberButton(
+            number: '0',
+            onPressed: () => _onDigit('0'),
+          );
+        }
+        if (index == 11) {
+          return LiquidActionButton(
+            icon: Icons.backspace,
+            color: LiquidColors.error,
+            onPressed: _onDelete,
+          );
+        }
+        return LiquidNumberButton(
+          number: '${index + 1}',
+          onPressed: () => _onDigit('${index + 1}'),
+        );
+      },
     );
   }
 
-  Widget _numberPad() {
-    Widget num(String d) => InkWell(
-          onTap: () => _onDigit(d),
-          borderRadius: BorderRadius.circular(40),
-          child: Container(
-            width: 72,
-            height: 72,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: LiquidColors.backgroundLight.withValues(alpha: 0.6),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-            child: Text(
-              d,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        );
-
-    Widget gap() => const SizedBox(width: 72, height: 72);
-
-    Widget del() => InkWell(
-          onTap: _onDelete,
-          borderRadius: BorderRadius.circular(40),
-          child: Container(
-            width: 72,
-            height: 72,
-            alignment: Alignment.center,
-            child: Icon(
-              Icons.backspace_outlined,
-              color: Colors.grey.shade400,
-              size: 26,
-            ),
-          ),
-        );
-
-    Widget row(List<Widget> kids) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: kids,
-          ),
-        );
-
-    return Column(
-      children: [
-        row([num('1'), num('2'), num('3')]),
-        row([num('4'), num('5'), num('6')]),
-        row([num('7'), num('8'), num('9')]),
-        row([gap(), num('0'), del()]),
-      ],
-    );
-  }
-
+  // ============ BIOMETRIC PROMPT ============
   Widget _biometricPrompt() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -678,32 +651,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.fingerprint_rounded,
-              color: Colors.white,
-              size: 60,
-            ),
+            child: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 60),
           ),
           const SizedBox(height: 32),
-          const Text(
-            'Enable Biometric Unlock?',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
+          const Text('Enable Biometric Unlock?',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
           const SizedBox(height: 12),
-          Text(
-            'Use Face ID or fingerprint instead of typing your PIN every time.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade400,
-              height: 1.5,
-            ),
-          ),
+          Text('Use Face ID or fingerprint instead of typing your PIN every time.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade400, height: 1.5)),
           const Spacer(flex: 3),
           SizedBox(
             width: double.infinity,
@@ -712,28 +669,17 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 backgroundColor: LiquidColors.accentPurple,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: const Text(
-                'Enable Biometric',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
+              child: const Text('Enable Biometric',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: _skipBiometric,
-            child: Text(
-              'Maybe later',
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-            ),
+            child: Text('Maybe later', style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
           ),
           const SizedBox(height: 16),
         ],

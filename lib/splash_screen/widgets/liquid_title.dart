@@ -20,7 +20,7 @@ class LiquidTitle extends StatelessWidget {
               return LinearGradient(
                 colors: [
                   Colors.white,
-                  Colors.white.withOpacity(0.7),
+                  Colors.white.withValues(alpha: 0.7),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -36,7 +36,7 @@ class LiquidTitle extends StatelessWidget {
                 shadows: [
                   Shadow(
                     blurRadius: 15,
-                    color: LiquidColors.primaryStart.withOpacity(0.3),
+                    color: LiquidColors.primaryStart.withValues(alpha: 0.3),
                     offset: const Offset(0, 3),
                   ),
                 ],
@@ -58,7 +58,7 @@ class LiquidTitle extends StatelessWidget {
                 shadows: [
                   Shadow(
                     blurRadius: 20,
-                    color: LiquidColors.primaryStart.withOpacity(0.5),
+                    color: LiquidColors.primaryStart.withValues(alpha: 0.5),
                     offset: const Offset(0, 5),
                   ),
                 ],

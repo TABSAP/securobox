@@ -52,20 +52,20 @@ class _LiquidNumberButtonState extends State<LiquidNumberButton>
           decoration: BoxDecoration(
             gradient: RadialGradient(
               colors: [
-                LiquidColors.backgroundLight.withOpacity(0.5),
-                LiquidColors.backgroundMid.withOpacity(0.5),
+                LiquidColors.backgroundLight.withValues(alpha: 0.5),
+                LiquidColors.backgroundMid.withValues(alpha: 0.5),
               ],
               center: Alignment.center,
               radius: 0.8,
             ),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: LiquidColors.accentBlue.withOpacity(0.3),
+              color: LiquidColors.accentBlue.withValues(alpha: 0.3),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: LiquidColors.accentBlue.withOpacity(0.2),
+                color: LiquidColors.accentBlue.withValues(alpha: 0.2),
                 blurRadius: 10,
                 spreadRadius: 0,
                 offset: const Offset(0, 5),

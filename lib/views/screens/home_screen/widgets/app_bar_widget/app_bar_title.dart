@@ -32,7 +32,7 @@ class AppBarTitleWidget extends StatelessWidget {
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.shield_rounded,
+                    Icons.video_collection_rounded,
                     color: Colors.white,
                     size: 22,
                   ),

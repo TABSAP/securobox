@@ -19,7 +19,7 @@ class PinCrypto {
   static const supportedPinLengths = [4, 6];
 
   static const _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),

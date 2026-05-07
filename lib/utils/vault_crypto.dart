@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -15,15 +14,16 @@ class VaultCrypto {
   VaultCrypto._();
   static final VaultCrypto instance = VaultCrypto._();
 
+  static String? lastSelfTestResult;
+
   static const _kMasterKey = 'vault_master_key_v1';
   static const _kKeyLengthBytes = 32;
   static const _kIvLengthBytes = 16;
-  static const _kChunkBytes = 64 * 1024;
   static const _kTempPrefix = 'sp_dec_';
   static const _kVaultDirName = 'vault';
 
   static const _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(),
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),
@@ -137,6 +137,100 @@ class VaultCrypto {
       final f = File(path);
       if (await f.exists()) await f.delete();
     } catch (_) {}
+  }
+
+  Future<void> resetAll() async {
+    _cachedKey = null;
+    try {
+      final docs = await getApplicationDocumentsDirectory();
+      final vault = Directory(p.join(docs.path, _kVaultDirName));
+      if (await vault.exists()) {
+        await vault.delete(recursive: true);
+      }
+    } catch (_) {}
+    try {
+      final tmp = await getTemporaryDirectory();
+      final dec = Directory(p.join(tmp.path, 'sp_decrypted'));
+      if (await dec.exists()) {
+        await dec.delete(recursive: true);
+      }
+    } catch (_) {}
+    try {
+      await _secure.delete(key: _kMasterKey);
+    } catch (_) {}
+  }
+
+  Future<String> selfTest() async {
+    final tmp = await getTemporaryDirectory();
+    final id = const Uuid().v4();
+    final srcPath = p.join(tmp.path, 'sp_test_src_$id');
+    final encPath = p.join(tmp.path, 'sp_test_enc_$id');
+    final decPath = p.join(tmp.path, 'sp_test_dec_$id');
+
+    try {
+      final original = Uint8List.fromList(
+        List<int>.generate(70_000, (i) => i % 256),
+      );
+      await File(srcPath).writeAsBytes(original);
+
+      final key = await _getMasterKey();
+      final iv = _randomBytes(_kIvLengthBytes);
+
+      await _processFile(
+        srcPath: srcPath,
+        dstPath: encPath,
+        key: key,
+        iv: iv,
+        writeIvHeader: true,
+      );
+
+      final encSize = await File(encPath).length();
+      if (encSize != original.length + _kIvLengthBytes) {
+        return 'FAIL: encrypted size $encSize, expected ${original.length + _kIvLengthBytes}';
+      }
+
+      final raf = await File(encPath).open();
+      final readIv = await raf.read(_kIvLengthBytes);
+      await raf.close();
+
+      if (readIv.length != _kIvLengthBytes) {
+        return 'FAIL: read IV length ${readIv.length}';
+      }
+      for (int i = 0; i < _kIvLengthBytes; i++) {
+        if (readIv[i] != iv[i]) {
+          return 'FAIL: IV header byte $i differs (wrote=${iv[i]}, read=${readIv[i]})';
+        }
+      }
+
+      await _processFile(
+        srcPath: encPath,
+        dstPath: decPath,
+        key: key,
+        iv: Uint8List.fromList(readIv),
+        writeIvHeader: false,
+        skipFirstBytes: _kIvLengthBytes,
+      );
+
+      final decoded = await File(decPath).readAsBytes();
+      if (decoded.length != original.length) {
+        return 'FAIL: decoded length ${decoded.length}, expected ${original.length}';
+      }
+      for (int i = 0; i < original.length; i++) {
+        if (decoded[i] != original[i]) {
+          return 'FAIL: byte $i differs (orig=${original[i]}, dec=${decoded[i]})';
+        }
+      }
+      return 'OK';
+    } catch (e, st) {
+      return 'FAIL: $e\n$st';
+    } finally {
+      for (final pth in [srcPath, encPath, decPath]) {
+        try {
+          final f = File(pth);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> _processFile({

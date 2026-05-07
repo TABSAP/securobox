@@ -11,7 +11,7 @@ class MainActivity: FlutterFragmentActivity() {
     private val channelName = "secure_player/disguise"
 
     private val aliasMap = mapOf(
-        "default"    to "DefaultAlias",
+        "default"    to "MainActivity",
         "calculator" to "CalculatorAlias",
         "notes"      to "NotesAlias",
         "weather"    to "WeatherAlias",

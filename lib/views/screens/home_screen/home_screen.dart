@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:video_player_app/utils/liquid_circular_progress.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,13 +20,26 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
+  static const String _customCategoriesPrefKey = 'customCategories';
+
   final List<VideoItem> _allMedia = [];
   final List<VideoItem> _filteredMedia = [];
+  final List<String> _customCategories = [];
   bool isDeleteData = true;
   bool _isLoading = true;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategory = "All";
+
+  List<String> get _allCategoriesForFilter {
+    final base = MediaHelper.mediaCategories;
+    if (_customCategories.isEmpty) return base;
+    final set = base.map((c) => c.toLowerCase()).toSet();
+    final extras = _customCategories
+        .where((c) => !set.contains(c.toLowerCase()))
+        .toList();
+    return [...base, ...extras];
+  }
 
   late AnimationController _headerAnimationController;
   late Animation<double> _headerFadeAnimation;
@@ -69,6 +84,7 @@ class HomeScreenState extends State<HomeScreen>
     _scrollController.dispose();
     _searchController.dispose();
     _headerAnimationController.dispose();
+    _searchController.removeListener(_onSearchChanged);
     super.dispose();
   }
 
@@ -114,14 +130,28 @@ class HomeScreenState extends State<HomeScreen>
     });
 
     try {
-      await Future.delayed(const Duration(milliseconds: 300));
-      final mediaList = await _mediaService.loadMedia();
+      final results = await Future.wait([
+        _mediaService.loadMedia(),
+        _readCustomCategories(),
+      ]);
+      final mediaList = results[0] as List<VideoItem>;
+      final customs = results[1] as List<String>;
 
       if (!mounted) return;
 
       setState(() {
-        _allMedia.clear();
-        _allMedia.addAll(mediaList);
+        _allMedia
+          ..clear()
+          ..addAll(mediaList);
+        _customCategories
+          ..clear()
+          ..addAll(customs);
+        if (_selectedCategory != 'All' &&
+            !_allCategoriesForFilter
+                .map((c) => c.toLowerCase())
+                .contains(_selectedCategory.toLowerCase())) {
+          _selectedCategory = 'All';
+        }
         _filterMedia();
         _isLoading = false;
       });
@@ -131,6 +161,15 @@ class HomeScreenState extends State<HomeScreen>
           _isLoading = false;
         });
       }
+    }
+  }
+
+  Future<List<String>> _readCustomCategories() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getStringList(_customCategoriesPrefKey) ?? const <String>[];
+    } catch (_) {
+      return const <String>[];
     }
   }
 
@@ -334,24 +373,74 @@ class HomeScreenState extends State<HomeScreen>
 
     if (!mounted) return;
 
-    final currentContext = context;
-
     showDialog(
-      context: currentContext,
+      context: context,
       builder: (dialogContext) => DeleteDialog(
         title: media.title,
         onConfirm: () async {
-          final success = await _mediaService.softDeleteMedia(media);
+          await _mediaService.softDeleteMedia(media);
           if (!mounted) return;
           await _loadMedia();
-          if (widget.onVideosChanged != null) {
-            widget.onVideosChanged!();
-          }
-          FlushBarHelper.flushBarSuccessMessage('Moved to trash', currentContext);
-          Navigator.pop(dialogContext);
+          widget.onVideosChanged?.call();
+          if (!mounted) return;
+          FlushBarHelper.flushBarSuccessMessage('Moved to trash', context);
         },
       ),
     );
+  }
+
+  static const Set<String> _knownExtensions = {
+    'mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'm4v',
+    'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif',
+    'mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'opus',
+    'pdf', 'doc', 'docx', 'txt', 'rtf', 'epub',
+  };
+
+  String _saveFileNameFor(VideoItem media) {
+    String path = media.path;
+    if (path.toLowerCase().endsWith('.enc')) {
+      path = path.substring(0, path.length - 4);
+    }
+
+    String ext = _extractKnownExt(path);
+    if (ext.isEmpty) ext = _extractKnownExt(media.title);
+    if (ext.isEmpty) ext = _defaultExtForType(media.type);
+
+    final title = media.title.trim();
+    final base = title.isEmpty ? 'file' : _stripKnownExt(title);
+    return ext.isEmpty ? base : '$base.$ext';
+  }
+
+  String _extractKnownExt(String name) {
+    final basenameStart = name.lastIndexOf(RegExp(r'[/\\]'));
+    final basename =
+        basenameStart < 0 ? name : name.substring(basenameStart + 1);
+    final dot = basename.lastIndexOf('.');
+    if (dot < 0 || dot >= basename.length - 1) return '';
+    final candidate = basename.substring(dot + 1).toLowerCase();
+    return _knownExtensions.contains(candidate) ? candidate : '';
+  }
+
+  String _stripKnownExt(String name) {
+    final ext = _extractKnownExt(name);
+    if (ext.isEmpty) return name;
+    return name.substring(0, name.length - ext.length - 1);
+  }
+
+  String _defaultExtForType(String type) {
+    switch (type.toLowerCase()) {
+      case 'video':
+        return 'mp4';
+      case 'image':
+        return 'jpg';
+      case 'audio':
+        return 'mp3';
+      case 'document':
+      case 'pdf':
+        return 'pdf';
+      default:
+        return '';
+    }
   }
 
   void _showDownloadConfirmation(VideoItem media) async {
@@ -366,19 +455,64 @@ class HomeScreenState extends State<HomeScreen>
 
     showDialog(
       context: context,
-      builder: (context) => DownloadDialog(
+      builder: (dialogContext) => DownloadDialog(
         title: media.title,
         path: media.path,
         onConfirm: () async {
-          final success = await _mediaService.downloadFile(
-            filePath: media.path,
-            fileName: media.title,
-          );
-          if (!mounted) return;
-          if (success) {
-            FlushBarHelper.flushBarSuccessMessage('${media.title} downloaded successfully', context);
-          } else {
-            FlushBarHelper.flushBarErrorMessage('Download failed', context);
+          if (!await File(media.path).exists()) {
+            if (!mounted) return;
+            FlushBarHelper.flushBarErrorMessage('File not found', context);
+            return;
+          }
+
+          String savePath = media.path;
+          bool decryptedToTemp = false;
+
+          if (media.encrypted) {
+            if (!mounted) return;
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (_) => const Center(
+                child: LiquidCircularProgress(size: 96),
+              ),
+            );
+            try {
+              savePath = await VaultCrypto.instance.decryptToTemp(media.path);
+              decryptedToTemp = true;
+            } catch (_) {
+              if (!mounted) return;
+              Navigator.of(context, rootNavigator: true).pop();
+              FlushBarHelper.flushBarErrorMessage(
+                'Failed to decrypt file',
+                context,
+              );
+              return;
+            }
+            if (!mounted) return;
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+
+          final saveName = _saveFileNameFor(media);
+
+          try {
+            final success = await _mediaService.downloadFile(
+              filePath: savePath,
+              fileName: saveName,
+            );
+            if (!mounted) return;
+            if (success) {
+              FlushBarHelper.flushBarSuccessMessage(
+                '$saveName saved to gallery',
+                context,
+              );
+            } else {
+              FlushBarHelper.flushBarErrorMessage('Download failed', context);
+            }
+          } finally {
+            if (decryptedToTemp) {
+              await VaultCrypto.instance.wipeTempCache();
+            }
           }
         },
       ),
@@ -389,7 +523,6 @@ class HomeScreenState extends State<HomeScreen>
     try {
       if (!mounted) return;
       setState(() => _isLoading = true);
-      await Future.delayed(const Duration(milliseconds: 800));
       await _loadMedia();
       if (!mounted) return;
       FlushBarHelper.flushBarSuccessMessage('Refreshed ${_filteredMedia.length} files', context);
@@ -440,8 +573,8 @@ class HomeScreenState extends State<HomeScreen>
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (_) => Center(
-            child: CircularProgressIndicator(color: LiquidColors.accentBlue),
+          builder: (_) => const Center(
+            child: LiquidCircularProgress(size: 96),
           ),
         );
         playPath = await VaultCrypto.instance.decryptToTemp(media.path);
@@ -624,12 +757,13 @@ class HomeScreenState extends State<HomeScreen>
           title: const AppBarTitleWidget(),
           backgroundColor: Colors.transparent,
           elevation: 0,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
           flexibleSpace: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  LiquidColors.backgroundDeep,
-                  LiquidColors.backgroundMid,
+                  LiquidColors.backgroundDeep.withValues(alpha: 0.85),
+                  LiquidColors.backgroundMid.withValues(alpha: 0.6),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -637,48 +771,82 @@ class HomeScreenState extends State<HomeScreen>
             ),
           ),
           actions: [
-
-            TweenAnimationBuilder(
-              tween: Tween<double>(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.elasticOut,
-              builder: (context, double value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.delete_forever,
-                      color: Colors.white,
-                      size: 30,
+            _buildAppBarAction(
+              icon: Icons.delete_outline_rounded,
+              tooltip: 'Recycle Bin',
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DeletedVideosScreen(
+                      onVideosChanged: () => _loadMedia(),
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => DeletedVideosScreen(
-                            onVideosChanged: () => _loadMedia(),
-                          ),
-                        ),
-                      );
-                    },
-                    tooltip: 'Recycle Bin',
                   ),
                 );
               },
             ),
+            const SizedBox(width: 8),
           ],
         ),
         body: Column(
           children: [
             _buildAnimatedHeader(),
             Expanded(
-              child: _isLoading && _allMedia.isEmpty
-                  ? _buildLoadingState()
-                  : _filteredMedia.isEmpty
-                  ? _buildEmptyState()
-                  : _buildMediaListWithRefresh(),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: child,
+                ),
+                child: _isLoading && _allMedia.isEmpty
+                    ? KeyedSubtree(
+                        key: const ValueKey('loading'),
+                        child: _buildLoadingState(),
+                      )
+                    : _filteredMedia.isEmpty
+                        ? KeyedSubtree(
+                            key: const ValueKey('empty'),
+                            child: _buildEmptyState(),
+                          )
+                        : KeyedSubtree(
+                            key: const ValueKey('list'),
+                            child: _buildMediaListWithRefresh(),
+                          ),
+              ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBarAction({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 40,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              alignment: Alignment.center,
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+          ),
         ),
       ),
     );
@@ -695,34 +863,30 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeader() {
-    return LiquidContainer(
-      gradient: LinearGradient(
-        colors: [
-          LiquidColors.backgroundLight.withValues(alpha: .9),
-          LiquidColors.backgroundMid.withValues(alpha: .95),
-        ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-      borderRadius: const BorderRadius.only(
-        bottomLeft: Radius.circular(30),
-        bottomRight: Radius.circular(30),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: LiquidColors.primaryStart.withValues(alpha: .3),
-          blurRadius: 20,
-          spreadRadius: 0,
-          offset: const Offset(0, 10),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            LiquidColors.backgroundDeep.withValues(alpha: 0.8),
+            LiquidColors.backgroundDeep.withValues(alpha: 0.0),
+          ],
         ),
-      ],
-      padding: const EdgeInsets.all(16),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withValues(alpha: 0.05),
+            width: 1,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Column(
         children: [
           _buildSearchBar(),
           const SizedBox(height: 12),
           _buildCategoryFilter(),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           _buildFilterInfo(),
         ],
       ),
@@ -730,78 +894,81 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildSearchBar() {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOutCubic,
-      builder: (context, double value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  LiquidColors.backgroundDeep.withValues(alpha: .8),
-                  LiquidColors.backgroundMid.withValues(alpha: .8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: LiquidColors.primaryStart.withValues(alpha: 0.3),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: LiquidColors.primaryStart.withValues(alpha: 0.2),
-                  blurRadius: 10,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 4),
+    final hasQuery = _searchController.text.isNotEmpty;
+    return Container(
+      height: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: hasQuery
+              ? LiquidColors.accentBlue.withValues(alpha: 0.5)
+              : Colors.white.withValues(alpha: 0.08),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search_rounded,
+            color: hasQuery ? LiquidColors.accentBlue : Colors.grey.shade500,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              cursorColor: LiquidColors.accentBlue,
+              decoration: InputDecoration(
+                hintText: 'Search your vault…',
+                hintStyle: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 14,
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.search, color: LiquidColors.accentBlue),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Search media...',
-                      hintStyle: TextStyle(color: Colors.grey.shade500),
-                      border: InputBorder.none,
-                      isDense: true,
-                    ),
-                  ),
-                ),
-                if (_searchController.text.isNotEmpty)
-                  IconButton(
-                    onPressed: () => _searchController.clear(),
-                    icon: Icon(Icons.close, color: LiquidColors.error, size: 20),
-                    padding: EdgeInsets.zero,
-                  ),
-              ],
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
             ),
           ),
-        );
-      },
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: hasQuery
+                ? GestureDetector(
+                    key: const ValueKey('clear'),
+                    onTap: () => _searchController.clear(),
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        color: Colors.grey.shade300,
+                        size: 14,
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('empty')),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildCategoryFilter() {
     return SizedBox(
-      height: 45,
+      height: 36,
       child: ShaderMask(
         shaderCallback: (rect) {
           return const LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            stops: [0.0, 0.04, 0.92, 1.0],
+            stops: [0.0, 0.03, 0.95, 1.0],
             colors: [
               Colors.transparent,
               Colors.black,
@@ -811,56 +978,26 @@ class HomeScreenState extends State<HomeScreen>
           ).createShader(rect);
         },
         blendMode: BlendMode.dstIn,
-        child: ListView.builder(
+        child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          itemCount: MediaHelper.mediaCategories.length,
+          itemCount: _allCategoriesForFilter.length,
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (context, index) {
-            final category = MediaHelper.mediaCategories[index];
+            final categories = _allCategoriesForFilter;
+            final category = categories[index];
             final isSelected = _selectedCategory == category;
-            return TweenAnimationBuilder(
-              tween: Tween<double>(begin: 0, end: 1),
-              duration: Duration(milliseconds: 500 + (index * 50)),
-              curve: Curves.elasticOut,
-              builder: (context, double value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(
-                        category,
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey.shade400,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        ),
-                      ),
-                      selected: isSelected,
-                      onSelected: (selected) {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          _selectedCategory = selected ? category : "All";
-                          _filterMedia();
-                        });
-                      },
-                      backgroundColor: LiquidColors.backgroundDeep,
-                      selectedColor: LiquidColors.accentBlue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        side: BorderSide(
-                          color: isSelected
-                              ? LiquidColors.accentBlue
-                              : LiquidColors.backgroundLight,
-                          width: 1,
-                        ),
-                      ),
-                      elevation: isSelected ? 4 : 0,
-                      shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.3),
-                    ),
-                  ),
-                );
+            final isCustom = !MediaHelper.mediaCategories.contains(category);
+            return _CategoryPill(
+              label: category,
+              selected: isSelected,
+              isCustom: isCustom,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _selectedCategory = isSelected ? "All" : category;
+                  _filterMedia();
+                });
               },
             );
           },
@@ -870,282 +1007,163 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildFilterInfo() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          '${_filteredMedia.length} ${_filteredMedia.length == 1 ? "item" : "items"}',
-          style: TextStyle(
-            color: Colors.grey.shade400,
-            fontSize: 12,
-            shadows: [
-              Shadow(
-                color: LiquidColors.primaryStart.withValues(alpha: 0.3),
-                blurRadius: 4,
-              ),
-            ],
+    final hasFilters =
+        _selectedCategory != "All" || _searchController.text.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            '${_filteredMedia.length} ${_filteredMedia.length == 1 ? "item" : "items"}',
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
           ),
-        ),
-        if (_selectedCategory != "All" || _searchController.text.isNotEmpty)
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 400),
-            curve: Curves.easeOut,
-            builder: (context, double value, child) {
-              return Transform.scale(
-                scale: value,
-                child: TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedCategory = "All";
-                      _searchController.clear();
-                    });
-                    _filterMedia();
-                  },
-                  style: TextButton.styleFrom(
-                    backgroundColor: LiquidColors.backgroundLight.withValues(alpha: 0.3),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: hasFilters
+                ? GestureDetector(
+                    key: const ValueKey('clear-filters'),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _selectedCategory = "All";
+                        _searchController.clear();
+                      });
+                      _filterMedia();
+                    },
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.refresh_rounded,
+                          color: LiquidColors.accentBlue,
+                          size: 13,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Clear filters',
+                          style: TextStyle(
+                            color: LiquidColors.accentBlue,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  child: Text(
-                    'Clear filters',
-                    style: TextStyle(
-                      color: LiquidColors.accentBlue,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              );
-            },
+                  )
+                : const SizedBox(key: ValueKey('no-filters'), height: 18),
           ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildLoadingState() {
-    return RefreshIndicator(
-      onRefresh: _onRefresh,
-      color: LiquidColors.accentBlue,
-      backgroundColor: LiquidColors.backgroundLight,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.8,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TweenAnimationBuilder(
-                  tween: Tween<double>(begin: 0, end: 1),
-                  duration: const Duration(milliseconds: 800),
-                  curve: Curves.elasticOut,
-                  builder: (context, double value, child) {
-                    return Transform.scale(
-                      scale: value,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          gradient: LiquidColors.primaryGradient,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: LiquidColors.primaryStart.withValues(alpha: 0.4),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 3,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 30),
-                const Text(
-                  'Loading Media...',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      itemCount: 6,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: _SkeletonCard(delayMs: index * 80),
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    final bool hasFilters = _searchController.text.isNotEmpty || _selectedCategory != "All";
-
+    final hasFilters =
+        _searchController.text.isNotEmpty || _selectedCategory != "All";
     return RefreshIndicator(
       onRefresh: _onRefresh,
       color: LiquidColors.accentBlue,
       backgroundColor: LiquidColors.backgroundLight,
-      child: SingleChildScrollView(
+      child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.5,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TweenAnimationBuilder(
-                  tween: Tween<double>(begin: 0, end: 1),
-                  duration: const Duration(milliseconds: 800),
-                  curve: Curves.elasticOut,
-                  builder: (context, double value, child) {
-                    return Transform.scale(
-                      scale: value,
-                      child: Container(
-                        width: 140,
-                        height: 140,
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            colors: [
-                              LiquidColors.backgroundLight,
-                              LiquidColors.backgroundMid,
-                              LiquidColors.backgroundDeep,
-                            ],
-                            center: Alignment.center,
-                            radius: 0.8,
-                          ),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: LiquidColors.primaryStart.withValues(alpha: 0.3),
-                            width: 2,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: LiquidColors.primaryStart.withValues(alpha: 0.2),
-                              blurRadius: 30,
-                              spreadRadius: 5,
-                            ),
+        padding: EdgeInsets.zero,
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.55,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            LiquidColors.accentBlue.withValues(alpha: 0.18),
+                            LiquidColors.accentBlue.withValues(alpha: 0.0),
                           ],
                         ),
-                        child: Center(
-                          child: Icon(
-                            hasFilters ? Icons.search_off_rounded : Icons.folder_special_outlined,
-                            size: 60,
-                            color: LiquidColors.primaryStart,
-                          ),
-                        ),
                       ),
-                    );
-                  },
+                      child: Icon(
+                        hasFilters
+                            ? Icons.search_off_rounded
+                            : Icons.lock_outline_rounded,
+                        size: 36,
+                        color: LiquidColors.accentBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Text(
+                      hasFilters ? 'No matches' : 'Your vault is empty',
+                      style: const TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      hasFilters
+                          ? 'Try a different search term or category to find what you\'re looking for.'
+                          : 'Files you import are encrypted and stored only on this device — never in the cloud.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    if (!hasFilters && widget.onAddRequested != null)
+                      _PrimaryAction(
+                        icon: Icons.add_rounded,
+                        label: 'Add your first file',
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          widget.onAddRequested!();
+                        },
+                      ),
+                    if (hasFilters)
+                      _PrimaryAction(
+                        icon: Icons.refresh_rounded,
+                        label: 'Clear filters',
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = "All";
+                            _searchController.clear();
+                          });
+                          _filterMedia();
+                        },
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 30),
-                Text(
-                  hasFilters ? 'No Files Found' : 'No Files Yet',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  hasFilters
-                      ? 'Try different search terms or categories'
-                      : 'Tap the button below to add your first file',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey.shade400,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 25),
-                if (!hasFilters && widget.onAddRequested != null)
-                  TweenAnimationBuilder(
-                    tween: Tween<double>(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.elasticOut,
-                    builder: (context, double value, child) {
-                      return Transform.scale(
-                        scale: value,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
-                            widget.onAddRequested!();
-                          },
-                          icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-                          label: const Text(
-                            'Add Your First File',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: LiquidColors.accentBlue,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 14,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            elevation: 8,
-                            shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.4),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                if (hasFilters)
-                  TweenAnimationBuilder(
-                    tween: Tween<double>(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.elasticOut,
-                    builder: (context, double value, child) {
-                      return Transform.scale(
-                        scale: value,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              _selectedCategory = "All";
-                              _searchController.clear();
-                            });
-                            _filterMedia();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: LiquidColors.accentBlue,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 30,
-                              vertical: 15,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            elevation: 8,
-                            shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.4),
-                          ),
-                          child: const Text(
-                            'Clear Filters',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-              ],
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1178,6 +1196,229 @@ class HomeScreenState extends State<HomeScreen>
             onRenameTap: () => _renameMedia(media),
           );
         },
+      ),
+    );
+  }
+}
+
+class _CategoryPill extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final bool isCustom;
+  final VoidCallback onTap;
+
+  const _CategoryPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.isCustom = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = isCustom ? LiquidColors.accentPurple : LiquidColors.accentBlue;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected
+                ? accent.withValues(alpha: 0.16)
+                : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? accent
+                  : Colors.white.withValues(alpha: 0.08),
+              width: selected ? 1.2 : 1,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (isCustom) ...[
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: selected ? 1 : 0.7),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.grey.shade400,
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonCard extends StatefulWidget {
+  final int delayMs;
+
+  const _SkeletonCard({required this.delayMs});
+
+  @override
+  State<_SkeletonCard> createState() => _SkeletonCardState();
+}
+
+class _SkeletonCardState extends State<_SkeletonCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    );
+    Future.delayed(Duration(milliseconds: widget.delayMs), () {
+      if (mounted) _controller.repeat();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = _controller.value;
+        return Container(
+          height: 84,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          ),
+          child: Row(
+            children: [
+              _shimmerBox(width: 60, height: 60, radius: 12, t: t),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _shimmerBox(
+                        width: double.infinity, height: 14, radius: 4, t: t),
+                    const SizedBox(height: 8),
+                    _shimmerBox(width: 120, height: 10, radius: 4, t: t),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _shimmerBox(width: 24, height: 24, radius: 6, t: t),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _shimmerBox({
+    required double width,
+    required double height,
+    required double radius,
+    required double t,
+  }) {
+    final shift = (t * 2 - 1).clamp(-1.0, 1.0);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Container(
+        width: width,
+        height: height,
+        color: Colors.white.withValues(alpha: 0.05),
+        foregroundDecoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment(shift - 0.3, 0),
+            end: Alignment(shift + 0.3, 0),
+            colors: [
+              Colors.white.withValues(alpha: 0.0),
+              Colors.white.withValues(alpha: 0.08),
+              Colors.white.withValues(alpha: 0.0),
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _PrimaryAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          decoration: BoxDecoration(
+            color: LiquidColors.accentBlue,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: LiquidColors.accentBlue.withValues(alpha: 0.35),
+                blurRadius: 18,
+                spreadRadius: -4,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

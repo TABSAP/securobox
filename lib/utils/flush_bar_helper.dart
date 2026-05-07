@@ -1,46 +1,72 @@
 import 'package:another_flushbar/flushbar.dart';
-import 'package:another_flushbar/flushbar_route.dart';
 import 'package:flutter/material.dart';
 
 class FlushBarHelper {
-  static void flushBarErrorMessage(String message, BuildContext context) {
+  static void _show(
+    BuildContext context, {
+    required String message,
+    required Color background,
+    required IconData icon,
+    Duration duration = const Duration(seconds: 3),
+  }) {
     if (message.trim().isEmpty) return;
-    showFlushbar(
-      context: context,
-      flushbar: Flushbar(
-        forwardAnimationCurve: Curves.decelerate,
-        message: message,
-        duration: const Duration(seconds: 2),
-        messageColor: Colors.white,
-        backgroundColor: Colors.red,
-        reverseAnimationCurve: Curves.easeInOut,
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        padding: const EdgeInsets.all(15),
-        flushbarPosition: FlushbarPosition.TOP,
-        positionOffset: 20,
-        icon: Icon(Icons.error,color: Colors.white,),
-        borderRadius: BorderRadius.circular(8),
-      )..show(context),
+    Flushbar(
+      forwardAnimationCurve: Curves.decelerate,
+      reverseAnimationCurve: Curves.easeInOut,
+      message: message,
+      duration: duration,
+      messageColor: Colors.white,
+      backgroundColor: background,
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(15),
+      flushbarPosition: FlushbarPosition.TOP,
+      positionOffset: 20,
+      icon: Icon(icon, color: Colors.white),
+      borderRadius: BorderRadius.circular(8),
+      boxShadows: [
+        BoxShadow(
+          color: background.withValues(alpha: 0.3),
+          blurRadius: 10,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ).show(context);
+  }
+
+  static void flushBarErrorMessage(String message, BuildContext context) {
+    _show(
+      context,
+      message: message,
+      background: Colors.red.shade600,
+      icon: Icons.error_outline,
     );
   }
+
   static void flushBarSuccessMessage(String message, BuildContext context) {
-    if (message.trim().isEmpty) return;
-    showFlushbar(
-      context: context,
-      flushbar: Flushbar(
-        forwardAnimationCurve: Curves.decelerate,
-        message: message,
-        duration: const Duration(seconds: 2),
-        messageColor: Colors.white,
-        backgroundColor: Colors.green,
-        reverseAnimationCurve: Curves.easeInOut,
-        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        padding: const EdgeInsets.all(15),
-        flushbarPosition: FlushbarPosition.TOP,
-        borderRadius: BorderRadius.circular(8),
-        positionOffset: 20,
-        icon: Icon(Icons.check_box,color: Colors.white,),
-      )..show(context),
+    _show(
+      context,
+      message: message,
+      background: Colors.green.shade600,
+      icon: Icons.check_circle_outline,
+      duration: const Duration(seconds: 2),
+    );
+  }
+
+  static void flushBarInfoMessage(String message, BuildContext context) {
+    _show(
+      context,
+      message: message,
+      background: Colors.blue.shade600,
+      icon: Icons.info_outline,
+    );
+  }
+
+  static void flushBarWarningMessage(String message, BuildContext context) {
+    _show(
+      context,
+      message: message,
+      background: Colors.orange.shade700,
+      icon: Icons.warning_amber_outlined,
     );
   }
 }

@@ -41,20 +41,20 @@ class LiquidEmptyState extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: RadialGradient(
                         colors: [
-                          iconColor.withOpacity(0.2),
-                          LiquidColors.backgroundLight.withOpacity(0.1),
+                          iconColor.withValues(alpha: 0.2),
+                          LiquidColors.backgroundLight.withValues(alpha: 0.1),
                         ],
                         center: Alignment.center,
                         radius: 0.8,
                       ),
                       borderRadius: BorderRadius.circular(32),
                       border: Border.all(
-                        color: iconColor.withOpacity(0.3),
+                        color: iconColor.withValues(alpha: 0.3),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: iconColor.withOpacity(0.2),
+                          color: iconColor.withValues(alpha: 0.2),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
@@ -112,7 +112,7 @@ class LiquidEmptyState extends StatelessWidget {
                         borderRadius: BorderRadius.circular(30),
                       ),
                       elevation: 8,
-                      shadowColor: iconColor.withOpacity(0.4),
+                      shadowColor: iconColor.withValues(alpha: 0.4),
                     ),
                     icon: const Icon(Icons.video_library_rounded, color: Colors.white),
                     label: Text(

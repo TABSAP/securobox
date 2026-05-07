@@ -2,14 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:io' show Platform;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:video_player_app/download_screen/widgets/view.dart';
 import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
+import 'package:video_player_app/security_settings/privacy_policy_screen.dart';
+import 'package:video_player_app/security_settings/recovery_setup_screen.dart';
+import 'package:video_player_app/security_settings/send_feedback_screen.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
+import 'package:video_player_app/utils/recovery_service.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -28,7 +32,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   int _intrusionCount = 0;
   bool _deleteOriginals = false;
   String _currentDisguise = 'default';
+  bool _recoveryEnabled = false;
+  String? _recoveryEmail;
   bool _changingPin = false;
+  bool _verifyingOldPin = false;
+  final List<String> _oldPin = [];
   final List<String> _newPin = [];
   bool _confirmPinMode = false;
   final List<String> _confirmPin = [];
@@ -86,6 +94,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final deleteOriginals =
           await ImportSettings.instance.deleteOriginalsEnabled();
       final currentDisguise = await DisguiseService.instance.getCurrent();
+      final recoveryEnabled = await RecoveryService.instance.isEnabled();
+      final recoveryEmail =
+          recoveryEnabled ? await RecoveryService.instance.getEmail() : null;
       if (!mounted) return;
       setState(() {
         _appLockEnabled = prefs.getBool('appLock') ?? false;
@@ -96,9 +107,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _intrusionCount = intrusionCount;
         _deleteOriginals = deleteOriginals;
         _currentDisguise = currentDisguise;
+        _recoveryEnabled = recoveryEnabled;
+        _recoveryEmail = recoveryEmail;
       });
     } catch (e) {
-      _showSnackBar('Failed to load security settings', LiquidColors.error);
+      FlushBarHelper.flushBarErrorMessage('Failed to load security settings', context);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -131,19 +144,38 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
+
   Future<void> _toggleSetting(String setting, bool value) async {
+    // Handle biometric enable
     if (setting == 'biometric' && value) {
       await _testAndEnableBiometric();
       return;
     }
 
+    // 🔒 Handle biometric disable - require fingerprint/face verification
+    if (setting == 'biometric' && !value) {
+      await _verifyBiometricBeforeDisable('biometric');
+      return;
+    }
+
+    // 🔒 Handle app lock disable - require fingerprint/face verification
+    if (setting == 'appLock' && !value) {
+      await _verifyBiometricBeforeDisable('appLock');
+      return;
+    }
+
+    // 🔒 Handle video lock disable - require fingerprint/face verification
+    if (setting == 'videoLock' && !value) {
+      await _verifyBiometricBeforeDisable('videoLock');
+      return;
+    }
+
+    // Handle app lock enable
     if (setting == 'appLock' && value) {
       final hasPin = await PinCrypto.instance.hasPin();
       if (!hasPin) {
-        _showSnackBar(
-          'Please set a PIN before enabling app lock',
-          LiquidColors.warning,
-        );
+        if (!mounted) return;
+        FlushBarHelper.flushBarWarningMessage('Please set a PIN before enabling app lock', context);
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _startPinChange();
         });
@@ -151,17 +183,1026 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       }
     }
 
+    // For enabling other settings (no verification needed)
     try {
       await _saveSetting(setting, value);
       await _loadSecuritySettings();
-      _showSnackBar(
-        value ? 'Security enabled' : 'Security disabled',
-        value ? LiquidColors.success : LiquidColors.warning,
-      );
+      if (!mounted) return;
+      FlushBarHelper.flushBarSuccessMessage(value ? 'Security enabled' : 'Security disabled', context);
     } catch (e) {
-      _showSnackBar('Failed to update setting', LiquidColors.error);
+      if (!mounted) return;
+      FlushBarHelper.flushBarErrorMessage('Failed to update setting', context);
     }
   }
+
+// ============ ADD THIS NEW METHOD ============
+
+  /// Requires biometric/fingerprint verification before disabling security features
+  Future<void> _verifyBiometricBeforeDisable(String setting) async {
+    // Get setting name for display
+    final settingName = setting == 'appLock'
+        ? 'App Lock'
+        : setting == 'videoLock'
+        ? 'Video Lock'
+        : 'Biometric Authentication';
+
+    // Get setting icon
+    final settingIcon = setting == 'appLock'
+        ? Icons.lock_outline_rounded
+        : setting == 'videoLock'
+        ? Icons.video_settings_outlined
+        : _getBiometricIcon();
+
+    // Get gradient colors
+    final gradientColors = setting == 'appLock'
+        ? [LiquidColors.accentBlue, LiquidColors.primaryMid]
+        : setting == 'videoLock'
+        ? [LiquidColors.success, LiquidColors.accentBlue]
+        : [LiquidColors.accentPurple, LiquidColors.accentPink];
+
+    // Show confirmation dialog first
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: LiquidColors.backgroundLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: gradientColors,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(settingIcon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                'Disable $settingName?',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _getDisableWarningMessage(setting),
+              style: TextStyle(
+                color: Colors.grey.shade300,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Biometric verification notice
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    LiquidColors.warning.withValues(alpha: 0.12),
+                    LiquidColors.warning.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: LiquidColors.warning.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: LiquidColors.warning.withValues(alpha: 0.2),
+                    ),
+                    child: Icon(
+                      _biometricAvailable ? _getBiometricIcon() : Icons.lock_rounded,
+                      color: LiquidColors.warning,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _biometricAvailable
+                              ? '${_getBiometricTypeName()} verification required'
+                              : 'PIN verification required',
+                          style: TextStyle(
+                            color: LiquidColors.warning,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _biometricAvailable
+                              ? 'Your ${_getBiometricTypeName().toLowerCase()} is needed to disable this security feature.'
+                              : 'Your PIN is needed to disable this security feature.',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 11,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey.shade400, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: LiquidColors.error,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              elevation: 3,
+              shadowColor: LiquidColors.error.withValues(alpha: 0.3),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _biometricAvailable ? _getBiometricIcon() : Icons.lock_rounded,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _biometricAvailable ? 'Verify & Disable' : 'Enter PIN & Disable',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // User cancelled
+    if (confirm != true || !mounted) return;
+
+    // Show loading
+    setState(() => _isLoading = true);
+
+    try {
+      bool verified = false;
+
+      if (_biometricAvailable) {
+        // Try biometric verification first
+        verified = await _localAuth.authenticate(
+          localizedReason: 'Verify your identity to disable $settingName',
+          biometricOnly: true,
+          sensitiveTransaction: true,
+        );
+      }
+
+      if (!mounted) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      if (verified) {
+        // Successfully verified - disable the setting
+        await _saveSetting(setting, false);
+
+        // Also disable biometric if app lock is being disabled
+        if (setting == 'appLock' && _biometricEnabled) {
+          await _saveSetting('biometric', false);
+        }
+
+        await _loadSecuritySettings();
+
+        if (mounted) {
+          FlushBarHelper.flushBarSuccessMessage('$settingName disabled successfully', context);
+        }
+      } else {
+        // Verification failed or cancelled
+        if (mounted) {
+          FlushBarHelper.flushBarErrorMessage('Verification failed. $settingName remains enabled.', context);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        FlushBarHelper.flushBarErrorMessage('Authentication error. $settingName remains enabled.', context);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+
+
+
+// ============ ADD THIS HELPER METHOD ============
+
+  /// Returns appropriate warning message based on the setting being disabled
+  String _getDisableWarningMessage(String setting) {
+    switch (setting) {
+      case 'appLock':
+        return 'Disabling app lock will remove the authentication requirement to open the app. Anyone with access to your device can view your vault contents.';
+      case 'videoLock':
+        return 'Disabling video lock will remove individual video protection. All locked videos will become accessible without additional authentication.';
+      case 'biometric':
+        return 'Disabling biometric authentication means you will need to enter your PIN every time. This is less convenient but still secure.';
+      default:
+        return 'Are you sure you want to disable this security feature?';
+    }
+  }
+
+// ============ REPLACE YOUR EXISTING _testAndEnableBiometric METHOD ============
+
+  // Future<void> _testAndEnableBiometric() async {
+  //   if (!_biometricAvailable) {
+  //     FlushBarHelper.flushBarWarningMessage('Biometric authentication not available', context);
+  //     return;
+  //   }
+  //
+  //   try {
+  //     final bool didAuthenticate = await _localAuth.authenticate(
+  //       localizedReason: 'Authenticate to enable biometric security',
+  //       biometricOnly: true,
+  //       sensitiveTransaction: true,
+  //     );
+  //
+  //     if (didAuthenticate) {
+  //       await _saveSetting('biometric', true);
+  //       if (mounted) {
+  //         setState(() => _biometricEnabled = true);
+  //       }
+  //       if (!mounted) return;
+  //       FlushBarHelper.flushBarSuccessMessage('Biometric authentication enabled', context);
+  //
+  //       // Auto-enable app lock if not already enabled
+  //       if (!_appLockEnabled) {
+  //         await _saveSetting('appLock', true);
+  //         if (mounted) setState(() => _appLockEnabled = true);
+  //         if (!mounted) return;
+  //         FlushBarHelper.flushBarInfoMessage('App lock auto-enabled for security', context);
+  //       }
+  //     } else {
+  //       if (!mounted) return;
+  //       FlushBarHelper.flushBarWarningMessage('Authentication cancelled', context);
+  //     }
+  //   } catch (e) {
+  //     if (!mounted) return;
+  //     FlushBarHelper.flushBarErrorMessage('Authentication failed. Please try again.', context);
+  //   }
+  // }
+
+  // ============ PROFESSIONAL BIOMETRIC ENABLE/DISABLE ============
+
+  Future<void> _testAndEnableBiometric() async {
+    if (!_biometricAvailable) {
+      _showBiometricNotAvailableSheet();
+      return;
+    }
+
+    // Show professional bottom sheet
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildBiometricEnableSheet(),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // Show loading overlay
+    _showLoadingOverlay('Verifying ${_getBiometricTypeName()}...');
+
+    try {
+      final bool didAuthenticate = await _localAuth.authenticate(
+        localizedReason: 'Authenticate to enable biometric security',
+        biometricOnly: true,
+        sensitiveTransaction: true,
+      );
+
+      // Dismiss loading
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+
+      if (didAuthenticate) {
+        await _handleBiometricEnabled();
+      } else {
+        if (mounted) {
+          _showVerificationFailedSheet();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        _showErrorBottomSheet('Authentication failed', 'Please try again later');
+      }
+    }
+  }
+
+// ============ BIOMETRIC ENABLE BOTTOM SHEET ============
+  Widget _buildBiometricEnableSheet() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1D2E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+
+          // Biometric Icon with Pulse Animation
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.8, end: 1.0),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.elasticOut,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                child: Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        LiquidColors.accentPurple,
+                        LiquidColors.accentPink,
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: LiquidColors.accentPurple.withValues(alpha: 0.4),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      _getBiometricIcon(),
+                      color: Colors.white,
+                      size: 44,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 24),
+
+          // Title
+          Text(
+            'Enable ${_getBiometricTypeName()}',
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: 0.5,
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Subtitle
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              'Use your ${_getBiometricTypeName().toLowerCase()} instead of typing your PIN every time.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade400,
+                height: 1.5,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Security badges
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              children: [
+                Expanded(child: _securityBadge(Icons.shield_rounded, 'Bank-grade', 'Security')),
+                const SizedBox(width: 12),
+                Expanded(child: _securityBadge(Icons.bolt_rounded, 'Instant', 'Unlock')),
+                const SizedBox(width: 12),
+                Expanded(child: _securityBadge(Icons.lock_rounded, 'Encrypted', 'Storage')),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 28),
+
+          // Enable button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: LiquidColors.accentPurple,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 8,
+                  shadowColor: LiquidColors.accentPurple.withValues(alpha: 0.4),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(_getBiometricIcon(), size: 22),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Enable Now',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Cancel text button
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: Text(
+              'Maybe Later',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// ============ SECURITY BADGE ============
+  Widget _securityBadge(IconData icon, String title, String subtitle) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.06),
+        ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  LiquidColors.accentPurple.withValues(alpha: 0.3),
+                  LiquidColors.accentPink.withValues(alpha: 0.1),
+                ],
+              ),
+            ),
+            child: Icon(icon, color: LiquidColors.accentPurple, size: 18),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// ============ BIOMETRIC NOT AVAILABLE SHEET ============
+  void _showBiometricNotAvailableSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1D2E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: LiquidColors.warning.withValues(alpha: 0.15),
+                border: Border.all(
+                  color: LiquidColors.warning.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: Icon(Icons.fingerprint_rounded, color: LiquidColors.warning, size: 40),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Biometric Not Available',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'Your device does not support biometric authentication or it has not been set up.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade400, height: 1.5),
+              ),
+            ),
+            const SizedBox(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: LiquidColors.warning,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('OK', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+// ============ VERIFICATION FAILED SHEET ============
+  void _showVerificationFailedSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1D2E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: LiquidColors.error.withValues(alpha: 0.15),
+                border: Border.all(
+                  color: LiquidColors.error.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(Icons.close_rounded, color: LiquidColors.error, size: 40),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Verification Failed',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'We couldn\'t verify your identity. Please try again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade400, height: 1.5),
+              ),
+            ),
+            const SizedBox(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.grey.shade700),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: Text('Cancel', style: TextStyle(color: Colors.grey.shade400)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _testAndEnableBiometric();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: LiquidColors.accentPurple,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Try Again', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+// ============ ERROR BOTTOM SHEET ============
+  void _showErrorBottomSheet(String title, String message) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1D2E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Container(
+              width: 70, height: 70,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: LiquidColors.error.withValues(alpha: 0.15),
+              ),
+              child: const Icon(Icons.error_outline_rounded, color: LiquidColors.error, size: 36),
+            ),
+            const SizedBox(height: 16),
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(message, textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
+            ),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: SizedBox(
+                width: double.infinity, height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: LiquidColors.accentBlue,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('OK', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+// ============ LOADING OVERLAY ============
+  void _showLoadingOverlay(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      builder: (context) => PopScope(
+        canPop: false,
+        child: Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 40),
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A1D2E),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  blurRadius: 30,
+                  spreadRadius: 5,
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Animated fingerprint
+                TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0.9, end: 1.1),
+                  duration: const Duration(milliseconds: 1000),
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: Container(
+                        width: 80, height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              LiquidColors.accentPurple.withValues(alpha: 0.3),
+                              LiquidColors.accentPink.withValues(alpha: 0.1),
+                            ],
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            _getBiometricIcon(),
+                            color: LiquidColors.accentPurple,
+                            size: 40,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const SizedBox(
+                  width: 24, height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    color: LiquidColors.accentPurple,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+// ============ HANDLE SUCCESS ============
+  Future<void> _handleBiometricEnabled() async {
+    await _saveSetting('biometric', true);
+    if (!mounted) return;
+
+    setState(() => _biometricEnabled = true);
+
+    // Auto-enable app lock if not already enabled
+    if (!_appLockEnabled) {
+      await _saveSetting('appLock', true);
+      if (mounted) setState(() => _appLockEnabled = true);
+    }
+
+    // Show success sheet
+    if (!mounted) return;
+    _showBiometricEnabledSuccessSheet();
+  }
+
+// ============ SUCCESS SHEET ============
+  void _showBiometricEnabledSuccessSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1D2E),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).padding.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            // Success checkmark
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.0, end: 1.0),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.elasticOut,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: value,
+                  child: Container(
+                    width: 90, height: 90,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          LiquidColors.success,
+                          LiquidColors.accentBlue,
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: LiquidColors.success.withValues(alpha: 0.4),
+                          blurRadius: 30,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 50),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 24),
+            Text(
+              '${_getBiometricTypeName()} Enabled!',
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'You can now use your ${_getBiometricTypeName().toLowerCase()} to unlock the app.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade400, height: 1.5),
+              ),
+            ),
+            const SizedBox(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: SizedBox(
+                width: double.infinity, height: 56,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: LiquidColors.success,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 8,
+                    shadowColor: LiquidColors.success.withValues(alpha: 0.4),
+                  ),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   Future<void> _saveSetting(String setting, bool value) async {
     final prefs = await SharedPreferences.getInstance();
@@ -174,10 +1215,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final granted = await IntrusionService.instance.requestCameraPermission();
       if (!granted) {
         if (mounted) {
-          _showSnackBar(
-            'Camera permission required for break-in detection',
-            LiquidColors.warning,
-          );
+          FlushBarHelper.flushBarWarningMessage('Camera permission required for break-in detection', context);
         }
         return;
       }
@@ -185,12 +1223,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     await IntrusionService.instance.setEnabled(value);
     if (!mounted) return;
     setState(() => _intrusionEnabled = value);
-    _showSnackBar(
-      value
-          ? 'Break-in detection enabled'
-          : 'Break-in detection disabled',
-      value ? LiquidColors.success : LiquidColors.warning,
-    );
+    FlushBarHelper.flushBarSuccessMessage( value
+        ? 'Break-in detection enabled'
+        : 'Break-in detection disabled', context);
   }
 
   Future<void> _toggleDeleteOriginals(bool value) async {
@@ -199,10 +1234,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final status = await Permission.photos.request();
       if (!status.isGranted) {
         if (mounted) {
-          _showSnackBar(
-            'Photos permission required to remove originals from gallery',
-            LiquidColors.warning,
-          );
+          FlushBarHelper.flushBarWarningMessage('Photos permission required to remove originals from gallery', context);
         }
         return;
       }
@@ -210,12 +1242,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     await ImportSettings.instance.setDeleteOriginalsEnabled(value);
     if (!mounted) return;
     setState(() => _deleteOriginals = value);
-    _showSnackBar(
-      value
-          ? 'Originals will be removed after each import'
-          : 'Originals will stay on your device',
-      value ? LiquidColors.success : LiquidColors.warning,
-    );
+    FlushBarHelper.flushBarSuccessMessage(value
+        ? 'Originals will be removed after each import'
+        : 'Originals will stay on your device', context);
   }
 
   Future<void> _openIntrusionLog() async {
@@ -228,42 +1257,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
-  Future<void> _testAndEnableBiometric() async {
-    if (!_biometricAvailable) {
-      _showSnackBar('Biometric authentication not available', LiquidColors.warning);
-      return;
-    }
-
-    try {
-      final bool didAuthenticate = await _localAuth.authenticate(
-        localizedReason: 'Authenticate to enable biometric security',
-        biometricOnly: true,
-        sensitiveTransaction: true,
-      );
-
-      if (didAuthenticate) {
-        await _saveSetting('biometric', true);
-        if (mounted) {
-          setState(() => _biometricEnabled = true);
-        }
-        _showSnackBar('Biometric authentication enabled', LiquidColors.success);
-
-        if (!_appLockEnabled) {
-          await _saveSetting('appLock', true);
-          if (mounted) setState(() => _appLockEnabled = true);
-        }
-      } else {
-        _showSnackBar('Authentication cancelled', LiquidColors.warning);
-      }
-    } catch (e) {
-      _showSnackBar('Authentication failed. Please try again.', LiquidColors.error);
-    }
-  }
-
   void _startPinChange() {
     setState(() {
       _changingPin = true;
+      _verifyingOldPin = true;
       _confirmPinMode = false;
+      _oldPin.clear();
       _newPin.clear();
       _confirmPin.clear();
       _pinError = null;
@@ -274,13 +1273,34 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     HapticFeedback.lightImpact();
     setState(() {
       _pinError = null;
-      if (!_confirmPinMode) {
+      if (_verifyingOldPin) {
+        if (_oldPin.length < _pinLength) _oldPin.add(number);
+        if (_oldPin.length == _pinLength) _validateOldPin();
+      } else if (!_confirmPinMode) {
         if (_newPin.length < _pinLength) _newPin.add(number);
         if (_newPin.length == _pinLength) _validateFirstPin();
       } else {
         if (_confirmPin.length < _pinLength) _confirmPin.add(number);
         if (_confirmPin.length == _pinLength) _validateAndSavePin();
       }
+    });
+  }
+
+  Future<void> _validateOldPin() async {
+    final entered = _oldPin.join();
+    final ok = await PinCrypto.instance.verifyPin(entered);
+    if (!mounted) return;
+    if (!ok) {
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _pinError = 'Incorrect current PIN';
+        _oldPin.clear();
+      });
+      return;
+    }
+    setState(() {
+      _verifyingOldPin = false;
+      _pinError = null;
     });
   }
 
@@ -343,26 +1363,32 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       if (mounted) {
         setState(() {
           _changingPin = false;
+          _verifyingOldPin = false;
           _confirmPinMode = false;
+          _oldPin.clear();
           _newPin.clear();
           _confirmPin.clear();
         });
       }
-
-      _showSnackBar('PIN changed successfully', LiquidColors.success);
+      if (!mounted) return;
+      FlushBarHelper.flushBarSuccessMessage('PIN changed successfully', context);
 
       if (!_appLockEnabled) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           await _saveSetting('appLock', true);
           if (mounted) setState(() => _appLockEnabled = true);
-          _showSnackBar('App lock auto-enabled for security', LiquidColors.accentBlue);
+          if (!mounted) return;
+          FlushBarHelper.flushBarInfoMessage('App lock auto-enabled for security', context);
         });
       }
     } catch (e) {
-      _showSnackBar('Failed to save PIN', LiquidColors.error);
+      if (!mounted) return;
+      FlushBarHelper.flushBarErrorMessage('Failed to save PIN', context);
       setState(() {
         _changingPin = false;
+        _verifyingOldPin = false;
         _confirmPinMode = false;
+        _oldPin.clear();
         _newPin.clear();
         _confirmPin.clear();
       });
@@ -372,7 +1398,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   void _onPinDelete() {
     setState(() {
       _pinError = null;
-      if (!_confirmPinMode) {
+      if (_verifyingOldPin) {
+        if (_oldPin.isNotEmpty) _oldPin.removeLast();
+      } else if (!_confirmPinMode) {
         if (_newPin.isNotEmpty) _newPin.removeLast();
       } else {
         if (_confirmPin.isNotEmpty) _confirmPin.removeLast();
@@ -383,12 +1411,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   void _cancelPinChange() {
     setState(() {
       _changingPin = false;
+      _verifyingOldPin = false;
       _confirmPinMode = false;
+      _oldPin.clear();
       _newPin.clear();
       _confirmPin.clear();
       _pinError = null;
     });
-    _showSnackBar('PIN change cancelled', LiquidColors.warning);
+    FlushBarHelper.flushBarWarningMessage('PIN change cancelled', context);
   }
 
   IconData _getBiometricIcon() {
@@ -411,19 +1441,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       return 'Iris Scan';
     }
     return 'Biometric';
-  }
-
-  void _showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: color,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   Widget _buildBiometricStatus() {
@@ -601,43 +1618,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       statusWidget: _buildBiometricStatus(),
                     ),
 
-                    if (_biometricAvailable && !_biometricEnabled) ...[
-                      const SizedBox(height: 12),
-                      TweenAnimationBuilder(
-                        tween: Tween<double>(begin: 0, end: 1),
-                        duration: const Duration(milliseconds: 600),
-                        curve: Curves.elasticOut,
-                        builder: (context, double value, child) {
-                          return Transform.scale(
-                            scale: value,
-                            child: Center(
-                              child: ElevatedButton.icon(
-                                onPressed: _testAndEnableBiometric,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: LiquidColors.accentPurple,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  elevation: 8,
-                                  shadowColor: LiquidColors.accentPurple.withValues(alpha: .3),
-                                ),
-                                icon: const Icon(Icons.fingerprint_rounded, size: 20),
-                                label: const Text(
-                                  'Test & Enable Biometric',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-
                     const SizedBox(height: 32),
 
                     LiquidPinSection(
@@ -649,7 +1629,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                     if (_changingPin) ...[
                       LiquidPinInput(
+                        verifyOldMode: _verifyingOldPin,
                         confirmMode: _confirmPinMode,
+                        oldPin: _oldPin,
                         newPin: _newPin,
                         confirmPin: _confirmPin,
                         totalLength: _pinLength,
@@ -662,6 +1644,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     ],
 
                     _buildSessionCard(),
+
+                    const SizedBox(height: 24),
+
+                    _buildRecoveryCard(),
 
                     const SizedBox(height: 24),
 
@@ -701,10 +1687,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   Future<void> _selectDisguise(DisguiseOption option) async {
     if (option.key == _currentDisguise) return;
     if (!DisguiseService.instance.isSupported) {
-      _showSnackBar(
-        'Disguise mode is Android-only for now',
-        LiquidColors.warning,
-      );
+      FlushBarHelper.flushBarWarningMessage('Disguise mode is Android-only for now', context);
       return;
     }
 
@@ -741,12 +1724,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     if (!mounted) return;
     if (success) {
       setState(() => _currentDisguise = option.key);
-      _showSnackBar(
-        'Icon switched to ${option.label}',
-        LiquidColors.success,
-      );
+      FlushBarHelper.flushBarSuccessMessage('Icon switched to ${option.label}', context);
     } else {
-      _showSnackBar('Failed to change icon', LiquidColors.error);
+      FlushBarHelper.flushBarErrorMessage('Failed to change icon', context);
     }
   }
 
@@ -895,7 +1875,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                   child: Image.asset(
                     option.assetIcon,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       color: LiquidColors.backgroundLight,
                       child: const Icon(Icons.image_not_supported_rounded,
                           color: Colors.grey),
@@ -978,7 +1958,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               Switch(
                 value: _deleteOriginals,
                 onChanged: _toggleDeleteOriginals,
-                activeColor: Colors.white,
+                activeThumbColor: Colors.white,
                 activeTrackColor: LiquidColors.accentPurple,
               ),
             ],
@@ -1091,7 +2071,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               Switch(
                 value: _intrusionEnabled,
                 onChanged: _toggleIntrusion,
-                activeColor: Colors.white,
+                activeThumbColor: Colors.white,
                 activeTrackColor: LiquidColors.warning,
               ),
             ],
@@ -1180,6 +2160,452 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openRecoverySetup() async {
+    HapticFeedback.lightImpact();
+    final wasEnabled = _recoveryEnabled;
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const RecoverySetupScreen()),
+    );
+    if (result == true && mounted) {
+      await _loadSecuritySettings();
+      if (!mounted) return;
+      FlushBarHelper.flushBarSuccessMessage(
+        wasEnabled ? 'Recovery code re-issued' : 'Recovery enabled',
+        context,
+      );
+    }
+  }
+
+  Future<void> _confirmRemoveRecovery() async {
+    HapticFeedback.lightImpact();
+    final storedEmail = (_recoveryEmail ?? '').trim();
+    if (storedEmail.isEmpty) {
+      await RecoveryService.instance.clear();
+      if (!mounted) return;
+      await _loadSecuritySettings();
+      return;
+    }
+
+    final controller = TextEditingController();
+    final target = storedEmail.toLowerCase();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final entered = controller.text.trim().toLowerCase();
+          final matches = entered.isNotEmpty && entered == target;
+          return AlertDialog(
+            backgroundColor: LiquidColors.backgroundLight,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            title: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: LiquidColors.error.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.lock_open_rounded,
+                    color: LiquidColors.error,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Remove recovery?',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'You\'ll no longer be able to reset your PIN with the email code. '
+                  'If you forget your PIN, the only option will be to wipe the vault.',
+                  style: TextStyle(
+                    color: Colors.grey.shade300,
+                    height: 1.5,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: LiquidColors.error.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: LiquidColors.error.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          size: 14, color: LiquidColors.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Type your recovery email exactly to confirm.',
+                          style: TextStyle(
+                            color: LiquidColors.error,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    'Hint: ${RecoveryService.mask(storedEmail)}',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (_) => setDialogState(() {}),
+                  cursorColor: LiquidColors.error,
+                  style: TextStyle(
+                    color: matches ? LiquidColors.error : Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'you@example.com',
+                    hintStyle: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.04),
+                    prefixIcon: Icon(
+                      Icons.alternate_email_rounded,
+                      color: matches
+                          ? LiquidColors.error
+                          : Colors.grey.shade500,
+                      size: 18,
+                    ),
+                    suffixIcon: matches
+                        ? Icon(Icons.check_circle_rounded,
+                            color: LiquidColors.error, size: 18)
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: matches
+                            ? LiquidColors.error
+                            : LiquidColors.accentBlue,
+                        width: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: matches
+                    ? () => Navigator.of(dialogContext).pop(true)
+                    : null,
+                style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                child: Text(
+                  'Remove',
+                  style: TextStyle(
+                    color: matches
+                        ? LiquidColors.error
+                        : Colors.grey.shade600,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (ok != true || !mounted) return;
+    await RecoveryService.instance.clear();
+    if (!mounted) return;
+    await _loadSecuritySettings();
+    if (!mounted) return;
+    FlushBarHelper.flushBarSuccessMessage('Recovery removed', context);
+  }
+
+  Widget _buildRecoveryCard() {
+    final accent = _recoveryEnabled
+        ? LiquidColors.success
+        : LiquidColors.accentBlue;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: .9),
+            LiquidColors.backgroundMid.withValues(alpha: .95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: accent.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: _recoveryEnabled
+                        ? [LiquidColors.success, LiquidColors.accentBlue]
+                        : [
+                            LiquidColors.accentBlue,
+                            LiquidColors.accentPurple,
+                          ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.restore_rounded,
+                      color: Colors.white, size: 22),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'PIN RECOVERY',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Text(
+                  _recoveryEnabled ? 'ON' : 'OFF',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _recoveryEnabled
+                ? 'Use your emailed code to reset the PIN if you forget it. Vault contents stay encrypted and intact.'
+                : 'Set up an email-based recovery code so a forgotten PIN doesn\'t mean wiping your vault.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade400,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (_recoveryEnabled) ...[
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: LiquidColors.backgroundDeep,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: accent.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.alternate_email_rounded,
+                      color: accent, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _recoveryEmail == null
+                          ? 'unknown'
+                          : RecoveryService.mask(_recoveryEmail!),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'monospace',
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _openRecoverySetup,
+                    icon: Icon(Icons.refresh_rounded,
+                        size: 16, color: accent),
+                    label: Text(
+                      'Re-issue code',
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(
+                        color: accent.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _confirmRemoveRecovery,
+                    icon: Icon(Icons.delete_outline_rounded,
+                        size: 16, color: LiquidColors.error),
+                    label: Text(
+                      'Remove',
+                      style: TextStyle(
+                        color: LiquidColors.error,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(
+                        color: LiquidColors.error.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _openRecoverySetup,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text(
+                  'Set up recovery',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: LiquidColors.accentBlue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1467,16 +2893,15 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           _aboutTile(
             icon: Icons.mail_outline_rounded,
             label: 'Send Feedback',
-            sublabel: 'hello@farhatullah.com',
+            sublabel: 'Tell us what you think',
             color: LiquidColors.accentBlue,
-            onTap: () async {
+            onTap: () {
               HapticFeedback.lightImpact();
-              final url = Uri.parse(
-                'mailto:hello@farhatullah.com?subject=Secure%20Player%20feedback',
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SendFeedbackScreen(),
+                ),
               );
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url);
-              }
             },
           ),
           const SizedBox(height: 8),
@@ -1485,14 +2910,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             label: 'Privacy Policy',
             sublabel: 'How we handle your data',
             color: LiquidColors.success,
-            onTap: () async {
+            onTap: () {
               HapticFeedback.lightImpact();
-              final url = Uri.parse(
-                'https://farhatullah777.github.io/secure-player-privacy/',
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const PrivacyPolicyScreen(),
+                ),
               );
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
             },
           ),
           const SizedBox(height: 16),

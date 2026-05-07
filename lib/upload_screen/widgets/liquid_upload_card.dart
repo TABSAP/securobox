@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class LiquidUploadCard extends StatefulWidget {
   final IconData icon;
-  final String title;
+  final String? title;
   final String subtitle;
   final List<Color> gradient;
   final VoidCallback onTap;
@@ -11,7 +11,7 @@ class LiquidUploadCard extends StatefulWidget {
   const LiquidUploadCard({
     super.key,
     required this.icon,
-    required this.title,
+     this.title,
     required this.subtitle,
     required this.gradient,
     required this.onTap,
@@ -84,14 +84,14 @@ class _LiquidUploadCardState extends State<LiquidUploadCard>
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: widget.gradient[0].withOpacity(0.4),
+                    color: widget.gradient[0].withValues(alpha: 0.4),
                     blurRadius: 20,
                     spreadRadius: 2,
                     offset: const Offset(0, 8),
                   ),
                 ],
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -108,10 +108,10 @@ class _LiquidUploadCardState extends State<LiquidUploadCard>
                           width: 70,
                           height: 70,
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
+                              color: Colors.white.withValues(alpha: 0.3),
                               width: 2,
                             ),
                           ),
@@ -127,27 +127,27 @@ class _LiquidUploadCardState extends State<LiquidUploadCard>
                     },
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    widget.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black26,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Text(
+                  //   widget.title!,
+                  //   style: const TextStyle(
+                  //     color: Colors.white,
+                  //     fontSize: 18,
+                  //     fontWeight: FontWeight.w700,
+                  //     shadows: [
+                  //       Shadow(
+                  //         color: Colors.black26,
+                  //         blurRadius: 4,
+                  //         offset: Offset(0, 2),
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
                   const SizedBox(height: 8),
                   Text(
                     widget.subtitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 12,
                     ),
                   ),

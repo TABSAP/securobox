@@ -51,9 +51,9 @@ class LiquidColors {
 
   static Gradient get cardGradient => LinearGradient(
     colors: [
-      backgroundLight.withOpacity(0.9),
-      backgroundMid.withOpacity(0.95),
-      backgroundDeep.withOpacity(0.9),
+      backgroundLight.withValues(alpha: 0.9),
+      backgroundMid.withValues(alpha: 0.95),
+      backgroundDeep.withValues(alpha: 0.9),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,

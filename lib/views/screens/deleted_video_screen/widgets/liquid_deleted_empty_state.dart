@@ -32,20 +32,20 @@ class LiquidDeletedEmptyState extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: RadialGradient(
                         colors: [
-                          LiquidColors.error.withOpacity(0.2),
-                          LiquidColors.backgroundLight.withOpacity(0.1),
+                          LiquidColors.error.withValues(alpha: 0.2),
+                          LiquidColors.backgroundLight.withValues(alpha: 0.1),
                         ],
                         center: Alignment.center,
                         radius: 0.8,
                       ),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(
-                        color: LiquidColors.error.withOpacity(0.3),
+                        color: LiquidColors.error.withValues(alpha: 0.3),
                         width: 2,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: LiquidColors.error.withOpacity(0.2),
+                          color: LiquidColors.error.withValues(alpha: 0.2),
                           blurRadius: 30,
                           spreadRadius: 5,
                         ),
@@ -101,7 +101,7 @@ class LiquidDeletedEmptyState extends StatelessWidget {
                         borderRadius: BorderRadius.circular(30),
                       ),
                       elevation: 8,
-                      shadowColor: LiquidColors.accentBlue.withOpacity(0.4),
+                      shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.4),
                     ),
                   ),
                 );

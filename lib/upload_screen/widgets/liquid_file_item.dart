@@ -68,7 +68,7 @@ class _LiquidFileItemState extends State<LiquidFileItem>
     try {
       final size = file.lengthSync();
       if (size < 1024) {
-        return '${size} B';
+        return '$size B';
       } else if (size < 1024 * 1024) {
         return '${(size / 1024).toStringAsFixed(1)} KB';
       } else {
@@ -93,20 +93,20 @@ class _LiquidFileItemState extends State<LiquidFileItem>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                LiquidColors.backgroundLight.withOpacity(0.9),
-                LiquidColors.backgroundMid.withOpacity(0.95),
+                LiquidColors.backgroundLight.withValues(alpha: 0.9),
+                LiquidColors.backgroundMid.withValues(alpha: 0.95),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: fileColor.withOpacity(0.2),
+              color: fileColor.withValues(alpha: 0.2),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: fileColor.withOpacity(0.1),
+                color: fileColor.withValues(alpha: 0.1),
                 blurRadius: 10,
                 spreadRadius: 0,
                 offset: const Offset(0, 4),
@@ -127,15 +127,15 @@ class _LiquidFileItemState extends State<LiquidFileItem>
                     decoration: BoxDecoration(
                       gradient: RadialGradient(
                         colors: [
-                          fileColor.withOpacity(0.3),
-                          fileColor.withOpacity(0.1),
+                          fileColor.withValues(alpha: 0.3),
+                          fileColor.withValues(alpha: 0.1),
                         ],
                         center: Alignment.center,
                         radius: 0.8,
                       ),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: fileColor.withOpacity(0.3),
+                        color: fileColor.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -173,10 +173,10 @@ class _LiquidFileItemState extends State<LiquidFileItem>
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: fileColor.withOpacity(0.1),
+                    color: fileColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: fileColor.withOpacity(0.3),
+                      color: fileColor.withValues(alpha: 0.3),
                       width: 0.5,
                     ),
                   ),
@@ -202,10 +202,10 @@ class _LiquidFileItemState extends State<LiquidFileItem>
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: LiquidColors.error.withOpacity(0.1),
+                      color: LiquidColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: LiquidColors.error.withOpacity(0.3),
+                        color: LiquidColors.error.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),

@@ -26,13 +26,13 @@ class LiquidLogo extends StatelessWidget {
               borderRadius: BorderRadius.circular(35),
               boxShadow: [
                 BoxShadow(
-                  color: LiquidColors.primaryStart.withOpacity(0.5 * value),
+                  color: LiquidColors.primaryStart.withValues(alpha: 0.5 * value),
                   blurRadius: 30,
                   spreadRadius: 10,
                   offset: const Offset(0, 15),
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3 * value),
+                  color: Colors.black.withValues(alpha: 0.3 * value),
                   blurRadius: 15,
                   spreadRadius: 3,
                   offset: const Offset(0, 8),
@@ -47,7 +47,7 @@ class LiquidLogo extends StatelessWidget {
                       borderRadius: BorderRadius.circular(35),
                       gradient: RadialGradient(
                         colors: [
-                          Colors.white.withOpacity(0.4 * value),
+                          Colors.white.withValues(alpha: 0.4 * value),
                           Colors.transparent,
                         ],
                         radius: 0.7,

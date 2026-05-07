@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 class DownloadItem {
   final String id;
@@ -32,6 +31,7 @@ class VideoItem {
   bool isDeleted;
   DateTime? deletedDate;
   final bool encrypted;
+  bool isHidden;
 
   VideoItem({
     required this.id,
@@ -43,6 +43,7 @@ class VideoItem {
     this.isDeleted = false,
     this.deletedDate,
     this.encrypted = false,
+    this.isHidden = false,
   });
 
   VideoItem copyWith({
@@ -55,6 +56,7 @@ class VideoItem {
     bool? isDeleted,
     DateTime? deletedDate,
     bool? encrypted,
+    bool? isHidden,
   }) {
     return VideoItem(
       id: id ?? this.id,
@@ -66,11 +68,12 @@ class VideoItem {
       isDeleted: isDeleted ?? this.isDeleted,
       deletedDate: deletedDate ?? this.deletedDate,
       encrypted: encrypted ?? this.encrypted,
+      isHidden: isHidden ?? this.isHidden,
     );
   }
 
   String toStorageString() {
-    return '$id|$title|$path|$type|$isLocked|$category|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted';
+    return '$id|$title|$path|$type|$isLocked|$category|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden';
   }
 
   factory VideoItem.fromStorageString(String storageString) {
@@ -99,6 +102,7 @@ class VideoItem {
           ? DateTime.tryParse(parts[7])
           : null,
       encrypted: parts.length > 8 ? parts[8] == 'true' : false,
+      isHidden: parts.length > 9 ? parts[9] == 'true' : false,
     );
   }
 }

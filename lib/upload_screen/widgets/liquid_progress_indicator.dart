@@ -118,20 +118,20 @@ class _LiquidProgressIndicatorState extends State<LiquidProgressIndicator>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  LiquidColors.backgroundLight.withOpacity(0.9),
-                  LiquidColors.backgroundMid.withOpacity(0.95),
+                  LiquidColors.backgroundLight.withValues(alpha: 0.9),
+                  LiquidColors.backgroundMid.withValues(alpha: 0.95),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: widget.color.withOpacity(0.3),
+                color: widget.color.withValues(alpha: 0.3),
                 width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.color.withOpacity(0.2),
+                  color: widget.color.withValues(alpha: 0.2),
                   blurRadius: 15,
                   spreadRadius: 0,
                   offset: const Offset(0, 4),
@@ -186,7 +186,7 @@ class LiquidProgressPainter extends CustomPainter {
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
-      ..color = color.withOpacity(0.2);
+      ..color = color.withValues(alpha: 0.2);
 
     canvas.drawCircle(center, radius, paint);
 
@@ -195,7 +195,7 @@ class LiquidProgressPainter extends CustomPainter {
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round
       ..shader = SweepGradient(
-        colors: [color, color.withOpacity(0.5), color],
+        colors: [color, color.withValues(alpha: 0.5), color],
         stops: const [0.0, 0.5, 1.0],
       ).createShader(Rect.fromCircle(center: center, radius: radius));
 
@@ -209,7 +209,7 @@ class LiquidProgressPainter extends CustomPainter {
 
     final liquidPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = color.withOpacity(0.1);
+      ..color = color.withValues(alpha: 0.1);
 
     final path = Path();
     final liquidHeight = size.height * (1 - progress);

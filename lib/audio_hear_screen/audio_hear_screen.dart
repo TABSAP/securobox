@@ -257,7 +257,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
             borderRadius: BorderRadius.circular(100),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF4788FF).withOpacity(0.4),
+                color: const Color(0xFF4788FF).withValues(alpha: 0.4),
                 blurRadius: 20,
                 spreadRadius: 5,
               ),
@@ -293,7 +293,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: const Color(0xFF4788FF),
-                  inactiveTrackColor: Colors.grey.withOpacity(0.3),
+                  inactiveTrackColor: Colors.grey.withValues(alpha: 0.3),
                   thumbColor: const Color(0xFF4788FF),
                 ),
                 child: Slider(
@@ -326,7 +326,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
               icon: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: const Icon(Icons.replay_10, color: Colors.white, size: 30),
@@ -345,7 +345,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
                 borderRadius: BorderRadius.circular(30),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF4788FF).withOpacity(0.5),
+                    color: const Color(0xFF4788FF).withValues(alpha: 0.5),
                     blurRadius: 15,
                   ),
                 ],
@@ -360,7 +360,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
               icon: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: const Icon(Icons.forward_10, color: Colors.white, size: 30),
@@ -401,8 +401,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen> with WidgetsBindi
           icon: const Icon(Icons.stop, color: Colors.red),
           label: const Text('Stop', style: TextStyle(color: Colors.red)),
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red.withOpacity(0.1),
-            side: BorderSide(color: Colors.red.withOpacity(0.5)),
+            backgroundColor: Colors.red.withValues(alpha: 0.1),
+            side: BorderSide(color: Colors.red.withValues(alpha: 0.5)),
           ),
         ),
       ],

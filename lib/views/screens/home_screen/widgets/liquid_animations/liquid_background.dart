@@ -114,7 +114,7 @@ class LiquidContainer extends StatelessWidget {
         borderRadius: borderRadius ?? BorderRadius.circular(16),
         boxShadow: boxShadow ?? [
           BoxShadow(
-            color: LiquidColors.primaryStart.withOpacity(0.3),
+            color: LiquidColors.primaryStart.withValues(alpha: 0.3),
             blurRadius: 15,
             spreadRadius: 0,
             offset: const Offset(0, 5),
