@@ -1,4 +1,4 @@
-First release of Secure Player.
+First release of SecuroBox.
 
 • Private offline vault for videos, audio, photos and documents
 • PIN and biometric (fingerprint / face) app lock

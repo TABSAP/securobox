@@ -27,7 +27,7 @@ class LiquidTitle extends StatelessWidget {
               ).createShader(bounds);
             },
             child: Text(
-              'SECURE',
+              'SECURO',
               style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,
@@ -49,7 +49,7 @@ class LiquidTitle extends StatelessWidget {
               return LiquidColors.primaryGradient.createShader(bounds);
             },
             child: Text(
-              'PLAYER',
+              'BOX',
               style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,

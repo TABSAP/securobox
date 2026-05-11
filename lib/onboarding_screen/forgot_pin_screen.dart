@@ -105,7 +105,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     });
 
     final code = RecoveryService.instance.generateCode();
-    const subject = 'Secure Player — PIN Reset Code';
+    const subject = 'SecuroBox — PIN Reset Code';
 
     final uri = Uri(
       scheme: 'mailto',

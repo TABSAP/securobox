@@ -1829,7 +1829,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'A determined snooper can still find Secure Player in Settings → Apps. This is a deterrent, not perfect hiding.',
+                      'A determined snooper can still find SecuroBox in Settings → Apps. This is a deterrent, not perfect hiding.',
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.grey.shade300,
@@ -2878,7 +2878,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           const SizedBox(height: 16),
           _aboutTile(
             icon: Icons.star_rounded,
-            label: 'Rate Secure Player',
+            label: 'Rate SecuroBox',
             sublabel: 'Leave a review on Google Play',
             color: LiquidColors.warning,
             onTap: () async {
@@ -2928,7 +2928,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                   : '...';
               return Center(
                 child: Text(
-                  'Secure Player v$v',
+                  'SecuroBox v$v',
                   style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
                 ),
               );

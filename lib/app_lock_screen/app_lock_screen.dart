@@ -375,7 +375,7 @@ class _AppLockScreenState extends State<AppLockScreen>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const LiquidLockHeader(
-                      title: 'Secure Player',
+                      title: 'SecuroBox',
                       subtitle: 'Enter your PIN to continue',
                     ),
 
@@ -630,7 +630,7 @@ class _CustomAuthDialogState extends State<_CustomAuthDialog>
     });
     try {
       final ok = await widget.localAuth.authenticate(
-        localizedReason: 'Unlock Secure Player',
+        localizedReason: 'Unlock SecuroBox',
         biometricOnly: true,
         sensitiveTransaction: true,
       );

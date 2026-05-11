@@ -22,7 +22,6 @@ class LiquidLogo extends StatelessWidget {
             width: 140,
             height: 140,
             decoration: BoxDecoration(
-              gradient: LiquidColors.primaryGradient,
               borderRadius: BorderRadius.circular(35),
               boxShadow: [
                 BoxShadow(
@@ -39,40 +38,29 @@ class LiquidLogo extends StatelessWidget {
                 ),
               ],
             ),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: Container(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(35),
+              child: Image.asset(
+                'assets/splash/logo.png',
+                width: 140,
+                height: 140,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
                     decoration: BoxDecoration(
+                      gradient: LiquidColors.primaryGradient,
                       borderRadius: BorderRadius.circular(35),
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.white.withValues(alpha: 0.4 * value),
-                          Colors.transparent,
-                        ],
-                        radius: 0.7,
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.lock_outline,
+                        size: 70,
+                        color: Colors.white,
                       ),
                     ),
-                  ),
-                ),
-                Center(
-                  child: TweenAnimationBuilder(
-                    tween: Tween<double>(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 1000),
-                    curve: Curves.elasticOut,
-                    builder: (context, double iconValue, child) {
-                      return Transform.scale(
-                        scale: iconValue,
-                        child: const Icon(
-                          Icons.lock_outline,
-                          size: 70,
-                          color: Colors.white,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             ),
           ),
         );

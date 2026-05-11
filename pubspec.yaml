@@ -1,5 +1,5 @@
 name: video_player_app
-description: "Secure Player — offline media vault for videos, audio, photos & documents with PIN and biometric lock."
+description: "SecuroBox — offline media vault for videos, audio, photos & documents with PIN and biometric lock."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -72,3 +72,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/disguise/
+    - assets/splash/

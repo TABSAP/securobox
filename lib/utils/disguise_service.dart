@@ -22,7 +22,7 @@ class DisguiseService {
   static const List<DisguiseOption> options = [
     DisguiseOption(
       key: 'default',
-      label: 'Secure Player',
+      label: 'SecuroBox',
       assetIcon: 'assets/disguise/default.png',
     ),
     DisguiseOption(

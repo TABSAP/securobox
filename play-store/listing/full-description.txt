@@ -1,6 +1,6 @@
-Secure Player is a 100% offline private media vault. Keep your videos, audio, photos and documents safe behind a PIN and biometric lock — nothing ever leaves your device.
+SecuroBox is a 100% offline private media vault. Keep your videos, audio, photos and documents safe behind a PIN and biometric lock — nothing ever leaves your device.
 
-★ Why Secure Player
+★ Why SecuroBox
 
 • 100% offline — your files never touch the cloud
 • PIN + biometric (fingerprint / face) lock for the entire app
@@ -51,4 +51,4 @@ We do not collect, store, or transmit any of your data.
 We have no servers. We do not see your files.
 You are in control — always.
 
-Secure Player is perfect for anyone who wants to keep personal videos, sensitive documents, or private memories safely tucked away on their phone, accessible only by them.
+SecuroBox is perfect for anyone who wants to keep personal videos, sensitive documents, or private memories safely tucked away on their phone, accessible only by them.

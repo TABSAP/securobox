@@ -1,4 +1,4 @@
-# Contributing to Secure Player
+# Contributing to SecuroBox
 
 Thank you for your interest in contributing.
 
@@ -71,4 +71,4 @@ By submitting a contribution, you agree that your contribution is licensed under
 - Security reports → `hello@farhatullah.com`
 - General questions → GitHub Discussions (when enabled) or the same email
 
-Thanks for helping make Secure Player more secure for everyone.
+Thanks for helping make SecuroBox more secure for everyone.

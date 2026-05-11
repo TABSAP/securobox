@@ -1,11 +1,11 @@
-# Privacy Policy — Secure Player
+# Privacy Policy — SecuroBox
 
 **Effective date:** 2026-04-30
 **Contact:** hello@farhatullah.com
 
 ## Summary
 
-Secure Player is a 100% offline application. We do not collect, store, transmit, sell, or share any personal data. This privacy policy exists because the Google Play Store requires every app to publish one, even when the app collects nothing.
+SecuroBox is a 100% offline application. We do not collect, store, transmit, sell, or share any personal data. This privacy policy exists because the Google Play Store requires every app to publish one, even when the app collects nothing.
 
 ## What data the app handles
 

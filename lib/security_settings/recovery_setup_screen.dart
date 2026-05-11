@@ -51,7 +51,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
   Future<void> _openEmailClient() async {
     HapticFeedback.lightImpact();
     final email = _emailController.text.trim();
-    const subject = 'Secure Player — Recovery Code';
+    const subject = 'SecuroBox — Recovery Code';
     final body = _code;
 
     final uri = Uri(

@@ -101,7 +101,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   iconColor: LiquidColors.success,
                   title: 'What we collect',
                   body:
-                      'Nothing. Secure Player has no server, no analytics SDK, '
+                      'Nothing. SecuroBox has no server, no analytics SDK, '
                       'no advertising identifiers, and no telemetry. The app '
                       'works fully offline.',
                 ),
@@ -144,7 +144,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   iconColor: LiquidColors.accentPink,
                   title: 'Third-party services',
                   body:
-                      'None. Secure Player does not integrate any analytics, '
+                      'None. SecuroBox does not integrate any analytics, '
                       'ads, crash reporting, or cloud sync provider. The app '
                       'connects to the network only when you explicitly '
                       'request it (for example, when downloading a URL you '
@@ -155,7 +155,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   iconColor: LiquidColors.success,
                   title: 'Children\'s privacy',
                   body:
-                      'Secure Player is not designed for or directed at '
+                      'SecuroBox is not designed for or directed at '
                       'children under 13. Because the app collects no data, '
                       'we cannot knowingly identify or contact any user.',
                 ),

@@ -42,7 +42,7 @@ post_install do |installer|
     target.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
 
-      # permission_handler — enable only the permissions Secure Player actually uses.
+      # permission_handler — enable only the permissions SecuroBox actually uses.
       # Other PERMISSION_* macros are intentionally left undefined so the corresponding
       # iOS code paths are stripped out (smaller binary + no privacy-manifest hits).
       config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [

@@ -197,7 +197,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Future<void> _enableBiometric() async {
     try {
       final ok = await _localAuth.authenticate(
-        localizedReason: 'Enable biometric unlock for Secure Player',
+        localizedReason: 'Enable biometric unlock for SecuroBox',
         biometricOnly: true,
       );
       if (ok) {
@@ -277,7 +277,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
             const SizedBox(height: 36),
             const Text(
-              'Welcome to Secure Player',
+              'Welcome to SecuroBox',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.3),
             ),

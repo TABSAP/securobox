@@ -1,6 +1,6 @@
 # Security Policy
 
-Secure Player is a privacy-first offline media vault. We take vulnerability reports seriously.
+SecuroBox is a privacy-first offline media vault. We take vulnerability reports seriously.
 
 ## Reporting a vulnerability
 
