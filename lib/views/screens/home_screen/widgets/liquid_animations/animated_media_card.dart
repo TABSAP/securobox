@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../../models/app_models.dart';
 import '../../../../../utils/media_helper.dart';
 import '../../../../../utils/liquid_colors.dart';
-import 'liquid_background.dart';
 
 class AnimatedMediaCard extends StatefulWidget {
   final VideoItem media;
@@ -26,7 +25,8 @@ class AnimatedMediaCard extends StatefulWidget {
     this.onDeleteTap,
     this.onCategorySelected,
     required this.categories,
-    required this.index, required this.onRenameTap,
+    required this.index,
+    required this.onRenameTap,
   });
 
   @override
@@ -35,256 +35,186 @@ class AnimatedMediaCard extends StatefulWidget {
 
 class _AnimatedMediaCardState extends State<AnimatedMediaCard>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _fadeAnimation;
+  late final AnimationController _entry;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
+  bool _pressed = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _entry = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 420),
     );
-
-    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.elasticOut,
-      ),
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
-    );
-
-    Future.delayed(Duration(milliseconds: widget.index * 100), () {
-      if (mounted) {
-        _controller.forward();
-      }
+    _fade = CurvedAnimation(parent: _entry, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic));
+    final delayMs = widget.index.clamp(0, 12) * 55;
+    Future.delayed(Duration(milliseconds: delayMs), () {
+      if (mounted) _entry.forward();
     });
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _entry.dispose();
     super.dispose();
   }
 
+  VideoItem get _m => widget.media;
+  bool get _locked => _m.isLocked;
+  Color get _accent =>
+      _locked ? LiquidColors.warning : LiquidColors.getMediaColor(_m.type);
+
   @override
   Widget build(BuildContext context) {
-    final iconData = MediaHelper.getMediaIcon(widget.media.type);
-    final mediaColor = LiquidColors.getMediaColor(widget.media.type);
-    final mediaGradient = LiquidColors.getMediaGradient(widget.media.type);
-    final isLocked = widget.media.isLocked;
-
     return FadeTransition(
-      opacity: _fadeAnimation,
-      child: ScaleTransition(
-        scale: _scaleAnimation,
-        child: LiquidContainer(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: (isLocked ? LiquidColors.warning : mediaColor).withValues(alpha: 0.3),
-              blurRadius: 15,
-              spreadRadius: 0,
-              offset: const Offset(0, 8),
-            ),
-          ],
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  LiquidColors.backgroundLight.withValues(alpha: 0.9),
-                  LiquidColors.backgroundMid.withValues(alpha: 0.95),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: (isLocked ? LiquidColors.warning : mediaColor).withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                _buildAnimatedThumbnail(mediaGradient, iconData, isLocked),
-                const SizedBox(width: 16),
-                _buildInfo(widget.media, isLocked, mediaColor),
-                _buildActions(context, isLocked, mediaColor),
-              ],
-            ),
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
+          child: AnimatedScale(
+            scale: _pressed ? 0.97 : 1.0,
+            duration: const Duration(milliseconds: 130),
+            curve: Curves.easeOut,
+            child: _buildCard(context),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildAnimatedThumbnail(Gradient gradient, IconData iconData, bool isLocked) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.elasticOut,
-      builder: (context, double value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              gradient: isLocked
-                  ? LinearGradient(
-                colors: [LiquidColors.warning, LiquidColors.accentOrange],
-              )
-                  : gradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: (isLocked ? LiquidColors.warning : LiquidColors.primaryStart).withValues(alpha: 0.4),
-                  blurRadius: 15,
-                  spreadRadius: 1,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Icon(
-                isLocked ? Icons.lock_outline_rounded : iconData,
-                color: Colors.white,
-                size: 32,
-              ),
-            ),
+  Widget _buildCard(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: 0.92),
+            LiquidColors.backgroundMid.withValues(alpha: 0.96),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: _accent.withValues(alpha: 0.28),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _accent.withValues(alpha: 0.16),
+            blurRadius: 16,
+            spreadRadius: -2,
+            offset: const Offset(0, 8),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildInfo(VideoItem media, bool isLocked, Color mediaColor) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Row(
         children: [
-          Text(
-            media.title,
-            style: TextStyle(
-              color: isLocked ? LiquidColors.warning : Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              shadows: [
-                Shadow(
-                  color: (isLocked ? LiquidColors.warning : mediaColor).withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            children: [
-              _buildAnimatedChip(
-                media.type.toUpperCase(),
-                isLocked ? LiquidColors.warning : mediaColor,
-              ),
-              if (!isLocked) _buildAnimatedChip(media.category, LiquidColors.success),
-              if (isLocked) _buildAnimatedChip('Locked', LiquidColors.warning),
-              Text(
-                MediaHelper.formatDate(media.id),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade400,
-                ),
-              ),
-
-            ],
-          ),
+          _buildThumbnail(),
+          const SizedBox(width: 14),
+          Expanded(child: _buildInfo()),
+          const SizedBox(width: 10),
+          _buildActions(context),
         ],
       ),
     );
   }
 
-  Widget _buildAnimatedChip(String label, Color color) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeOutBack,
-      builder: (context, double value, child) {
-        return Transform.scale(
-          scale: value,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.1)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: color,
-                letterSpacing: 0.5,
+  Widget _buildThumbnail() {
+    final gradient = _locked
+        ? const LinearGradient(
+            colors: [LiquidColors.warning, LiquidColors.accentOrange],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : LiquidColors.getMediaGradient(_m.type);
+    final icon =
+        _locked ? Icons.lock_rounded : MediaHelper.getMediaIcon(_m.type);
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: _accent.withValues(alpha: 0.45),
+            blurRadius: 14,
+            spreadRadius: -1,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: RadialGradient(
+                  center: const Alignment(-0.5, -0.6),
+                  radius: 1.0,
+                  colors: [
+                    Colors.white.withValues(alpha: 0.28),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
-        );
-      },
+          Center(child: Icon(icon, color: Colors.white, size: 28)),
+        ],
+      ),
     );
   }
 
-  Widget _buildActions(BuildContext context, bool isLocked, Color mediaColor) {
-    return Row(
+  Widget _buildInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!isLocked) _buildAnimatedActionButton(
-          icon: Icons.category,
-          color: LiquidColors.success,
-          onTap: () => _showCategoryMenu(context),
+        Text(
+          _m.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: _locked ? LiquidColors.warning : Colors.white,
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.1,
+          ),
         ),
-        if (!isLocked) const SizedBox(width: 8),
-        Column(
+        const SizedBox(height: 8),
+        Row(
           children: [
-            _buildAnimatedActionButton(icon: Icons.more_vert, color: Colors.white, onTap: widget.onRenameTap,isDisabled: isLocked),
-            const SizedBox(height: 8),
-            _buildAnimatedActionButton(
-              icon: isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
-              color: isLocked ? LiquidColors.warning : Colors.white,
-              onTap: widget.onLockTap,
+            _pill(_m.type.toUpperCase(), _accent, filled: true),
+            const SizedBox(width: 6),
+            Flexible(
+              child: _locked
+                  ? _pill('LOCKED', LiquidColors.warning, filled: false)
+                  : _pill(_m.category, LiquidColors.success, filled: false),
             ),
           ],
         ),
-        const SizedBox(width: 8),
-        Column(
+        const SizedBox(height: 7),
+        Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildAnimatedActionButton(
-              icon: Icons.download_rounded,
-              color: LiquidColors.accentBlue,
-              onTap: widget.onDownloadTap,
-              isDisabled: isLocked,
-            ),
-            const SizedBox(height: 8),
-            _buildAnimatedActionButton(
-              icon: Icons.delete_outline_rounded,
-              color: LiquidColors.error,
-              onTap: widget.onDeleteTap,
-              isDisabled: isLocked,
+            Icon(Icons.schedule_rounded, size: 11, color: Colors.grey.shade500),
+            const SizedBox(width: 4),
+            Text(
+              MediaHelper.formatDate(_m.id),
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
             ),
           ],
         ),
@@ -292,119 +222,211 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
     );
   }
 
-  Widget _buildAnimatedActionButton({
+  Widget _pill(String label, Color color, {required bool filled}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: filled ? color.withValues(alpha: 0.18) : Colors.transparent,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: color.withValues(alpha: filled ? 0.4 : 0.3)),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 9.5,
+          fontWeight: FontWeight.w700,
+          color: color,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActions(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _iconButton(
+          icon: _locked ? Icons.lock_open_rounded : Icons.lock_rounded,
+          color: _locked ? LiquidColors.warning : Colors.grey.shade400,
+          onTap: widget.onLockTap,
+          tooltip: _locked ? 'Unlock' : 'Lock',
+        ),
+        const SizedBox(height: 8),
+        _iconButton(
+          icon: Icons.more_vert_rounded,
+          color: _locked ? Colors.grey.shade700 : Colors.grey.shade300,
+          onTap: _locked ? null : () => _showActionMenu(context),
+          tooltip: 'More',
+        ),
+      ],
+    );
+  }
+
+  Widget _iconButton({
     required IconData icon,
     required Color color,
     required VoidCallback? onTap,
-    bool isDisabled = false,
+    String? tooltip,
   }) {
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.elasticOut,
-      builder: (context, double value, child) {
-        return Transform.scale(
-          scale: value,
-          child: GestureDetector(
-            onTap: isDisabled ? null : onTap,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [
-                    color.withValues(alpha:  isDisabled ? 0.1 : 0.2),
-                    color.withValues(alpha:  isDisabled ? 0.05 : 0.1),
-                  ],
-                  center: Alignment.center,
-                  radius: 0.8,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: color.withValues(alpha:isDisabled ? 0.1 : 0.3),
-                  width: 1,
-                ),
-                boxShadow: isDisabled
-                    ? null
-                    : [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(
-                icon,
-                color: isDisabled ? Colors.grey.shade600 : color,
-                size: 20,
-              ),
+    final enabled = onTap != null;
+    final btn = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(11),
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: enabled
+                ? color.withValues(alpha: 0.10)
+                : Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: enabled
+                  ? color.withValues(alpha: 0.22)
+                  : Colors.white.withValues(alpha: 0.05),
             ),
           ),
-        );
-      },
+          child: Icon(icon, color: color, size: 18),
+        ),
+      ),
+    );
+    return tooltip != null ? Tooltip(message: tooltip, child: btn) : btn;
+  }
+
+  Future<void> _showActionMenu(BuildContext context) async {
+    final position = _menuPositionFor(context);
+    if (position == null) return;
+
+    final choice = await showMenu<String>(
+      context: context,
+      position: position,
+      color: LiquidColors.backgroundLight,
+      elevation: 10,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      items: [
+        _menuItem('rename', Icons.drive_file_rename_outline_rounded, 'Rename',
+            LiquidColors.accentBlue),
+        _menuItem('category', Icons.label_outline_rounded, 'Change category',
+            LiquidColors.success),
+        _menuItem('download', Icons.download_rounded, 'Save to gallery',
+            LiquidColors.accentPurple),
+        const PopupMenuDivider(height: 6),
+        _menuItem('delete', Icons.delete_outline_rounded, 'Move to trash',
+            LiquidColors.error),
+      ],
+    );
+
+    if (!mounted) return;
+    switch (choice) {
+      case 'rename':
+        widget.onRenameTap?.call();
+        break;
+      case 'category':
+        if (context.mounted) _showCategoryMenu(context);
+        break;
+      case 'download':
+        widget.onDownloadTap?.call();
+        break;
+      case 'delete':
+        widget.onDeleteTap?.call();
+        break;
+    }
+  }
+
+  PopupMenuItem<String> _menuItem(
+      String value, IconData icon, String label, Color color) {
+    return PopupMenuItem<String>(
+      value: value,
+      height: 44,
+      child: Row(
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   void _showCategoryMenu(BuildContext context) {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    final RelativeRect position = RelativeRect.fromRect(
-      Rect.fromPoints(
-        button.localToGlobal(Offset.zero, ancestor: overlay),
-        button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
-      ),
-      Offset.zero & overlay.size,
-    );
+    final position = _menuPositionFor(context);
+    if (position == null) return;
 
-    showMenu(
+    showMenu<String>(
       context: context,
       position: position,
-      elevation: 8,
       color: LiquidColors.backgroundLight,
+      elevation: 10,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: LiquidColors.primaryStart.withValues(alpha: 0.3), width: 1),
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      items: widget.categories
-          .where((c) => c != "All")
-          .map((category) => PopupMenuItem(
-        value: category,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-          ),
+      items: widget.categories.where((c) => c != 'All').map((category) {
+        final selected = category == _m.category;
+        return PopupMenuItem<String>(
+          value: category,
+          height: 42,
           child: Row(
             children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      LiquidColors.primaryStart,
-                      LiquidColors.primaryEnd,
-                    ],
-                  ),
-                ),
+              Icon(
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                size: 16,
+                color: selected ? LiquidColors.success : Colors.grey.shade600,
               ),
               const SizedBox(width: 12),
               Text(
                 category,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(
+                  color: selected ? Colors.white : Colors.grey.shade300,
+                  fontSize: 14,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                ),
               ),
             ],
           ),
-        ),
-      ))
-          .toList(),
+        );
+      }).toList(),
     ).then((value) {
-      if (value != null && widget.onCategorySelected != null) {
-        widget.onCategorySelected!(value);
-      }
+      if (value != null) widget.onCategorySelected?.call(value);
     });
+  }
+
+  RelativeRect? _menuPositionFor(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (box == null || overlay == null || !box.hasSize) return null;
+    return RelativeRect.fromRect(
+      Rect.fromPoints(
+        box.localToGlobal(box.size.topRight(Offset.zero), ancestor: overlay),
+        box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
   }
 }

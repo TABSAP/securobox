@@ -1500,6 +1500,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             return Transform.scale(
               scale: value,
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 45,
@@ -1520,12 +1521,15 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     ),
                   ),
                   const SizedBox(width: 16),
-                  const Expanded(
+                  const Flexible(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'SECURITY SETTINGS',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -1535,6 +1539,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                         ),
                         Text(
                           'Configure your security preferences',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],

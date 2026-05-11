@@ -1084,6 +1084,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             return Transform.scale(
               scale: value,
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
                     width: 40,
@@ -1108,20 +1109,23 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Recycle Bin',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                          color: Colors.white,
+                  Flexible(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Recycle Bin',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
-                      if (_deletedVideos.isNotEmpty)
-                        Flexible(
-                          child: Text(
+                        if (_deletedVideos.isNotEmpty)
+                          Text(
                             'Auto-delete after 30 days',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1130,8 +1134,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                               color: Colors.grey.shade400,
                             ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

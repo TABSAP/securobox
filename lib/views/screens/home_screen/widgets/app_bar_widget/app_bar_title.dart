@@ -15,6 +15,7 @@ class AppBarTitleWidget extends StatelessWidget {
         return Transform.scale(
           scale: value,
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 width: 45,
@@ -39,12 +40,15 @@ class AppBarTitleWidget extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
+              Flexible(
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'My Library',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
@@ -61,6 +65,8 @@ class AppBarTitleWidget extends StatelessWidget {
                     ),
                     Text(
                       'Your private vault',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade400,

@@ -532,7 +532,6 @@ class _UploadScreenState extends State<UploadScreen>
       for (int i = 0; i < _selectedFiles.length; i++) {
         final file = _selectedFiles[i];
         final timestamp = DateTime.now().millisecondsSinceEpoch + i;
-        final originalName = TitleHelper.prettyTitleFromFilename(file.path);
 
         try {
           final encryptedPath = await VaultCrypto.instance.importEncrypted(
@@ -552,8 +551,10 @@ class _UploadScreenState extends State<UploadScreen>
             fileType = _getFileTypeFromExtension(file.path);
           }
 
+          final smartTitle = TitleHelper.smartName(file.path, type: fileType);
+
           videoList.add(
-            '$timestamp|$originalName|$encryptedPath|$fileType|false|$_selectedCategory|false||true',
+            '$timestamp|$smartTitle|$encryptedPath|$fileType|false|$_selectedCategory|false||true|false',
           );
           fileCount++;
 

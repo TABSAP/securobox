@@ -72,18 +72,10 @@ class RecoveryService {
     await _secure.delete(key: _kEmailKey);
   }
 
+  static const String hiddenLabel = '••••••••@••••••.•••';
+
   static String mask(String email) {
-    final trimmed = email.trim();
-    final at = trimmed.indexOf('@');
-    if (at <= 0) return trimmed;
-    final local = trimmed.substring(0, at);
-    final domain = trimmed.substring(at);
-
-    if (local.length == 1) return '$local•••••$domain';
-    if (local.length == 2) return '${local[0]}•••••${local[1]}$domain';
-
-    final maskCount = (local.length - 2).clamp(3, 6);
-    return '${local[0]}${'•' * maskCount}${local[local.length - 1]}$domain';
+    return email.trim().isEmpty ? '' : hiddenLabel;
   }
 
   bool _constantTimeEqual(String a, String b) {
