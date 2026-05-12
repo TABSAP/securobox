@@ -8,9 +8,14 @@ import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/onboarding_screen/forgot_pin_screen.dart';
+import 'package:video_player_app/security_settings/face_scan_screen.dart';
+import 'package:video_player_app/utils/decoy_service.dart';
+import 'package:video_player_app/utils/face_recognition_service.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
+import 'package:video_player_app/utils/vault_context.dart';
+import 'package:video_player_app/utils/vault_crypto.dart';
 
 import '../main_screen.dart';
 import '../utils/liquid_colors.dart';
@@ -29,6 +34,7 @@ class _AppLockScreenState extends State<AppLockScreen>
   int _pinLength = PinCrypto.defaultPinLength;
 
   bool _biometricEnabled = false;
+  bool _faceRecogEnrolled = false;
   bool _isAuthenticating = false;
   bool _hasError = false;
 
@@ -77,9 +83,13 @@ class _AppLockScreenState extends State<AppLockScreen>
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     final pinLen = await PinCrypto.instance.getPinLength();
+    final faceEnrolled = await FaceRecognitionService.instance.isEnrolled();
     if (!mounted) return;
     setState(() {
-      _biometricEnabled = prefs.getBool('biometric') ?? false;
+      _biometricEnabled =
+          (prefs.getBool('biometric') ?? false) ||
+          (prefs.getBool('biometric_face') ?? false);
+      _faceRecogEnrolled = faceEnrolled;
       _pinLength = pinLen;
     });
 
@@ -116,34 +126,53 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 
   Future<void> _checkPin() async {
-    final isCorrect = await PinCrypto.instance.verifyPin(_enteredPin);
-
-    if (isCorrect && mounted) {
-      _unlockApp();
-    } else {
-      HapticFeedback.heavyImpact();
-      await SessionManager.instance.recordFailedAttempt();
-      unawaited(IntrusionService.instance.captureSilently());
+    // 1. Real PIN → real vault.
+    if (await PinCrypto.instance.verifyPin(_enteredPin)) {
       if (!mounted) return;
-      setState(() {
-        _enteredPin = '';
-        _hasError = true;
-      });
-      _errorController.forward().then((_) => _errorController.reverse());
-      await _refreshCooldown();
-      _showErrorFeedback();
+      VaultContext.instance.exitDecoy();
+      _unlockApp();
+      return;
     }
+
+    // 2. Decoy PIN → completely separate fake vault. Silently log who's
+    //    coercing access; the entry leaves a hidden audit trail.
+    if (await DecoyService.instance.verifyFakePin(_enteredPin)) {
+      if (!mounted) return;
+      VaultContext.instance.enterDecoy();
+      unawaited(VaultCrypto.instance.wipeAllTempCache());
+      unawaited(IntrusionService.instance.captureSilently());
+      unawaited(DecoyService.instance.recordDuressEntry());
+      _unlockApp();
+      return;
+    }
+
+    // 3. Wrong → cooldown + intruder capture.
+    HapticFeedback.heavyImpact();
+    await SessionManager.instance.recordFailedAttempt();
+    unawaited(IntrusionService.instance.captureSilently());
+    if (!mounted) return;
+    setState(() {
+      _enteredPin = '';
+      _hasError = true;
+    });
+    _errorController.forward().then((_) => _errorController.reverse());
+    await _refreshCooldown();
+    _showErrorFeedback();
   }
 
   Future<void> _unlockApp() async {
     await SessionManager.instance.unlock();
     if (!mounted) return;
-    if (widget.isOverlay) {
+    final modeChanged = VaultContext.instance.modeChanged;
+    VaultContext.instance.clearModeChanged();
+    // If the vault mode flipped, the existing screen stack holds data from the
+    // other namespace — tear it down and rebuild from scratch.
+    if (widget.isOverlay && !modeChanged) {
       Navigator.of(context).pop();
     } else {
-      Navigator.pushReplacement(
-        context,
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const MainScreen()),
+        (_) => false,
       );
     }
   }
@@ -160,7 +189,11 @@ class _AppLockScreenState extends State<AppLockScreen>
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+            Icon(
+              Icons.error_outline_rounded,
+              color: LiquidColors.textPrimary,
+              size: 20,
+            ),
             const SizedBox(width: 8),
             const Text('Incorrect PIN'),
           ],
@@ -196,13 +229,13 @@ class _AppLockScreenState extends State<AppLockScreen>
       final authenticated = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => _CustomAuthDialog(
-          localAuth: _localAuth,
-        ),
+        builder: (dialogContext) => _CustomAuthDialog(localAuth: _localAuth),
       );
       if (!mounted) return;
 
       if (authenticated == true) {
+        // Biometric verifies the device owner → always the real vault.
+        VaultContext.instance.exitDecoy();
         _unlockApp();
       } else if (authenticated == false) {
         await _showAuthFailureDialog(
@@ -222,6 +255,29 @@ class _AppLockScreenState extends State<AppLockScreen>
     }
   }
 
+  Future<void> _useFaceUnlock() async {
+    if (_isAuthenticating || _padDisabled) return;
+    setState(() => _isAuthenticating = true);
+    try {
+      final ok = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => const FaceScanScreen(mode: FaceScanMode.verify),
+          fullscreenDialog: true,
+        ),
+      );
+      if (!mounted) return;
+      if (ok == true) {
+        // Recognized the device owner → real vault.
+        VaultContext.instance.exitDecoy();
+        _unlockApp();
+      }
+    } catch (_) {
+      // Fall back to PIN silently.
+    } finally {
+      if (mounted) setState(() => _isAuthenticating = false);
+    }
+  }
+
   Future<void> _showAuthFailureDialog({
     required String title,
     required String message,
@@ -234,7 +290,7 @@ class _AppLockScreenState extends State<AppLockScreen>
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1D2E),
+            color: LiquidColors.surface,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: LiquidColors.error.withValues(alpha: 0.3),
@@ -271,8 +327,8 @@ class _AppLockScreenState extends State<AppLockScreen>
               Text(
                 title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                 ),
@@ -282,7 +338,7 @@ class _AppLockScreenState extends State<AppLockScreen>
                 message,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.grey.shade400,
+                  color: LiquidColors.textSecondary,
                   fontSize: 13,
                   height: 1.5,
                 ),
@@ -295,17 +351,14 @@ class _AppLockScreenState extends State<AppLockScreen>
                   onPressed: () => Navigator.of(dialogContext).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: LiquidColors.accentBlue,
-                    foregroundColor: Colors.white,
+                    foregroundColor: LiquidColors.textPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: const Text(
                     'OK',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -476,7 +529,7 @@ class _AppLockScreenState extends State<AppLockScreen>
                             Text(
                               'Try again in ${_formatCooldown(_cooldownRemaining!)}',
                               style: TextStyle(
-                                color: Colors.grey.shade300,
+                                color: LiquidColors.textSecondary,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -537,6 +590,35 @@ class _AppLockScreenState extends State<AppLockScreen>
                         },
                       ),
 
+                    if (_faceRecogEnrolled && !_padDisabled) ...[
+                      const SizedBox(height: 4),
+                      TextButton.icon(
+                        onPressed: _isAuthenticating ? null : _useFaceUnlock,
+                        icon: Icon(
+                          Icons.camera_front_rounded,
+                          color: LiquidColors.accentBlue,
+                          size: 22,
+                        ),
+                        label: Text(
+                          'Scan Face',
+                          style: TextStyle(
+                            color: LiquidColors.accentBlue,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 8),
 
                     TextButton.icon(
@@ -553,12 +635,12 @@ class _AppLockScreenState extends State<AppLockScreen>
                       icon: Icon(
                         Icons.help_outline_rounded,
                         size: 16,
-                        color: Colors.grey.shade400,
+                        color: LiquidColors.textSecondary,
                       ),
                       label: Text(
                         'Forgot PIN?',
                         style: TextStyle(
-                          color: Colors.grey.shade300,
+                          color: LiquidColors.textSecondary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.2,
@@ -665,7 +747,7 @@ class _CustomAuthDialogState extends State<_CustomAuthDialog>
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
         decoration: BoxDecoration(
-          color: const Color(0xFF1A1D2E),
+          color: LiquidColors.surface,
           borderRadius: BorderRadius.circular(28),
           border: Border.all(color: accent.withValues(alpha: 0.35)),
           boxShadow: [
@@ -711,10 +793,10 @@ class _CustomAuthDialogState extends State<_CustomAuthDialog>
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'Authenticate',
               style: TextStyle(
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
@@ -728,11 +810,12 @@ class _CustomAuthDialogState extends State<_CustomAuthDialog>
                 key: ValueKey(_status),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: _failed ? LiquidColors.error : Colors.grey.shade400,
+                  color: _failed
+                      ? LiquidColors.error
+                      : LiquidColors.textSecondary,
                   fontSize: 13,
                   height: 1.4,
-                  fontWeight:
-                      _failed ? FontWeight.w600 : FontWeight.w500,
+                  fontWeight: _failed ? FontWeight.w600 : FontWeight.w500,
                 ),
               ),
             ),
@@ -743,17 +826,22 @@ class _CustomAuthDialogState extends State<_CustomAuthDialog>
                 height: 48,
                 child: ElevatedButton.icon(
                   onPressed: _runAuth,
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                   label: const Text(
                     'Try Again',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
+                      color: Colors.white,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: LiquidColors.accentBlue,
-                    foregroundColor: Colors.white,
+                    foregroundColor: LiquidColors.textPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -770,7 +858,7 @@ class _CustomAuthDialogState extends State<_CustomAuthDialog>
               child: Text(
                 'Use PIN instead',
                 style: TextStyle(
-                  color: Colors.grey.shade400,
+                  color: LiquidColors.textSecondary,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),

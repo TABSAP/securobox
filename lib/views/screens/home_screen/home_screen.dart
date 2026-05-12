@@ -2,17 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
+import 'package:video_player_app/utils/vault_context.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onVideosChanged;
   final VoidCallback? onAddRequested;
 
-  const HomeScreen({
-    super.key,
-    this.onVideosChanged,
-    this.onAddRequested,
-  });
+  const HomeScreen({super.key, this.onVideosChanged, this.onAddRequested});
 
   @override
   State<HomeScreen> createState() => HomeScreenState();
@@ -20,7 +17,8 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
-  static const String _customCategoriesPrefKey = 'customCategories';
+  String get _customCategoriesPrefKey =>
+      VaultContext.instance.customCategoriesKey;
 
   final List<VideoItem> _allMedia = [];
   final List<VideoItem> _filteredMedia = [];
@@ -60,21 +58,16 @@ class HomeScreenState extends State<HomeScreen>
     );
 
     _headerFadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _headerAnimationController,
-        curve: Curves.easeIn,
-      ),
+      CurvedAnimation(parent: _headerAnimationController, curve: Curves.easeIn),
     );
 
-    _headerSlideAnimation = Tween<Offset>(
-      begin: const Offset(0, -0.5),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _headerAnimationController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    _headerSlideAnimation =
+        Tween<Offset>(begin: const Offset(0, -0.5), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _headerAnimationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _headerAnimationController.forward();
   }
@@ -104,10 +97,12 @@ class HomeScreenState extends State<HomeScreen>
       }
 
       for (final media in _allMedia) {
-        bool matchesCategory = _selectedCategory == "All" ||
+        bool matchesCategory =
+            _selectedCategory == "All" ||
             media.category.toLowerCase() == _selectedCategory.toLowerCase();
 
-        bool matchesSearch = query.isEmpty ||
+        bool matchesSearch =
+            query.isEmpty ||
             media.title.toLowerCase().contains(query) ||
             media.category.toLowerCase().contains(query);
 
@@ -190,147 +185,166 @@ class HomeScreenState extends State<HomeScreen>
 
     if (!mounted) return;
 
-    final TextEditingController renameController = TextEditingController(text: media.title);
+    final TextEditingController renameController = TextEditingController(
+      text: media.title,
+    );
 
     final result = await showDialog<String>(
-        context: context,
-        builder: (dialogContext) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: LiquidContainer(
-            gradient: LiquidColors.cardGradient,
-            borderRadius: BorderRadius.circular(24),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      gradient: LiquidColors.secondaryGradient,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: LiquidColors.secondaryStart.withValues(alpha: 0.4),
-                          blurRadius: 20,
-                          spreadRadius: 2,
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: LiquidContainer(
+          gradient: LiquidColors.cardGradient,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    gradient: LiquidColors.secondaryGradient,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: LiquidColors.secondaryStart.withValues(
+                          alpha: 0.4,
                         ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Icon(Icons.drive_file_rename_outline, color: Colors.white, size: 35),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Rename File',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    media.title,
-                    style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 14,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          LiquidColors.backgroundDeep.withValues(alpha: 0.8),
-                          LiquidColors.backgroundMid.withValues(alpha: 0.8),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: LiquidColors.primaryStart.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: TextField(
-                      controller: renameController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Enter new name',
-                        hintStyle: TextStyle(color: Colors.grey.shade500),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        prefixIcon: Icon(Icons.title, color: LiquidColors.accentBlue, size: 20),
-                      ),
-                      autofocus: true,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          style: TextButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: Colors.grey.shade700,
-                                width: 1,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            'Cancel',
-                            style: TextStyle(color: Colors.grey.shade400),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (renameController.text.trim().isNotEmpty) {
-                              Navigator.pop(dialogContext, renameController.text.trim());
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: LiquidColors.accentBlue,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 4,
-                            shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.4),
-                          ),
-                          child: const Text(
-                            'Rename',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                        blurRadius: 20,
+                        spreadRadius: 2,
                       ),
                     ],
                   ),
-                ],
-              ),
+                  child: Center(
+                    child: Icon(
+                      Icons.drive_file_rename_outline,
+                      color: LiquidColors.textPrimary,
+                      size: 35,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Rename File',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: LiquidColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  media.title,
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        LiquidColors.backgroundDeep.withValues(alpha: 0.8),
+                        LiquidColors.backgroundMid.withValues(alpha: 0.8),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: LiquidColors.primaryStart.withValues(alpha: 0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: renameController,
+                    style: TextStyle(color: LiquidColors.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Enter new name',
+                      hintStyle: TextStyle(color: LiquidColors.textTertiary),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.title,
+                        color: LiquidColors.accentBlue,
+                        size: 20,
+                      ),
+                    ),
+                    autofocus: true,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: LiquidColors.textTertiary,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(color: LiquidColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          if (renameController.text.trim().isNotEmpty) {
+                            Navigator.pop(
+                              dialogContext,
+                              renameController.text.trim(),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: LiquidColors.accentBlue,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                          shadowColor: LiquidColors.accentBlue.withValues(
+                            alpha: 0.4,
+                          ),
+                        ),
+                        child: Text(
+                          'Rename',
+                          style: TextStyle(
+                            color: LiquidColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
+      ),
     );
 
     if (result != null && result.isNotEmpty && mounted) {
       try {
-
         setState(() => _isLoading = true);
 
         final success = await _mediaService.renameMedia(media, result);
@@ -344,7 +358,10 @@ class HomeScreenState extends State<HomeScreen>
             widget.onVideosChanged!();
           }
           if (mounted) {
-            FlushBarHelper.flushBarSuccessMessage('File renamed successfully', context);
+            FlushBarHelper.flushBarSuccessMessage(
+              'File renamed successfully',
+              context,
+            );
           }
         } else {
           if (mounted) {
@@ -357,7 +374,10 @@ class HomeScreenState extends State<HomeScreen>
       } catch (e) {
         setState(() => _isLoading = false);
         if (mounted) {
-          FlushBarHelper.flushBarErrorMessage('Error: ${e.toString()}', context);
+          FlushBarHelper.flushBarErrorMessage(
+            'Error: ${e.toString()}',
+            context,
+          );
         }
       }
     }
@@ -390,10 +410,34 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   static const Set<String> _knownExtensions = {
-    'mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'm4v',
-    'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif',
-    'mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'opus',
-    'pdf', 'doc', 'docx', 'txt', 'rtf', 'epub',
+    'mp4',
+    'mkv',
+    'avi',
+    'mov',
+    'webm',
+    '3gp',
+    'm4v',
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+    'gif',
+    'bmp',
+    'heic',
+    'heif',
+    'mp3',
+    'wav',
+    'aac',
+    'ogg',
+    'm4a',
+    'flac',
+    'opus',
+    'pdf',
+    'doc',
+    'docx',
+    'txt',
+    'rtf',
+    'epub',
   };
 
   String _saveFileNameFor(VideoItem media) {
@@ -413,8 +457,9 @@ class HomeScreenState extends State<HomeScreen>
 
   String _extractKnownExt(String name) {
     final basenameStart = name.lastIndexOf(RegExp(r'[/\\]'));
-    final basename =
-        basenameStart < 0 ? name : name.substring(basenameStart + 1);
+    final basename = basenameStart < 0
+        ? name
+        : name.substring(basenameStart + 1);
     final dot = basename.lastIndexOf('.');
     if (dot < 0 || dot >= basename.length - 1) return '';
     final candidate = basename.substring(dot + 1).toLowerCase();
@@ -459,7 +504,7 @@ class HomeScreenState extends State<HomeScreen>
         title: media.title,
         path: media.path,
         onConfirm: () async {
-          if (!await File(media.path).exists()) {
+          if (media.path.isEmpty || !await File(media.path).exists()) {
             if (!mounted) return;
             FlushBarHelper.flushBarErrorMessage('File not found', context);
             return;
@@ -473,9 +518,8 @@ class HomeScreenState extends State<HomeScreen>
             showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (_) => const Center(
-                child: LiquidCircularProgress(size: 96),
-              ),
+              builder: (_) =>
+                  const Center(child: LiquidCircularProgress(size: 96)),
             );
             try {
               savePath = await VaultCrypto.instance.decryptToTemp(media.path);
@@ -503,7 +547,7 @@ class HomeScreenState extends State<HomeScreen>
             if (!mounted) return;
             if (success) {
               FlushBarHelper.flushBarSuccessMessage(
-                '$saveName saved to gallery',
+                '$saveName saved to the "SecuroBox" album',
                 context,
               );
             } else {
@@ -525,7 +569,10 @@ class HomeScreenState extends State<HomeScreen>
       setState(() => _isLoading = true);
       await _loadMedia();
       if (!mounted) return;
-      FlushBarHelper.flushBarSuccessMessage('Refreshed ${_filteredMedia.length} files', context);
+      FlushBarHelper.flushBarSuccessMessage(
+        'Refreshed ${_filteredMedia.length} files',
+        context,
+      );
     } catch (e) {
       if (!mounted) return;
       FlushBarHelper.flushBarErrorMessage('Refresh failed', context);
@@ -539,7 +586,10 @@ class HomeScreenState extends State<HomeScreen>
       );
       if (!authenticated) {
         if (!mounted) return;
-        FlushBarHelper.flushBarErrorMessage('Authentication required to unlock', context);
+        FlushBarHelper.flushBarErrorMessage(
+          'Authentication required to unlock',
+          context,
+        );
         return;
       }
     }
@@ -560,7 +610,7 @@ class HomeScreenState extends State<HomeScreen>
       }
     }
 
-    if (!await File(media.path).exists()) {
+    if (media.path.isEmpty || !await File(media.path).exists()) {
       if (!mounted) return;
       FlushBarHelper.flushBarErrorMessage('File not found', context);
       return;
@@ -573,9 +623,7 @@ class HomeScreenState extends State<HomeScreen>
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder: (_) => const Center(
-            child: LiquidCircularProgress(size: 96),
-          ),
+          builder: (_) => const Center(child: LiquidCircularProgress(size: 96)),
         );
         playPath = await VaultCrypto.instance.decryptToTemp(media.path);
         if (!mounted) return;
@@ -583,7 +631,10 @@ class HomeScreenState extends State<HomeScreen>
       } catch (e) {
         if (mounted) {
           Navigator.of(context, rootNavigator: true).pop();
-          FlushBarHelper.flushBarErrorMessage('Failed to decrypt file', context);
+          FlushBarHelper.flushBarErrorMessage(
+            'Failed to decrypt file',
+            context,
+          );
         }
         return;
       }
@@ -595,10 +646,8 @@ class HomeScreenState extends State<HomeScreen>
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => VideoPlayerScreen(
-              videoPath: playPath,
-              videoTitle: media.title,
-            ),
+            builder: (context) =>
+                VideoPlayerScreen(videoPath: playPath, videoTitle: media.title),
           ),
         ).then((_) async {
           if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
@@ -617,12 +666,12 @@ class HomeScreenState extends State<HomeScreen>
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 leading: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  icon: Icon(Icons.arrow_back, color: LiquidColors.textPrimary),
                   onPressed: () => Navigator.pop(context),
                 ),
                 title: Text(
                   media.title,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: LiquidColors.textPrimary),
                 ),
               ),
               body: Center(
@@ -635,9 +684,16 @@ class HomeScreenState extends State<HomeScreen>
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.broken_image, color: LiquidColors.error, size: 60),
+                            Icon(
+                              Icons.broken_image,
+                              color: LiquidColors.error,
+                              size: 60,
+                            ),
                             const SizedBox(height: 16),
-                            const Text('Unable to load image', style: TextStyle(color: Colors.white)),
+                            Text(
+                              'Unable to load image',
+                              style: TextStyle(color: LiquidColors.textPrimary),
+                            ),
                           ],
                         ),
                       );
@@ -655,10 +711,8 @@ class HomeScreenState extends State<HomeScreen>
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => AudioPlayerScreen(
-              filePath: playPath,
-              fileName: media.title,
-            ),
+            builder: (context) =>
+                AudioPlayerScreen(filePath: playPath, fileName: media.title),
           ),
         ).then((_) async {
           if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
@@ -671,10 +725,8 @@ class HomeScreenState extends State<HomeScreen>
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PDFReaderScreen(
-              filePath: playPath,
-              fileName: media.title,
-            ),
+            builder: (context) =>
+                PDFReaderScreen(filePath: playPath, fileName: media.title),
           ),
         ).then((_) async {
           if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
@@ -708,36 +760,54 @@ class HomeScreenState extends State<HomeScreen>
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: LiquidColors.secondaryStart.withValues(alpha: 0.4),
+                        color: LiquidColors.secondaryStart.withValues(
+                          alpha: 0.4,
+                        ),
                         blurRadius: 20,
                         spreadRadius: 2,
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Icon(Icons.insert_drive_file_rounded, color: Colors.white, size: 40),
+                  child: Center(
+                    child: Icon(
+                      Icons.insert_drive_file_rounded,
+                      color: LiquidColors.textPrimary,
+                      size: 40,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
                   media.title,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: LiquidColors.textPrimary,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   'File Type: ${media.type.toUpperCase()}',
-                  style: TextStyle(color: Colors.grey.shade400),
+                  style: TextStyle(color: LiquidColors.textSecondary),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: LiquidColors.accentBlue,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
-                  child: const Text('Close', style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    'Close',
+                    style: TextStyle(color: LiquidColors.textPrimary),
+                  ),
                 ),
               ],
             ),
@@ -796,24 +866,22 @@ class HomeScreenState extends State<HomeScreen>
                 duration: const Duration(milliseconds: 280),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeIn,
-                transitionBuilder: (child, anim) => FadeTransition(
-                  opacity: anim,
-                  child: child,
-                ),
+                transitionBuilder: (child, anim) =>
+                    FadeTransition(opacity: anim, child: child),
                 child: _isLoading && _allMedia.isEmpty
                     ? KeyedSubtree(
                         key: const ValueKey('loading'),
                         child: _buildLoadingState(),
                       )
                     : _filteredMedia.isEmpty
-                        ? KeyedSubtree(
-                            key: const ValueKey('empty'),
-                            child: _buildEmptyState(),
-                          )
-                        : KeyedSubtree(
-                            key: const ValueKey('list'),
-                            child: _buildMediaListWithRefresh(),
-                          ),
+                    ? KeyedSubtree(
+                        key: const ValueKey('empty'),
+                        child: _buildEmptyState(),
+                      )
+                    : KeyedSubtree(
+                        key: const ValueKey('list'),
+                        child: _buildMediaListWithRefresh(),
+                      ),
               ),
             ),
           ],
@@ -839,12 +907,14 @@ class HomeScreenState extends State<HomeScreen>
             child: Container(
               width: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
+                color: LiquidColors.textPrimary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+                ),
               ),
               alignment: Alignment.center,
-              child: Icon(icon, color: Colors.white, size: 20),
+              child: Icon(icon, color: LiquidColors.textPrimary, size: 20),
             ),
           ),
         ),
@@ -875,7 +945,7 @@ class HomeScreenState extends State<HomeScreen>
         ),
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: LiquidColors.textPrimary.withValues(alpha: 0.05),
             width: 1,
           ),
         ),
@@ -899,12 +969,12 @@ class HomeScreenState extends State<HomeScreen>
       height: 46,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: hasQuery
               ? LiquidColors.accentBlue.withValues(alpha: 0.5)
-              : Colors.white.withValues(alpha: 0.08),
+              : LiquidColors.textPrimary.withValues(alpha: 0.08),
           width: 1,
         ),
       ),
@@ -912,19 +982,21 @@ class HomeScreenState extends State<HomeScreen>
         children: [
           Icon(
             Icons.search_rounded,
-            color: hasQuery ? LiquidColors.accentBlue : Colors.grey.shade500,
+            color: hasQuery
+                ? LiquidColors.accentBlue
+                : LiquidColors.textTertiary,
             size: 20,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
+              style: TextStyle(color: LiquidColors.textPrimary, fontSize: 14),
               cursorColor: LiquidColors.accentBlue,
               decoration: InputDecoration(
                 hintText: 'Search your vault…',
                 hintStyle: TextStyle(
-                  color: Colors.grey.shade500,
+                  color: LiquidColors.textTertiary,
                   fontSize: 14,
                 ),
                 border: InputBorder.none,
@@ -943,12 +1015,12 @@ class HomeScreenState extends State<HomeScreen>
                       width: 22,
                       height: 22,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.close_rounded,
-                        color: Colors.grey.shade300,
+                        color: LiquidColors.textSecondary,
                         size: 14,
                       ),
                     ),
@@ -1017,7 +1089,7 @@ class HomeScreenState extends State<HomeScreen>
           Text(
             '${_filteredMedia.length} ${_filteredMedia.length == 1 ? "item" : "items"}',
             style: TextStyle(
-              color: Colors.grey.shade500,
+              color: LiquidColors.textTertiary,
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
@@ -1117,10 +1189,10 @@ class HomeScreenState extends State<HomeScreen>
                     const SizedBox(height: 22),
                     Text(
                       hasFilters ? 'No matches' : 'Your vault is empty',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: LiquidColors.textPrimary,
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -1131,7 +1203,7 @@ class HomeScreenState extends State<HomeScreen>
                           : 'Files you import are encrypted and stored only on this device — never in the cloud.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.grey.shade500,
+                        color: LiquidColors.textTertiary,
                         fontSize: 13,
                         height: 1.5,
                       ),
@@ -1179,7 +1251,9 @@ class HomeScreenState extends State<HomeScreen>
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
       child: ListView.builder(
         controller: _scrollController,
-        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         padding: const EdgeInsets.all(16),
         itemCount: _filteredMedia.length,
         itemBuilder: (context, index) {
@@ -1189,7 +1263,8 @@ class HomeScreenState extends State<HomeScreen>
             categories: MediaHelper.mediaCategories,
             index: index,
             onTap: () => _openMedia(media),
-            onCategorySelected: (category) => _updateMediaCategory(media, category),
+            onCategorySelected: (category) =>
+                _updateMediaCategory(media, category),
             onLockTap: () => _toggleMediaLock(media),
             onDownloadTap: () => _showDownloadConfirmation(media),
             onDeleteTap: () => _deleteMedia(media),
@@ -1216,7 +1291,9 @@ class _CategoryPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = isCustom ? LiquidColors.accentPurple : LiquidColors.accentBlue;
+    final accent = isCustom
+        ? LiquidColors.accentPurple
+        : LiquidColors.accentBlue;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1229,12 +1306,12 @@ class _CategoryPill extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected
                 ? accent.withValues(alpha: 0.16)
-                : Colors.white.withValues(alpha: 0.04),
+                : LiquidColors.textPrimary.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: selected
                   ? accent
-                  : Colors.white.withValues(alpha: 0.08),
+                  : LiquidColors.textPrimary.withValues(alpha: 0.08),
               width: selected ? 1.2 : 1,
             ),
           ),
@@ -1256,7 +1333,9 @@ class _CategoryPill extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  color: selected ? Colors.white : Colors.grey.shade400,
+                  color: selected
+                      ? LiquidColors.textPrimary
+                      : LiquidColors.textSecondary,
                   fontSize: 12,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   letterSpacing: 0.2,
@@ -1311,9 +1390,11 @@ class _SkeletonCardState extends State<_SkeletonCard>
           height: 84,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
+            color: LiquidColors.textPrimary.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            border: Border.all(
+              color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+            ),
           ),
           child: Row(
             children: [
@@ -1325,7 +1406,11 @@ class _SkeletonCardState extends State<_SkeletonCard>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _shimmerBox(
-                        width: double.infinity, height: 14, radius: 4, t: t),
+                      width: double.infinity,
+                      height: 14,
+                      radius: 4,
+                      t: t,
+                    ),
                     const SizedBox(height: 8),
                     _shimmerBox(width: 120, height: 10, radius: 4, t: t),
                   ],
@@ -1352,15 +1437,15 @@ class _SkeletonCardState extends State<_SkeletonCard>
       child: Container(
         width: width,
         height: height,
-        color: Colors.white.withValues(alpha: 0.05),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.05),
         foregroundDecoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment(shift - 0.3, 0),
             end: Alignment(shift + 0.3, 0),
             colors: [
-              Colors.white.withValues(alpha: 0.0),
-              Colors.white.withValues(alpha: 0.08),
-              Colors.white.withValues(alpha: 0.0),
+              LiquidColors.textPrimary.withValues(alpha: 0.0),
+              LiquidColors.textPrimary.withValues(alpha: 0.08),
+              LiquidColors.textPrimary.withValues(alpha: 0.0),
             ],
             stops: const [0.0, 0.5, 1.0],
           ),
@@ -1409,7 +1494,7 @@ class _PrimaryAction extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

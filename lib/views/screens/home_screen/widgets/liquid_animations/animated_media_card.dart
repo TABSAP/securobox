@@ -48,8 +48,10 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       duration: const Duration(milliseconds: 420),
     );
     _fade = CurvedAnimation(parent: _entry, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic));
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic));
     final delayMs = widget.index.clamp(0, 12) * 55;
     Future.delayed(Duration(milliseconds: delayMs), () {
       if (mounted) _entry.forward();
@@ -104,10 +106,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: _accent.withValues(alpha: 0.28),
-          width: 1,
-        ),
+        border: Border.all(color: _accent.withValues(alpha: 0.28), width: 1),
         boxShadow: [
           BoxShadow(
             color: _accent.withValues(alpha: 0.16),
@@ -131,14 +130,15 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
 
   Widget _buildThumbnail() {
     final gradient = _locked
-        ? const LinearGradient(
+        ? LinearGradient(
             colors: [LiquidColors.warning, LiquidColors.accentOrange],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           )
         : LiquidColors.getMediaGradient(_m.type);
-    final icon =
-        _locked ? Icons.lock_rounded : MediaHelper.getMediaIcon(_m.type);
+    final icon = _locked
+        ? Icons.lock_rounded
+        : MediaHelper.getMediaIcon(_m.type);
 
     return Container(
       width: 60,
@@ -165,7 +165,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
                   center: const Alignment(-0.5, -0.6),
                   radius: 1.0,
                   colors: [
-                    Colors.white.withValues(alpha: 0.28),
+                    LiquidColors.textPrimary.withValues(alpha: 0.28),
                     Colors.transparent,
                   ],
                 ),
@@ -188,7 +188,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: _locked ? LiquidColors.warning : Colors.white,
+            color: _locked ? LiquidColors.warning : LiquidColors.textPrimary,
             fontSize: 15.5,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.1,
@@ -210,11 +210,15 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.schedule_rounded, size: 11, color: Colors.grey.shade500),
+            Icon(
+              Icons.schedule_rounded,
+              size: 11,
+              color: LiquidColors.textTertiary,
+            ),
             const SizedBox(width: 4),
             Text(
               MediaHelper.formatDate(_m.id),
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              style: TextStyle(fontSize: 11, color: LiquidColors.textTertiary),
             ),
           ],
         ),
@@ -250,14 +254,16 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       children: [
         _iconButton(
           icon: _locked ? Icons.lock_open_rounded : Icons.lock_rounded,
-          color: _locked ? LiquidColors.warning : Colors.grey.shade400,
+          color: _locked ? LiquidColors.warning : LiquidColors.textSecondary,
           onTap: widget.onLockTap,
           tooltip: _locked ? 'Unlock' : 'Lock',
         ),
         const SizedBox(height: 8),
         _iconButton(
           icon: Icons.more_vert_rounded,
-          color: _locked ? Colors.grey.shade700 : Colors.grey.shade300,
+          color: _locked
+              ? LiquidColors.textTertiary
+              : LiquidColors.textSecondary,
           onTap: _locked ? null : () => _showActionMenu(context),
           tooltip: 'More',
         ),
@@ -283,12 +289,12 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           decoration: BoxDecoration(
             color: enabled
                 ? color.withValues(alpha: 0.10)
-                : Colors.white.withValues(alpha: 0.03),
+                : LiquidColors.textPrimary.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(11),
             border: Border.all(
               color: enabled
                   ? color.withValues(alpha: 0.22)
-                  : Colors.white.withValues(alpha: 0.05),
+                  : LiquidColors.textPrimary.withValues(alpha: 0.05),
             ),
           ),
           child: Icon(icon, color: color, size: 18),
@@ -309,18 +315,36 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       elevation: 10,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        side: BorderSide(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+        ),
       ),
       items: [
-        _menuItem('rename', Icons.drive_file_rename_outline_rounded, 'Rename',
-            LiquidColors.accentBlue),
-        _menuItem('category', Icons.label_outline_rounded, 'Change category',
-            LiquidColors.success),
-        _menuItem('download', Icons.download_rounded, 'Save to gallery',
-            LiquidColors.accentPurple),
+        _menuItem(
+          'rename',
+          Icons.drive_file_rename_outline_rounded,
+          'Rename',
+          LiquidColors.accentBlue,
+        ),
+        _menuItem(
+          'category',
+          Icons.label_outline_rounded,
+          'Change category',
+          LiquidColors.success,
+        ),
+        _menuItem(
+          'download',
+          Icons.download_rounded,
+          'Save to gallery',
+          LiquidColors.accentPurple,
+        ),
         const PopupMenuDivider(height: 6),
-        _menuItem('delete', Icons.delete_outline_rounded, 'Move to trash',
-            LiquidColors.error),
+        _menuItem(
+          'delete',
+          Icons.delete_outline_rounded,
+          'Move to trash',
+          LiquidColors.error,
+        ),
       ],
     );
 
@@ -342,7 +366,11 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   PopupMenuItem<String> _menuItem(
-      String value, IconData icon, String label, Color color) {
+    String value,
+    IconData icon,
+    String label,
+    Color color,
+  ) {
     return PopupMenuItem<String>(
       value: value,
       height: 44,
@@ -360,8 +388,8 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           const SizedBox(width: 12),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
@@ -382,7 +410,9 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       elevation: 10,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        side: BorderSide(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+        ),
       ),
       items: widget.categories.where((c) => c != 'All').map((category) {
         final selected = category == _m.category;
@@ -396,13 +426,17 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
                     ? Icons.radio_button_checked_rounded
                     : Icons.radio_button_unchecked_rounded,
                 size: 16,
-                color: selected ? LiquidColors.success : Colors.grey.shade600,
+                color: selected
+                    ? LiquidColors.success
+                    : LiquidColors.textTertiary,
               ),
               const SizedBox(width: 12),
               Text(
                 category,
                 style: TextStyle(
-                  color: selected ? Colors.white : Colors.grey.shade300,
+                  color: selected
+                      ? LiquidColors.textPrimary
+                      : LiquidColors.textSecondary,
                   fontSize: 14,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
                 ),

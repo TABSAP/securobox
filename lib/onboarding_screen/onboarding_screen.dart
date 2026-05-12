@@ -202,7 +202,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       );
       if (ok) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('biometric', true);
+        final avail = await _localAuth.getAvailableBiometrics();
+        final hasFace = avail.contains(BiometricType.face);
+        final hasFingerprint = avail.contains(BiometricType.fingerprint);
+        if (hasFace && !hasFingerprint) {
+          await prefs.setBool('biometric_face', true);
+        } else {
+          await prefs.setBool('biometric', true);
+          if (hasFace) await prefs.setBool('biometric_face', true);
+        }
       }
     } catch (_) {}
     _goToApp();
@@ -273,19 +281,19 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                 ],
               ),
-              child: const Icon(Icons.shield_rounded, color: Colors.white, size: 60),
+              child: Icon(Icons.shield_rounded, color: LiquidColors.textPrimary, size: 60),
             ),
             const SizedBox(height: 36),
-            const Text(
+            Text(
               'Welcome to SecuroBox',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.3),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: LiquidColors.textPrimary, letterSpacing: 0.3),
             ),
             const SizedBox(height: 12),
             Text(
               'A private offline vault for your videos, photos, audio and documents. Files stay on your device — protected by a PIN you control.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15, color: Colors.grey.shade400, height: 1.5),
+              style: TextStyle(fontSize: 15, color: LiquidColors.textSecondary, height: 1.5),
             ),
             const SizedBox(height: 36),
             _featureRow(Icons.lock_outline_rounded, 'AES-256 encryption for every file'),
@@ -309,7 +317,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   Expanded(
                     child: Text(
                       'Important — your PIN cannot be recovered. Lose it and your vault contents are permanently inaccessible. By design.',
-                      style: TextStyle(color: Colors.grey.shade300, fontSize: 12, height: 1.4),
+                      style: TextStyle(color: LiquidColors.textSecondary, fontSize: 12, height: 1.4),
                     ),
                   ),
                 ],
@@ -330,8 +338,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: const Text('Get Started',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                child: Text('Get Started',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: LiquidColors.textPrimary)),
               ),
             ),
             const SizedBox(height: 20),
@@ -354,7 +362,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           child: Icon(icon, color: LiquidColors.accentBlue, size: 20),
         ),
         const SizedBox(width: 14),
-        Expanded(child: Text(text, style: TextStyle(fontSize: 14, color: Colors.grey.shade300))),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 14, color: LiquidColors.textSecondary))),
       ],
     );
   }
@@ -377,16 +385,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: const Icon(Icons.pin_outlined, color: Colors.white, size: 50),
+            child: Icon(Icons.pin_outlined, color: LiquidColors.textPrimary, size: 50),
           ),
           const SizedBox(height: 28),
-          const Text('Choose Your PIN Length',
+          Text('Choose Your PIN Length',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiquidColors.textPrimary)),
           const SizedBox(height: 10),
           Text('Longer PINs are exponentially harder to guess',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade400)),
+              style: TextStyle(fontSize: 13, color: LiquidColors.textSecondary)),
           const SizedBox(height: 32),
           _lengthOption(digits: 4, label: '4-digit PIN', sub: 'Quicker to type — 10,000 combinations'),
           const SizedBox(height: 12),
@@ -406,8 +414,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: const Text('Continue',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              child: Text('Continue',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: LiquidColors.textPrimary)),
             ),
           ),
           const SizedBox(height: 16),
@@ -430,7 +438,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           color: selected ? LiquidColors.accentBlue.withValues(alpha: 0.18) : LiquidColors.backgroundLight.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? LiquidColors.accentBlue : Colors.white.withValues(alpha: 0.08),
+            color: selected ? LiquidColors.accentBlue : LiquidColors.textPrimary.withValues(alpha: 0.08),
             width: selected ? 2 : 1,
           ),
         ),
@@ -441,10 +449,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               height: 24,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: selected ? LiquidColors.accentBlue : Colors.grey.shade600, width: 2),
+                border: Border.all(color: selected ? LiquidColors.accentBlue : LiquidColors.textTertiary, width: 2),
                 color: selected ? LiquidColors.accentBlue : Colors.transparent,
               ),
-              child: selected ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+              child: selected ? Icon(Icons.check, color: LiquidColors.textPrimary, size: 16) : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -453,7 +461,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 children: [
                   Row(
                     children: [
-                      Text(label, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                      Text(label, style: TextStyle(color: LiquidColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)),
                       if (recommended) ...[
                         const SizedBox(width: 8),
                         Container(
@@ -469,7 +477,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(sub, style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+                  Text(sub, style: TextStyle(color: LiquidColors.textSecondary, fontSize: 12)),
                 ],
               ),
             ),
@@ -651,16 +659,16 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ],
             ),
-            child: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 60),
+            child: Icon(Icons.fingerprint_rounded, color: LiquidColors.textPrimary, size: 60),
           ),
           const SizedBox(height: 32),
-          const Text('Enable Biometric Unlock?',
+          Text('Enable Biometric Unlock?',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiquidColors.textPrimary)),
           const SizedBox(height: 12),
           Text('Use Face ID or fingerprint instead of typing your PIN every time.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade400, height: 1.5)),
+              style: TextStyle(fontSize: 14, color: LiquidColors.textSecondary, height: 1.5)),
           const Spacer(flex: 3),
           SizedBox(
             width: double.infinity,
@@ -672,14 +680,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: const Text('Enable Biometric',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              child: Text('Enable Biometric',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: LiquidColors.textPrimary)),
             ),
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: _skipBiometric,
-            child: Text('Maybe later', style: TextStyle(color: Colors.grey.shade400, fontSize: 14)),
+            child: Text('Maybe later', style: TextStyle(color: LiquidColors.textSecondary, fontSize: 14)),
           ),
           const SizedBox(height: 16),
         ],

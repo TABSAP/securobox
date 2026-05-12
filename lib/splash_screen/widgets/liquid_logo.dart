@@ -51,11 +51,11 @@ class LiquidLogo extends StatelessWidget {
                       gradient: LiquidColors.primaryGradient,
                       borderRadius: BorderRadius.circular(35),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.lock_outline,
                         size: 70,
-                        color: Colors.white,
+                        color: LiquidColors.textPrimary,
                       ),
                     ),
                   );

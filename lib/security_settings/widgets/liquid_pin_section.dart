@@ -68,7 +68,7 @@ class LiquidPinSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -77,7 +77,7 @@ class LiquidPinSection extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: LiquidColors.textPrimary,
                         letterSpacing: 0.3,
                       ),
                     ),
@@ -86,7 +86,7 @@ class LiquidPinSection extends StatelessWidget {
                       'Hashed and stored in secure keystore',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey,
+                        color: LiquidColors.textTertiary,
                       ),
                     ),
                   ],
@@ -96,9 +96,9 @@ class LiquidPinSection extends StatelessWidget {
                 onPressed: isChanging ? null : onStartChange,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: isChanging
-                      ? Colors.grey.shade800
+                      ? LiquidColors.textTertiary
                       : LiquidColors.accentOrange,
-                  foregroundColor: Colors.white,
+                  foregroundColor: LiquidColors.textPrimary,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

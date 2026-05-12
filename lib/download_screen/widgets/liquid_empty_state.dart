@@ -61,11 +61,7 @@ class LiquidEmptyState extends StatelessWidget {
                       ],
                     ),
                     child: Center(
-                      child: Icon(
-                        icon,
-                        size: 70,
-                        color: iconColor,
-                      ),
+                      child: Icon(icon, size: 70, color: iconColor),
                     ),
                   ),
                 );
@@ -74,10 +70,10 @@ class LiquidEmptyState extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -87,7 +83,7 @@ class LiquidEmptyState extends StatelessWidget {
                 subtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.grey.shade400,
+                  color: LiquidColors.textSecondary,
                   fontSize: 14,
                 ),
               ),
@@ -114,10 +110,13 @@ class LiquidEmptyState extends StatelessWidget {
                       elevation: 8,
                       shadowColor: iconColor.withValues(alpha: 0.4),
                     ),
-                    icon: const Icon(Icons.video_library_rounded, color: Colors.white),
+                    icon: Icon(
+                      Icons.video_library_rounded,
+                      color: Colors.white,
+                    ),
                     label: Text(
                       buttonText,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),

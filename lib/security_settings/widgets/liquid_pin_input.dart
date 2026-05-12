@@ -110,8 +110,8 @@ class _LiquidPinInputState extends State<LiquidPinInput>
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.5,
@@ -120,7 +120,7 @@ class _LiquidPinInputState extends State<LiquidPinInput>
         const SizedBox(height: 8),
         Text(
           subtitle,
-          style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+          style: TextStyle(color: LiquidColors.textSecondary, fontSize: 12),
         ),
       ],
     );
@@ -161,7 +161,7 @@ class _LiquidPinInputState extends State<LiquidPinInput>
         Text(
           label,
           style: TextStyle(
-            color: Colors.grey.shade400,
+            color: LiquidColors.textSecondary,
             fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
@@ -186,7 +186,7 @@ class _LiquidPinInputState extends State<LiquidPinInput>
                       gradient: RadialGradient(
                         colors: index < pin.length
                             ? [color, color.withValues(alpha:0.5)]
-                            : [Colors.grey.shade800, Colors.grey.shade900],
+                            : [LiquidColors.textTertiary, LiquidColors.textTertiary],
                         center: Alignment.center,
                         radius: 0.8,
                       ),
@@ -300,7 +300,7 @@ class _LiquidPinInputState extends State<LiquidPinInput>
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.1),
                   width: 1,
                 ),
                 boxShadow: [
@@ -315,9 +315,9 @@ class _LiquidPinInputState extends State<LiquidPinInput>
               child: Center(
                 child: Text(
                   number,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 28,
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                     fontWeight: FontWeight.w400,
                   ),
                 ),

@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:flutter/material.dart';
 
 class MediaHelper {
@@ -33,7 +34,7 @@ class MediaHelper {
   static Color getMediaColor(String type) {
     switch (type) {
       case 'video':
-        return const Color(0xFF4788FF);
+        return LiquidColors.accentBlue;
       case 'image':
         return const Color(0xFF00C853);
       case 'audio':

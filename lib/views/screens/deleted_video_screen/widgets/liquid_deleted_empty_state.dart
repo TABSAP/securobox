@@ -53,7 +53,9 @@ class LiquidDeletedEmptyState extends StatelessWidget {
                     ),
                     child: Center(
                       child: Icon(
-                        hasSearch ? Icons.search_off_rounded : Icons.delete_outline_rounded,
+                        hasSearch
+                            ? Icons.search_off_rounded
+                            : Icons.delete_outline_rounded,
                         size: 60,
                         color: LiquidColors.error,
                       ),
@@ -65,10 +67,10 @@ class LiquidDeletedEmptyState extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               hasSearch ? 'No Deleted Files Found' : 'Trash is Empty',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -76,10 +78,7 @@ class LiquidDeletedEmptyState extends StatelessWidget {
               hasSearch
                   ? 'Try a different search term'
                   : 'Deleted files will appear here',
-              style: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: LiquidColors.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 24),
             TweenAnimationBuilder(
@@ -91,17 +90,25 @@ class LiquidDeletedEmptyState extends StatelessWidget {
                   scale: value,
                   child: ElevatedButton.icon(
                     onPressed: onBackPressed,
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text('Back to Library'),
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    label: const Text(
+                      'Back to Library',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: LiquidColors.accentBlue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      foregroundColor: LiquidColors.textPrimary,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
                       elevation: 8,
-                      shadowColor: LiquidColors.accentBlue.withValues(alpha: 0.4),
+                      shadowColor: LiquidColors.accentBlue.withValues(
+                        alpha: 0.4,
+                      ),
                     ),
                   ),
                 );

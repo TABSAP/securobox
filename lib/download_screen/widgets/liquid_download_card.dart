@@ -8,32 +8,32 @@ class _FileKind {
 
   const _FileKind(this.label, this.icon, this.color);
 
-  static const _video = _FileKind(
+  static final _video = _FileKind(
     'Video',
     Icons.movie_outlined,
     LiquidColors.accentBlue,
   );
-  static const _audio = _FileKind(
+  static final _audio = _FileKind(
     'Audio',
     Icons.audiotrack_rounded,
     LiquidColors.accentPurple,
   );
-  static const _image = _FileKind(
+  static final _image = _FileKind(
     'Photo',
     Icons.image_outlined,
     LiquidColors.success,
   );
-  static const _document = _FileKind(
+  static final _document = _FileKind(
     'Document',
     Icons.description_outlined,
     LiquidColors.accentOrange,
   );
-  static const _archive = _FileKind(
+  static final _archive = _FileKind(
     'Archive',
     Icons.folder_zip_outlined,
     LiquidColors.warning,
   );
-  static const _code = _FileKind(
+  static final _code = _FileKind(
     'Code',
     Icons.code_rounded,
     LiquidColors.accentPink,
@@ -49,40 +49,130 @@ class _FileKind {
     if (dot < 0) return _other;
     final ext = path.substring(dot + 1).toLowerCase();
     if (const {
-      'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v',
-      'mpg', 'mpeg', '3gp', 'webm', 'ts', 'mts', 'm2ts',
+      'mp4',
+      'mkv',
+      'avi',
+      'mov',
+      'wmv',
+      'flv',
+      'm4v',
+      'mpg',
+      'mpeg',
+      '3gp',
+      'webm',
+      'ts',
+      'mts',
+      'm2ts',
     }.contains(ext)) {
       return _video;
     }
     if (const {
-      'mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma',
-      'aiff', 'alac', 'opus', 'mid', 'midi', 'amr', 'ape',
-      'ra', 'rm', 'mka', 'm4b', 'm4p', 'ac3', 'dts',
+      'mp3',
+      'wav',
+      'aac',
+      'flac',
+      'ogg',
+      'm4a',
+      'wma',
+      'aiff',
+      'alac',
+      'opus',
+      'mid',
+      'midi',
+      'amr',
+      'ape',
+      'ra',
+      'rm',
+      'mka',
+      'm4b',
+      'm4p',
+      'ac3',
+      'dts',
     }.contains(ext)) {
       return _audio;
     }
     if (const {
-      'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif',
-      'svg', 'ico', 'heic', 'heif', 'raw', 'cr2', 'nef', 'arw', 'dng',
+      'jpg',
+      'jpeg',
+      'png',
+      'gif',
+      'bmp',
+      'webp',
+      'tiff',
+      'tif',
+      'svg',
+      'ico',
+      'heic',
+      'heif',
+      'raw',
+      'cr2',
+      'nef',
+      'arw',
+      'dng',
     }.contains(ext)) {
       return _image;
     }
     if (const {
-      'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'ppt', 'pptx',
-      'xls', 'xlsx', 'csv', 'md', 'markdown', 'html', 'htm',
-      'epub', 'mobi', 'azw3', 'tex', 'latex', 'xml', 'json', 'yaml', 'yml',
+      'pdf',
+      'doc',
+      'docx',
+      'txt',
+      'rtf',
+      'odt',
+      'ppt',
+      'pptx',
+      'xls',
+      'xlsx',
+      'csv',
+      'md',
+      'markdown',
+      'html',
+      'htm',
+      'epub',
+      'mobi',
+      'azw3',
+      'tex',
+      'latex',
+      'xml',
+      'json',
+      'yaml',
+      'yml',
     }.contains(ext)) {
       return _document;
     }
     if (const {
-      'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz',
-      'iso', 'dmg', 'pkg', 'deb', 'rpm', 'cab',
+      'zip',
+      'rar',
+      '7z',
+      'tar',
+      'gz',
+      'bz2',
+      'xz',
+      'iso',
+      'dmg',
+      'pkg',
+      'deb',
+      'rpm',
+      'cab',
     }.contains(ext)) {
       return _archive;
     }
     if (const {
-      'dart', 'java', 'cpp', 'c', 'h', 'py', 'js', 'ts',
-      'php', 'rb', 'go', 'rs', 'swift', 'kt', 'cs',
+      'dart',
+      'java',
+      'cpp',
+      'c',
+      'h',
+      'py',
+      'js',
+      'ts',
+      'php',
+      'rb',
+      'go',
+      'rs',
+      'swift',
+      'kt',
+      'cs',
     }.contains(ext)) {
       return _code;
     }
@@ -133,29 +223,20 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
       duration: const Duration(milliseconds: 600),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.elasticOut,
-      ),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.5),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     Future.delayed(Duration(milliseconds: widget.index * 100), () {
       if (mounted) _controller.forward();
@@ -279,9 +360,7 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
               ),
             ],
           ),
-          child: Center(
-            child: Icon(kind.icon, color: kind.color, size: 32),
-          ),
+          child: Center(child: Icon(kind.icon, color: kind.color, size: 32)),
         ),
         if (isCompleted)
           Positioned(
@@ -298,11 +377,7 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
                   width: 2,
                 ),
               ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 12,
-              ),
+              child: Icon(Icons.check_rounded, color: Colors.white, size: 12),
             ),
           ),
       ],
@@ -316,8 +391,8 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
       children: [
         Text(
           widget.fileName,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -435,10 +510,7 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
                 radius: 0.8,
               ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: color.withValues(alpha: 0.3),
-                width: 1,
-              ),
+              border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
               boxShadow: [
                 BoxShadow(
                   color: color.withValues(alpha: 0.2),
@@ -450,11 +522,7 @@ class _LiquidDownloadCardState extends State<LiquidDownloadCard>
             ),
             child: IconButton(
               onPressed: onTap,
-              icon: Icon(
-                icon,
-                color: color,
-                size: 20,
-              ),
+              icon: Icon(icon, color: color, size: 20),
               padding: EdgeInsets.zero,
             ),
           ),

@@ -51,7 +51,7 @@ class LiquidLockHeader extends StatelessWidget {
                           borderRadius: BorderRadius.circular(35),
                           gradient: RadialGradient(
                             colors: [
-                              Colors.white.withValues(alpha: 0.4),
+                              LiquidColors.textPrimary.withValues(alpha: 0.4),
                               Colors.transparent,
                             ],
                             radius: 0.7,
@@ -67,7 +67,7 @@ class LiquidLockHeader extends StatelessWidget {
                         builder: (context, double scaleValue, child) {
                           return Transform.scale(
                             scale: scaleValue,
-                            child: const Icon(
+                            child: Icon(
                               Icons.lock_outline,
                               size: 70,
                               color: Colors.white,
@@ -85,10 +85,10 @@ class LiquidLockHeader extends StatelessWidget {
         const SizedBox(height: 16),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: Colors.white,
+            color: LiquidColors.textPrimary,
             shadows: [
               Shadow(
                 color: Colors.black26,
@@ -101,10 +101,7 @@ class LiquidLockHeader extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           subtitle,
-          style: TextStyle(
-            color: Colors.grey.shade400,
-            fontSize: 14,
-          ),
+          style: TextStyle(color: LiquidColors.textSecondary, fontSize: 14),
         ),
       ],
     );

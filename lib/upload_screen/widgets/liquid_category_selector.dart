@@ -92,7 +92,7 @@ class _LiquidCategorySelectorState extends State<LiquidCategorySelector>
                 Text(
                   'Category:',
                   style: TextStyle(
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     fontSize: 14,
                   ),
                 ),
@@ -102,8 +102,8 @@ class _LiquidCategorySelectorState extends State<LiquidCategorySelector>
                     value: widget.selectedCategory,
                     isExpanded: true,
                     dropdownColor: LiquidColors.backgroundLight,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: LiquidColors.textPrimary,
                       fontSize: 14,
                     ),
                     underline: const SizedBox(),
@@ -127,7 +127,7 @@ class _LiquidCategorySelectorState extends State<LiquidCategorySelector>
                           const SizedBox(width: 8),
                           Text(
                             category,
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: LiquidColors.textPrimary),
                           ),
                         ],
                       ),

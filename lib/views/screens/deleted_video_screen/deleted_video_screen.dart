@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/download_screen/widgets/view.dart';
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
+import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/views/screens/deleted_video_screen/widgets/view.dart';
 
 class DeletedVideosScreen extends StatefulWidget {
@@ -70,7 +71,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       bool hasHidden = false;
 
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList('videoLibrary') ?? [];
+      final mediaList =
+          prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
       final updatedMediaList = <String>[];
 
       for (final mediaData in mediaList) {
@@ -94,7 +96,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       }
 
       if (hasHidden) {
-        await prefs.setStringList('videoLibrary', updatedMediaList);
+        await prefs.setStringList(
+          VaultContext.instance.libraryKey,
+          updatedMediaList,
+        );
         await _loadDeletedVideos();
 
         if (mounted) {
@@ -115,7 +120,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     try {
       await Future.delayed(const Duration(milliseconds: 300));
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList('videoLibrary') ?? [];
+      final mediaList =
+          prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
 
       setState(() {
         _deletedVideos.clear();
@@ -177,7 +183,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 color: LiquidColors.accentBlue.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.lock_open_rounded,
                 color: LiquidColors.accentBlue,
                 size: 18,
@@ -187,8 +193,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
                 ),
@@ -199,7 +205,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         content: Text(
           body,
           style: TextStyle(
-            color: Colors.grey.shade300,
+            color: LiquidColors.textSecondary,
             height: 1.5,
             fontSize: 13,
           ),
@@ -210,7 +216,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             ),
-            child: const Text(
+            child: Text(
               'Got it',
               style: TextStyle(
                 color: LiquidColors.accentBlue,
@@ -235,7 +241,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     if (!mounted) return;
 
     final prefs = await SharedPreferences.getInstance();
-    final mediaList = prefs.getStringList('videoLibrary') ?? [];
+    final mediaList =
+        prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
     int hiddenCount = 0;
     for (final mediaData in mediaList) {
       try {
@@ -292,18 +299,18 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     color: LiquidColors.success.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.lock_open_rounded,
                     color: LiquidColors.success,
                     size: 18,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Recover deleted data',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: LiquidColors.textPrimary,
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
                     ),
@@ -319,7 +326,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   '$hiddenCount hidden ${hiddenCount == 1 ? "file" : "files"} can be brought back. '
                   'Type your recovery email exactly to restore everything to your library.',
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: LiquidColors.textSecondary,
                     height: 1.5,
                     fontSize: 13,
                   ),
@@ -330,7 +337,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   child: Text(
                     'Hint: ${RecoveryService.mask(storedEmail)}',
                     style: TextStyle(
-                      color: Colors.grey.shade500,
+                      color: LiquidColors.textTertiary,
                       fontSize: 11,
                       fontFamily: 'monospace',
                     ),
@@ -345,27 +352,29 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   onChanged: (_) => setDialogState(() {}),
                   cursorColor: LiquidColors.success,
                   style: TextStyle(
-                    color: matches ? LiquidColors.success : Colors.white,
+                    color: matches
+                        ? LiquidColors.success
+                        : LiquidColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
                     hintText: 'you@example.com',
                     hintStyle: TextStyle(
-                      color: Colors.grey.shade700,
+                      color: LiquidColors.textTertiary,
                       fontSize: 13,
                     ),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.04),
+                    fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
                     prefixIcon: Icon(
                       Icons.alternate_email_rounded,
                       color: matches
                           ? LiquidColors.success
-                          : Colors.grey.shade500,
+                          : LiquidColors.textTertiary,
                       size: 18,
                     ),
                     suffixIcon: matches
-                        ? const Icon(
+                        ? Icon(
                             Icons.check_circle_rounded,
                             color: LiquidColors.success,
                             size: 18,
@@ -378,13 +387,13 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -413,7 +422,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 child: Text(
                   'Cancel',
                   style: TextStyle(
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -433,7 +442,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   style: TextStyle(
                     color: matches
                         ? LiquidColors.success
-                        : Colors.grey.shade600,
+                        : LiquidColors.textTertiary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -446,7 +455,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
 
     if (ok != true || !mounted) return;
 
-    final freshList = prefs.getStringList('videoLibrary') ?? [];
+    final freshList =
+        prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
     final updatedMediaList = <String>[];
     int restored = 0;
     for (final mediaData in freshList) {
@@ -465,7 +475,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         updatedMediaList.add(mediaData);
       }
     }
-    await prefs.setStringList('videoLibrary', updatedMediaList);
+    await prefs.setStringList(
+      VaultContext.instance.libraryKey,
+      updatedMediaList,
+    );
     if (!mounted) return;
     FlushBarHelper.flushBarSuccessMessage(
       '$restored ${restored == 1 ? "file" : "files"} restored to your library',
@@ -520,18 +533,18 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     color: LiquidColors.success.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.restore_rounded,
                     color: LiquidColors.success,
                     size: 18,
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Confirm restore',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: LiquidColors.textPrimary,
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
                     ),
@@ -547,7 +560,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   'Restoring deleted items requires your recovery email. '
                   'Type it exactly as you set it up to bring "${video.title}" back to your library.',
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: LiquidColors.textSecondary,
                     height: 1.5,
                     fontSize: 13,
                   ),
@@ -558,7 +571,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   child: Text(
                     'Hint: ${RecoveryService.mask(storedEmail)}',
                     style: TextStyle(
-                      color: Colors.grey.shade500,
+                      color: LiquidColors.textTertiary,
                       fontSize: 11,
                       fontFamily: 'monospace',
                     ),
@@ -578,27 +591,29 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   onChanged: (_) => setDialogState(() {}),
                   cursorColor: LiquidColors.success,
                   style: TextStyle(
-                    color: matches ? LiquidColors.success : Colors.white,
+                    color: matches
+                        ? LiquidColors.success
+                        : LiquidColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
                     hintText: 'you@tabsap.com',
                     hintStyle: TextStyle(
-                      color: Colors.grey.shade700,
+                      color: LiquidColors.textTertiary,
                       fontSize: 13,
                     ),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.04),
+                    fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
                     prefixIcon: Icon(
                       Icons.alternate_email_rounded,
                       color: matches
                           ? LiquidColors.success
-                          : Colors.grey.shade500,
+                          : LiquidColors.textTertiary,
                       size: 18,
                     ),
                     suffixIcon: matches
-                        ? const Icon(
+                        ? Icon(
                             Icons.check_circle_rounded,
                             color: LiquidColors.success,
                             size: 18,
@@ -611,13 +626,13 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.08),
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -646,7 +661,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 child: Text(
                   'Cancel',
                   style: TextStyle(
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -666,7 +681,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   style: TextStyle(
                     color: matches
                         ? LiquidColors.success
-                        : Colors.grey.shade600,
+                        : LiquidColors.textTertiary,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -684,7 +699,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   Future<void> _restoreVideo(VideoItem video) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList('videoLibrary') ?? [];
+      final mediaList =
+          prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
       final updatedMediaList = <String>[];
 
       for (final mediaData in mediaList) {
@@ -704,7 +720,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         }
       }
 
-      await prefs.setStringList('videoLibrary', updatedMediaList);
+      await prefs.setStringList(
+        VaultContext.instance.libraryKey,
+        updatedMediaList,
+      );
       if (!mounted) return;
       FlushBarHelper.flushBarSuccessMessage(
         '"${video.title}" restored successfully',
@@ -723,7 +742,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   Future<void> _permanentDelete(VideoItem video) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList('videoLibrary') ?? [];
+      final mediaList =
+          prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
       final updatedMediaList = <String>[];
 
       for (final mediaData in mediaList) {
@@ -741,7 +761,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         }
       }
 
-      await prefs.setStringList('videoLibrary', updatedMediaList);
+      await prefs.setStringList(
+        VaultContext.instance.libraryKey,
+        updatedMediaList,
+      );
       if (!mounted) return;
       FlushBarHelper.flushBarErrorMessage(
         '"${video.title}" hidden — recoverable via email',
@@ -762,7 +785,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList('videoLibrary') ?? [];
+      final mediaList =
+          prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
       final updatedMediaList = <String>[];
 
       for (final mediaData in mediaList) {
@@ -782,7 +806,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         }
       }
 
-      await prefs.setStringList('videoLibrary', updatedMediaList);
+      await prefs.setStringList(
+        VaultContext.instance.libraryKey,
+        updatedMediaList,
+      );
       if (!mounted) return;
       FlushBarHelper.flushBarSuccessMessage(
         'Trash hidden — recoverable via email',
@@ -837,24 +864,27 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   ),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(Icons.error, color: LiquidColors.error, size: 30),
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Error',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: LiquidColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: LiquidColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
@@ -869,7 +899,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('OK', style: TextStyle(color: Colors.white)),
+                child: Text(
+                  'OK',
+                  style: TextStyle(color: LiquidColors.textPrimary),
+                ),
               ),
             ],
           ),
@@ -917,7 +950,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   ),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Center(
+                child: Center(
                   child: Icon(
                     Icons.delete_sweep,
                     color: LiquidColors.error,
@@ -926,12 +959,12 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 'Empty Trash?',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: LiquidColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 12),
@@ -940,7 +973,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey.shade400,
+                  color: LiquidColors.textSecondary,
                   height: 1.5,
                 ),
               ),
@@ -955,11 +988,11 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        side: BorderSide(color: Colors.grey.shade700),
+                        side: BorderSide(color: LiquidColors.textTertiary),
                       ),
                       child: Text(
                         'Cancel',
-                        style: TextStyle(color: Colors.grey.shade400),
+                        style: TextStyle(color: LiquidColors.textSecondary),
                       ),
                     ),
                   ),
@@ -974,9 +1007,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                           borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         'Empty Trash',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: LiquidColors.textPrimary),
                       ),
                     ),
                   ),
@@ -1070,7 +1103,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             return Transform.scale(
               scale: value,
               child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                icon: Icon(Icons.arrow_back, color: LiquidColors.textPrimary),
                 onPressed: () => Navigator.pop(context),
               ),
             );
@@ -1100,7 +1133,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                         ),
                       ],
                     ),
-                    child: const Center(
+                    child: Center(
                       child: Icon(
                         Icons.delete_outline,
                         color: Colors.white,
@@ -1114,14 +1147,14 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Recycle Bin',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 20,
-                            color: Colors.white,
+                            color: LiquidColors.textPrimary,
                           ),
                         ),
                         if (_deletedVideos.isNotEmpty)
@@ -1131,7 +1164,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey.shade400,
+                              color: LiquidColors.textSecondary,
                             ),
                           ),
                       ],
@@ -1151,9 +1184,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               return Transform.scale(
                 scale: value,
                 child: IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.lock_open_rounded,
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                   ),
                   tooltip: 'Recover Deleted Data',
                   onPressed: _recoverHiddenData,
@@ -1170,7 +1203,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 return Transform.scale(
                   scale: value,
                   child: IconButton(
-                    icon: const Icon(Icons.delete_sweep, color: Colors.white),
+                    icon: Icon(
+                      Icons.delete_sweep,
+                      color: LiquidColors.textPrimary,
+                    ),
                     tooltip: 'Empty Trash',
                     onPressed: _showClearAllDialog,
                   ),
@@ -1271,10 +1307,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: LiquidColors.textPrimary),
                       decoration: InputDecoration(
                         hintText: 'Search deleted files...',
-                        hintStyle: TextStyle(color: Colors.grey.shade500),
+                        hintStyle: TextStyle(color: LiquidColors.textTertiary),
                         border: InputBorder.none,
                         isDense: true,
                       ),
@@ -1307,7 +1343,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         children: [
           Text(
             '${_filteredVideos.length} ${_filteredVideos.length == 1 ? 'file' : 'files'}',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+            style: TextStyle(color: LiquidColors.textSecondary, fontSize: 12),
           ),
           if (_searchController.text.isNotEmpty)
             TextButton(
@@ -1334,7 +1370,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             builder: (context, double value, child) {
               return Transform.scale(
                 scale: value,
-                child: const LiquidCircularProgress(
+                child: LiquidCircularProgress(
                   size: 96,
                   strokeWidth: 6,
                   colors: [
@@ -1350,7 +1386,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           const SizedBox(height: 20),
           Text(
             'Loading deleted files...',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            style: TextStyle(color: LiquidColors.textSecondary, fontSize: 14),
           ),
         ],
       ),

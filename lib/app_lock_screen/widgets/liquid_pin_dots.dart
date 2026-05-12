@@ -38,7 +38,7 @@ class LiquidPinDots extends StatelessWidget {
                         ? hasError
                         ? [LiquidColors.error, LiquidColors.error.withValues(alpha:0.5)]
                         : [LiquidColors.accentBlue, LiquidColors.primaryMid]
-                        : [Colors.white24, Colors.white12],
+                        : [LiquidColors.textPrimary.withValues(alpha: 0.24), LiquidColors.textPrimary.withValues(alpha: 0.12)],
                     center: Alignment.center,
                     radius: 0.8,
                   ),

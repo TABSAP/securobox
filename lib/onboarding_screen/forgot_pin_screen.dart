@@ -89,8 +89,10 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         return;
       }
       if (entered.toLowerCase() != email.toLowerCase()) {
-        setState(() => _emailError =
-            'Email doesn\'t match the one set up for recovery.');
+        setState(
+          () =>
+              _emailError = 'Email doesn\'t match the one set up for recovery.',
+        );
         HapticFeedback.heavyImpact();
         return;
       }
@@ -251,14 +253,17 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         children: [
           IconButton(
             onPressed: _resetting ? null : () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              color: LiquidColors.textPrimary,
+            ),
             tooltip: 'Back',
           ),
           const SizedBox(width: 4),
-          const Text(
+          Text(
             'Forgot PIN',
             style: TextStyle(
-              color: Colors.white,
+              color: LiquidColors.textPrimary,
               fontSize: 17,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.2,
@@ -295,7 +300,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
             child: Text(
               'Your files are encrypted with a key kept in your device\'s secure storage, separate from your PIN. Resetting the PIN keeps every video, photo, audio file, and document exactly where it is — you\'ll just choose a new PIN to unlock the app.',
               style: TextStyle(
-                color: Colors.grey.shade200,
+                color: LiquidColors.textSecondary,
                 fontSize: 13,
                 height: 1.5,
               ),
@@ -328,9 +333,11 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,7 +353,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               Text(
                 'WHAT STAYS INTACT',
                 style: TextStyle(
-                  color: Colors.grey.shade400,
+                  color: LiquidColors.textSecondary,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.6,
@@ -380,7 +387,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     child: Text(
                       items[i].text,
                       style: TextStyle(
-                        color: Colors.grey.shade300,
+                        color: LiquidColors.textSecondary,
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -427,10 +434,10 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Recovery email not set up',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
                   ),
@@ -439,7 +446,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                 Text(
                   'PIN reset requires a recovery email. To enable it, open Settings → PIN Recovery → Set up recovery, then come back here.',
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: LiquidColors.textSecondary,
                     fontSize: 12,
                     height: 1.5,
                   ),
@@ -461,9 +468,11 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
+            color: LiquidColors.textPrimary.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(
+              color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+            ),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,7 +484,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   color: LiquidColors.accentBlue.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.outgoing_mail,
                   color: LiquidColors.accentBlue,
                   size: 20,
@@ -486,10 +495,10 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Confirm your recovery email',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: LiquidColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                       ),
@@ -498,7 +507,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     Text(
                       'Enter the email you set up for recovery. A one-time code will be sent there once it matches.',
                       style: TextStyle(
-                        color: Colors.grey.shade300,
+                        color: LiquidColors.textSecondary,
                         fontSize: 12,
                         height: 1.4,
                       ),
@@ -515,7 +524,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
           child: Text(
             'RECOVERY EMAIL',
             style: TextStyle(
-              color: Colors.grey.shade400,
+              color: LiquidColors.textSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.6,
@@ -530,25 +539,25 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
           keyboardType: TextInputType.emailAddress,
           enabled: !_sendingCode && !_resetting,
           cursorColor: LiquidColors.accentBlue,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
           decoration: InputDecoration(
             hintText: masked,
             hintStyle: TextStyle(
-              color: Colors.grey.shade700,
+              color: LiquidColors.textTertiary,
               fontSize: 13,
               fontFamily: 'monospace',
             ),
             filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.04),
+            fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
             prefixIcon: Icon(
               Icons.alternate_email_rounded,
               color: hasEmailError
                   ? LiquidColors.error
-                  : Colors.grey.shade500,
+                  : LiquidColors.textTertiary,
               size: 18,
             ),
             contentPadding: const EdgeInsets.symmetric(
@@ -558,7 +567,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: LiquidColors.textPrimary.withValues(alpha: 0.08),
               ),
             ),
             enabledBorder: OutlineInputBorder(
@@ -566,7 +575,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               borderSide: BorderSide(
                 color: hasEmailError
                     ? LiquidColors.error
-                    : Colors.white.withValues(alpha: 0.08),
+                    : LiquidColors.textPrimary.withValues(alpha: 0.08),
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -581,7 +590,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: LiquidColors.textPrimary.withValues(alpha: 0.04),
               ),
             ),
           ),
@@ -602,7 +611,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               disabledBackgroundColor: LiquidColors.accentBlue.withValues(
                 alpha: 0.4,
               ),
-              foregroundColor: Colors.white,
+              foregroundColor: LiquidColors.textPrimary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -612,16 +621,20 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_sendingCode)
-                  const SizedBox(
+                  SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.2,
-                      color: Colors.white,
+                      color: LiquidColors.textPrimary,
                     ),
                   )
                 else
-                  const Icon(Icons.mail_outline_rounded, size: 18),
+                  const Icon(
+                    Icons.mail_outline_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                 const SizedBox(width: 10),
                 Text(
                   _sendingCode ? 'Opening email…' : 'Send recovery code',
@@ -629,6 +642,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.2,
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -671,7 +685,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   color: LiquidColors.accentBlue.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.mark_email_read_outlined,
                   color: LiquidColors.accentBlue,
                   size: 20,
@@ -682,10 +696,10 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Code sent',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: LiquidColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                       ),
@@ -694,7 +708,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     Text(
                       'Open the email at $masked and paste the code below.',
                       style: TextStyle(
-                        color: Colors.grey.shade300,
+                        color: LiquidColors.textSecondary,
                         fontSize: 12,
                         height: 1.4,
                       ),
@@ -711,7 +725,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
           child: Text(
             'RECOVERY CODE',
             style: TextStyle(
-              color: Colors.grey.shade400,
+              color: LiquidColors.textSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.6,
@@ -727,8 +741,8 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
           textAlign: TextAlign.center,
           cursorColor: LiquidColors.accentBlue,
           enabled: !_resetting,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w800,
             letterSpacing: 2,
@@ -737,14 +751,14 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
           decoration: InputDecoration(
             hintText: 'XXXX-XXXX-XXXX-XXXX',
             hintStyle: TextStyle(
-              color: Colors.grey.shade700,
+              color: LiquidColors.textTertiary,
               fontSize: 14,
               fontWeight: FontWeight.w700,
               letterSpacing: 2,
               fontFamily: 'monospace',
             ),
             filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.04),
+            fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 16,
@@ -752,7 +766,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: LiquidColors.textPrimary.withValues(alpha: 0.08),
               ),
             ),
             enabledBorder: OutlineInputBorder(
@@ -760,7 +774,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               borderSide: BorderSide(
                 color: hasCodeError
                     ? LiquidColors.error
-                    : Colors.white.withValues(alpha: 0.08),
+                    : LiquidColors.textPrimary.withValues(alpha: 0.08),
               ),
             ),
             focusedBorder: OutlineInputBorder(
@@ -775,7 +789,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
               borderSide: BorderSide(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: LiquidColors.textPrimary.withValues(alpha: 0.04),
               ),
             ),
           ),
@@ -794,7 +808,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               disabledBackgroundColor: LiquidColors.success.withValues(
                 alpha: 0.4,
               ),
-              foregroundColor: Colors.white,
+              foregroundColor: LiquidColors.textPrimary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -804,12 +818,12 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_resetting)
-                  const SizedBox(
+                  SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2.2,
-                      color: Colors.white,
+                      color: LiquidColors.textPrimary,
                     ),
                   )
                 else
@@ -834,7 +848,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
             child: Text(
               _sendingCode ? 'Sending…' : 'Re-send code',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -885,7 +899,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         child: Text(
           'Cancel',
           style: TextStyle(
-            color: Colors.grey.shade400,
+            color: LiquidColors.textSecondary,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),

@@ -233,13 +233,13 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
             onPressed: _stage == _Stage.saving
                 ? null
                 : () => Navigator.of(context).pop(false),
-            icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+            icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           ),
           const SizedBox(width: 4),
           Text(
             _stage == _Stage.code ? 'Enter Recovery Code' : 'Set a New PIN',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
               fontSize: 17,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.2,
@@ -284,7 +284,7 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
             child: Text(
               'RECOVERY EMAIL',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.6,
@@ -298,22 +298,22 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
             enableSuggestions: false,
             keyboardType: TextInputType.emailAddress,
             cursorColor: LiquidColors.accentBlue,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
             decoration: InputDecoration(
               hintText: 'you@example.com',
               hintStyle: TextStyle(
-                color: Colors.grey.shade700,
+                color: LiquidColors.textTertiary,
                 fontSize: 13,
               ),
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.04),
+              fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
               prefixIcon: Icon(
                 Icons.alternate_email_rounded,
-                color: Colors.grey.shade500,
+                color: LiquidColors.textTertiary,
                 size: 18,
               ),
               contentPadding:
@@ -321,12 +321,12 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                    BorderSide(color: LiquidColors.textPrimary.withValues(alpha: 0.08)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                    BorderSide(color: LiquidColors.textPrimary.withValues(alpha: 0.08)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -341,7 +341,7 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
             child: Text(
               'RECOVERY CODE',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.6,
@@ -354,8 +354,8 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
             enableSuggestions: false,
             textCapitalization: TextCapitalization.characters,
             cursorColor: LiquidColors.accentBlue,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.w800,
               letterSpacing: 3,
@@ -364,25 +364,25 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
             decoration: InputDecoration(
               hintText: 'XXXX-XXXX-XXXX-XXXX',
               hintStyle: TextStyle(
-                color: Colors.grey.shade700,
+                color: LiquidColors.textTertiary,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 3,
                 fontFamily: 'monospace',
               ),
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.04),
+              fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                    BorderSide(color: LiquidColors.textPrimary.withValues(alpha: 0.08)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                    BorderSide(color: LiquidColors.textPrimary.withValues(alpha: 0.08)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -400,22 +400,22 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03),
+              color: LiquidColors.textPrimary.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(12),
               border:
-                  Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                  Border.all(color: LiquidColors.textPrimary.withValues(alpha: 0.06)),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(Icons.info_outline_rounded,
-                    size: 14, color: Colors.grey.shade500),
+                    size: 14, color: LiquidColors.textTertiary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Dashes and spaces are optional. The check is case-insensitive.',
                     style: TextStyle(
-                      color: Colors.grey.shade400,
+                      color: LiquidColors.textSecondary,
                       fontSize: 11,
                       height: 1.4,
                     ),
@@ -434,7 +434,7 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
                 backgroundColor: LiquidColors.accentBlue,
                 disabledBackgroundColor:
                     LiquidColors.accentBlue.withValues(alpha: 0.3),
-                foregroundColor: Colors.white,
+                foregroundColor: LiquidColors.textPrimary,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -444,12 +444,12 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (_verifying)
-                    const SizedBox(
+                    SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: LiquidColors.textPrimary,
                       ),
                     )
                   else
@@ -508,12 +508,12 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
           decoration: BoxDecoration(
             color: selected
                 ? LiquidColors.accentBlue.withValues(alpha: 0.16)
-                : Colors.white.withValues(alpha: 0.04),
+                : LiquidColors.textPrimary.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: selected
                   ? LiquidColors.accentBlue
-                  : Colors.white.withValues(alpha: 0.08),
+                  : LiquidColors.textPrimary.withValues(alpha: 0.08),
               width: selected ? 1.4 : 1,
             ),
           ),
@@ -525,7 +525,7 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
                 decoration: BoxDecoration(
                   color: selected
                       ? LiquidColors.accentBlue.withValues(alpha: 0.18)
-                      : Colors.white.withValues(alpha: 0.06),
+                      : LiquidColors.textPrimary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 alignment: Alignment.center,
@@ -534,7 +534,7 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
                   style: TextStyle(
                     color: selected
                         ? LiquidColors.accentBlue
-                        : Colors.grey.shade400,
+                        : LiquidColors.textSecondary,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
@@ -547,8 +547,8 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
                   children: [
                     Text(
                       '$len digits',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: LiquidColors.textPrimary,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -559,7 +559,7 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
                           ? 'Quick to type, less entropy'
                           : 'Stronger, takes a moment longer',
                       style: TextStyle(
-                        color: Colors.grey.shade500,
+                        color: LiquidColors.textTertiary,
                         fontSize: 12,
                       ),
                     ),
@@ -572,7 +572,7 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
                     : Icons.chevron_right_rounded,
                 color: selected
                     ? LiquidColors.accentBlue
-                    : Colors.grey.shade500,
+                    : LiquidColors.textTertiary,
                 size: 20,
               ),
             ],
@@ -665,10 +665,10 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          const Text(
+          Text(
             'Saving new PIN…',
             style: TextStyle(
-              color: Colors.white,
+              color: LiquidColors.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -704,8 +704,8 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
               fontSize: 20,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.2,
@@ -718,7 +718,7 @@ class _RecoveryEntryScreenState extends State<RecoveryEntryScreen> {
               subtitle,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
                 fontSize: 13,
                 height: 1.5,
               ),

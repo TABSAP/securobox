@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../../../utils/media_helper.dart';
 
@@ -16,11 +17,11 @@ class DownloadDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF1A1A3E),
+      backgroundColor: LiquidColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: LiquidColors.textPrimary.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -33,18 +34,18 @@ class DownloadDialog extends StatelessWidget {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF4A6DE5), Color(0xFF4788FF)],
+                gradient: LinearGradient(
+                  colors: [LiquidColors.accentBlue, LiquidColors.accentBlue],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Color(0xFF4788FF).withValues(alpha: 0.3),
+                  color: LiquidColors.accentBlue.withValues(alpha: 0.3),
                   width: 2,
                 ),
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.download_rounded,
                   size: 36,
@@ -55,10 +56,10 @@ class DownloadDialog extends StatelessWidget {
             const SizedBox(height: 20),
             Text(
               'Download ${MediaHelper.getFileTypeLabel(path)}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -69,7 +70,7 @@ class DownloadDialog extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     height: 1.5,
                   ),
                 ),
@@ -79,7 +80,7 @@ class DownloadDialog extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey.shade500,
+                    color: LiquidColors.textTertiary,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -97,14 +98,14 @@ class DownloadDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       side: BorderSide(
-                        color: Colors.grey.shade700,
+                        color: LiquidColors.textTertiary,
                         width: 1,
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: LiquidColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -118,14 +119,14 @@ class DownloadDialog extends StatelessWidget {
                       onConfirm();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4788FF),
+                      backgroundColor: LiquidColors.accentBlue,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
+                    child: Text(
                       'Download',
                       style: TextStyle(
                         color: Colors.white,

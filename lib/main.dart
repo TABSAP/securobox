@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenshot_blocker/flutter_screenshot_blocker.dart';
 import 'package:video_player_app/utils/session_manager.dart';
+import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 import 'app.dart';
 
@@ -18,6 +19,8 @@ void main() async {
     }
   }
 
+  await ThemeController.instance.init();
+
   await SessionManager.instance.init();
 
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
@@ -26,6 +29,5 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
   runApp(const MyApp());
 }

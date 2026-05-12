@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:video_player_app/download_screen/widgets/view.dart';
 import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/title_helper.dart';
+import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 import '../upload_screen/widgets/view.dart';
 
@@ -28,7 +29,8 @@ class _UploadScreenState extends State<UploadScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  static const String _customCategoriesPrefKey = 'customCategories';
+  String get _customCategoriesPrefKey =>
+      VaultContext.instance.customCategoriesKey;
 
   static const List<String> _builtInCategories = [
     "Videos",
@@ -45,11 +47,12 @@ class _UploadScreenState extends State<UploadScreen>
 
   final List<String> _customCategories = [];
 
-  List<String> get videoCategories =>
-      [..._builtInCategories, ..._customCategories];
+  List<String> get videoCategories => [
+    ..._builtInCategories,
+    ..._customCategories,
+  ];
 
-  bool _isBuiltIn(String category) =>
-      _builtInCategories.contains(category);
+  bool _isBuiltIn(String category) => _builtInCategories.contains(category);
 
   @override
   void initState() {
@@ -122,6 +125,13 @@ class _UploadScreenState extends State<UploadScreen>
 
       final fileType = _fileTypeForCategory(category);
       final allowedExtensions = _allowedExtensionsForCategory(category);
+      // When we ask the OS picker for a specific media type (video / image /
+      // audio) or "any", it has already restricted what the user can choose.
+      // Trust that result instead of re-filtering it through a narrower
+      // extension whitelist — that was wrongly rejecting valid audio files
+      // (e.g. .m4a / .mka / .amr) whose extension wasn't in the local list,
+      // or files whose cached path came back without an extension.
+      final trustPicker = fileType != FileType.custom;
 
       final result = await FilePicker.platform.pickFiles(
         type: fileType,
@@ -137,9 +147,10 @@ class _UploadScreenState extends State<UploadScreen>
         final accepted = <File>[];
         final rejected = <String>[];
         for (final platformFile in result.files) {
-          if (platformFile.path == null) continue;
-          if (_isAcceptedForCategory(platformFile.path!, category)) {
-            accepted.add(File(platformFile.path!));
+          final path = platformFile.path;
+          if (path == null) continue;
+          if (trustPicker || _isAcceptedForCategory(path, category)) {
+            accepted.add(File(path));
           } else {
             rejected.add(platformFile.name);
           }
@@ -256,11 +267,26 @@ class _UploadScreenState extends State<UploadScreen>
     'aac',
     'flac',
     'ogg',
+    'oga',
     'm4a',
+    'm4b',
+    'm4p',
     'wma',
     'aiff',
+    'aif',
     'alac',
     'opus',
+    'amr',
+    'mka',
+    'mid',
+    'midi',
+    'ape',
+    'ac3',
+    'dts',
+    'ra',
+    'rm',
+    '3ga',
+    'caf',
   ];
   static const _docExts = [
     'pdf',
@@ -352,9 +378,13 @@ class _UploadScreenState extends State<UploadScreen>
       '.aac',
       '.flac',
       '.ogg',
+      '.oga',
       '.m4a',
+      '.m4b',
+      '.m4p',
       '.wma',
       '.aiff',
+      '.aif',
       '.alac',
       '.opus',
       '.mid',
@@ -364,10 +394,10 @@ class _UploadScreenState extends State<UploadScreen>
       '.ra',
       '.rm',
       '.mka',
-      '.m4b',
-      '.m4p',
       '.ac3',
       '.dts',
+      '.3ga',
+      '.caf',
     }.contains(ext)) {
       return 'audio';
     } else if (const {
@@ -433,12 +463,12 @@ class _UploadScreenState extends State<UploadScreen>
                   ),
                 ),
                 const SizedBox(height: 18),
-                const Text(
+                Text(
                   'Permission Required',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -447,7 +477,7 @@ class _UploadScreenState extends State<UploadScreen>
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     height: 1.5,
                   ),
                 ),
@@ -462,12 +492,12 @@ class _UploadScreenState extends State<UploadScreen>
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
-                          side: BorderSide(color: Colors.grey.shade700),
+                          side: BorderSide(color: LiquidColors.textTertiary),
                         ),
                         child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.grey.shade300,
+                            color: LiquidColors.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -488,10 +518,10 @@ class _UploadScreenState extends State<UploadScreen>
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Open Settings',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: LiquidColors.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -517,7 +547,8 @@ class _UploadScreenState extends State<UploadScreen>
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final videoList = prefs.getStringList('videoLibrary') ?? [];
+      final videoList =
+          prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
       final deleteOriginals = await ImportSettings.instance
           .deleteOriginalsEnabled();
 
@@ -571,7 +602,7 @@ class _UploadScreenState extends State<UploadScreen>
         } catch (_) {}
       }
 
-      await prefs.setStringList('videoLibrary', videoList);
+      await prefs.setStringList(VaultContext.instance.libraryKey, videoList);
 
       if (mounted) {
         setState(() {
@@ -723,9 +754,11 @@ class _UploadScreenState extends State<UploadScreen>
       key: const ValueKey('locked'),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+        ),
       ),
       child: Row(
         children: [
@@ -733,14 +766,16 @@ class _UploadScreenState extends State<UploadScreen>
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: LiquidColors.textPrimary.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              border: Border.all(
+                color: LiquidColors.textPrimary.withValues(alpha: 0.06),
+              ),
             ),
             child: Icon(
               Icons.lock_outline_rounded,
               size: 20,
-              color: Colors.grey.shade500,
+              color: LiquidColors.textTertiary,
             ),
           ),
           const SizedBox(width: 14),
@@ -751,7 +786,7 @@ class _UploadScreenState extends State<UploadScreen>
                 Text(
                   'Pick a category first',
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: LiquidColors.textSecondary,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -760,7 +795,7 @@ class _UploadScreenState extends State<UploadScreen>
                 Text(
                   'The upload step unlocks after you choose where the files belong.',
                   style: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: LiquidColors.textTertiary,
                     fontSize: 12,
                     height: 1.4,
                   ),
@@ -824,7 +859,9 @@ class _UploadScreenState extends State<UploadScreen>
       }
       final lower = name.toLowerCase();
       final existing = videoCategories.map((c) => c.toLowerCase()).toSet();
-      if (existing.contains(lower)) return 'A category with that name already exists';
+      if (existing.contains(lower)) {
+        return 'A category with that name already exists';
+      }
       return null;
     }
 
@@ -867,17 +904,17 @@ class _UploadScreenState extends State<UploadScreen>
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.create_new_folder_rounded,
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                     size: 28,
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'New category',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
@@ -887,7 +924,7 @@ class _UploadScreenState extends State<UploadScreen>
                   'Pick a name for your custom vault folder.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     fontSize: 12,
                     height: 1.4,
                   ),
@@ -905,44 +942,55 @@ class _UploadScreenState extends State<UploadScreen>
                       Navigator.of(dialogContext).pop(controller.text.trim());
                     }
                   },
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 14,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'e.g. Recipes, Workouts, Receipts',
                     hintStyle: TextStyle(
-                      color: Colors.grey.shade500,
+                      color: LiquidColors.textTertiary,
                       fontSize: 13,
                     ),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.04),
-                    counterStyle:
-                        TextStyle(color: Colors.grey.shade600, fontSize: 11),
+                    fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
+                    counterStyle: TextStyle(
+                      color: LiquidColors.textTertiary,
+                      fontSize: 11,
+                    ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 12,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                      borderSide: BorderSide(
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+                      borderSide: BorderSide(
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide:
-                          BorderSide(color: LiquidColors.accentBlue, width: 1.4),
+                      borderSide: BorderSide(
+                        color: LiquidColors.accentBlue,
+                        width: 1.4,
+                      ),
                     ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: LiquidColors.error),
+                      borderSide: BorderSide(color: LiquidColors.error),
                     ),
                     focusedErrorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: LiquidColors.error, width: 1.4),
+                      borderSide: BorderSide(
+                        color: LiquidColors.error,
+                        width: 1.4,
+                      ),
                     ),
                   ),
                 ),
@@ -953,17 +1001,16 @@ class _UploadScreenState extends State<UploadScreen>
                       child: OutlinedButton(
                         onPressed: () => Navigator.of(dialogContext).pop(),
                         style: OutlinedButton.styleFrom(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          side: BorderSide(color: Colors.grey.shade700),
+                          side: BorderSide(color: LiquidColors.textTertiary),
                         ),
                         child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.grey.shade300,
+                            color: LiquidColors.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -974,23 +1021,23 @@ class _UploadScreenState extends State<UploadScreen>
                       child: ElevatedButton(
                         onPressed: () {
                           if (formKey.currentState?.validate() ?? false) {
-                            Navigator.of(dialogContext)
-                                .pop(controller.text.trim());
+                            Navigator.of(
+                              dialogContext,
+                            ).pop(controller.text.trim());
                           }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: LiquidColors.accentBlue,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Add',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: LiquidColors.textPrimary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -1025,26 +1072,27 @@ class _UploadScreenState extends State<UploadScreen>
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: LiquidColors.backgroundLight,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Remove "$category"?',
-          style: const TextStyle(color: Colors.white, fontSize: 17),
+          style: TextStyle(color: LiquidColors.textPrimary, fontSize: 17),
         ),
         content: Text(
           'Files already imported under this category stay in your vault. '
           'You just won\'t be able to pick this folder for new imports.',
-          style: TextStyle(color: Colors.grey.shade300, height: 1.4),
+          style: TextStyle(color: LiquidColors.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey.shade400)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: LiquidColors.textSecondary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('Remove',
-                style: TextStyle(color: LiquidColors.error)),
+            child: Text('Remove', style: TextStyle(color: LiquidColors.error)),
           ),
         ],
       ),
@@ -1078,7 +1126,7 @@ class _UploadScreenState extends State<UploadScreen>
                 ),
               ],
             ),
-            child: const Center(
+            child: Center(
               child: Icon(
                 Icons.folder_copy_rounded,
                 color: Colors.white,
@@ -1103,12 +1151,12 @@ class _UploadScreenState extends State<UploadScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text(
+          Text(
             'Add to Vault',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: LiquidColors.textPrimary,
               letterSpacing: 0.2,
             ),
           ),
@@ -1116,7 +1164,7 @@ class _UploadScreenState extends State<UploadScreen>
             'Files are encrypted before they touch storage',
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey.shade500,
+              color: LiquidColors.textTertiary,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -1170,9 +1218,11 @@ class _UploadScreenState extends State<UploadScreen>
             shape: BoxShape.circle,
             color: done
                 ? accent.withValues(alpha: 0.18)
-                : Colors.white.withValues(alpha: 0.05),
+                : LiquidColors.textPrimary.withValues(alpha: 0.05),
             border: Border.all(
-              color: done ? accent : Colors.white.withValues(alpha: 0.12),
+              color: done
+                  ? accent
+                  : LiquidColors.textPrimary.withValues(alpha: 0.12),
               width: 1.4,
             ),
             boxShadow: done
@@ -1191,7 +1241,7 @@ class _UploadScreenState extends State<UploadScreen>
               : Text(
                   '$number',
                   style: TextStyle(
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                   ),
@@ -1200,8 +1250,8 @@ class _UploadScreenState extends State<UploadScreen>
         const SizedBox(width: 12),
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.1,
@@ -1215,15 +1265,17 @@ class _UploadScreenState extends State<UploadScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
+        ),
       ),
       child: Row(
         children: [
           Icon(
             Icons.lock_outline_rounded,
-            color: Colors.grey.shade500,
+            color: LiquidColors.textTertiary,
             size: 14,
           ),
           const SizedBox(width: 8),
@@ -1231,7 +1283,7 @@ class _UploadScreenState extends State<UploadScreen>
             child: Text(
               'Each file is encrypted with a unique IV. Originals never leave the import pipeline in plaintext.',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
                 fontSize: 11,
                 height: 1.4,
               ),
@@ -1246,9 +1298,11 @@ class _UploadScreenState extends State<UploadScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 36),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+        ),
       ),
       child: Column(
         children: [
@@ -1267,10 +1321,10 @@ class _UploadScreenState extends State<UploadScreen>
             child: Icon(_getCategoryIcon(category), size: 32, color: accent),
           ),
           const SizedBox(height: 14),
-          const Text(
+          Text(
             'No files selected yet',
             style: TextStyle(
-              color: Colors.white,
+              color: LiquidColors.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -1280,7 +1334,7 @@ class _UploadScreenState extends State<UploadScreen>
             'Use the card above to pick files. You can select multiple at once.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.grey.shade500,
+              color: LiquidColors.textTertiary,
               fontSize: 12,
               height: 1.5,
             ),
@@ -1319,8 +1373,8 @@ class _UploadScreenState extends State<UploadScreen>
                   children: [
                     Text(
                       '${_selectedFiles.length} file${_selectedFiles.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: LiquidColors.textPrimary,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1331,14 +1385,14 @@ class _UploadScreenState extends State<UploadScreen>
                       height: 4,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.grey.shade600,
+                        color: LiquidColors.textTertiary,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       totalText,
                       style: TextStyle(
-                        color: Colors.grey.shade400,
+                        color: LiquidColors.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1350,12 +1404,12 @@ class _UploadScreenState extends State<UploadScreen>
                   icon: Icon(
                     Icons.delete_sweep_outlined,
                     size: 16,
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                   ),
                   label: Text(
                     'Clear all',
                     style: TextStyle(
-                      color: Colors.grey.shade400,
+                      color: LiquidColors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1382,7 +1436,9 @@ class _UploadScreenState extends State<UploadScreen>
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+            border: Border.all(
+              color: LiquidColors.textPrimary.withValues(alpha: 0.06),
+            ),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
@@ -1393,7 +1449,7 @@ class _UploadScreenState extends State<UploadScreen>
               separatorBuilder: (_, _) => Divider(
                 height: 1,
                 thickness: 1,
-                color: Colors.white.withValues(alpha: 0.04),
+                color: LiquidColors.textPrimary.withValues(alpha: 0.04),
               ),
               itemBuilder: (context, index) {
                 final file = _selectedFiles[index];
@@ -1457,12 +1513,16 @@ class _UploadScreenState extends State<UploadScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.lock_rounded, size: 18, color: Colors.white),
+              Icon(
+                Icons.lock_rounded,
+                size: 18,
+                color: LiquidColors.textPrimary,
+              ),
               const SizedBox(width: 10),
               Text(
                 'Encrypt & Add to $category',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.3,
@@ -1472,13 +1532,13 @@ class _UploadScreenState extends State<UploadScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '${_selectedFiles.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
@@ -1616,12 +1676,14 @@ class _CategoryCard extends StatelessWidget {
                     end: Alignment.bottomRight,
                   )
                 : null,
-            color: selected ? null : Colors.white.withValues(alpha: 0.035),
+            color: selected
+                ? null
+                : LiquidColors.textPrimary.withValues(alpha: 0.035),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: selected
                   ? color.withValues(alpha: 0.85)
-                  : Colors.white.withValues(alpha: 0.07),
+                  : LiquidColors.textPrimary.withValues(alpha: 0.07),
               width: selected ? 1.4 : 1,
             ),
             boxShadow: selected
@@ -1645,14 +1707,14 @@ class _CategoryCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: selected
                       ? color.withValues(alpha: 0.18)
-                      : Colors.white.withValues(alpha: 0.05),
+                      : LiquidColors.textPrimary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
                   icon,
                   size: 16,
-                  color: selected ? color : Colors.grey.shade400,
+                  color: selected ? color : LiquidColors.textSecondary,
                 ),
               ),
               const SizedBox(width: 10),
@@ -1662,7 +1724,9 @@ class _CategoryCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: selected ? Colors.white : Colors.grey.shade300,
+                    color: selected
+                        ? LiquidColors.textPrimary
+                        : LiquidColors.textSecondary,
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                     letterSpacing: 0.1,
@@ -1681,16 +1745,16 @@ class _CategoryCard extends StatelessWidget {
                         color: color,
                       )
                     : isCustom
-                        ? Container(
-                            key: const ValueKey('custom-dot'),
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.6),
-                              shape: BoxShape.circle,
-                            ),
-                          )
-                        : const SizedBox(key: ValueKey('off'), width: 16),
+                    ? Container(
+                        key: const ValueKey('custom-dot'),
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.6),
+                          shape: BoxShape.circle,
+                        ),
+                      )
+                    : const SizedBox(key: ValueKey('off'), width: 16),
               ),
             ],
           ),
@@ -1715,11 +1779,10 @@ class _AddCategoryTile extends StatelessWidget {
         splashColor: LiquidColors.accentBlue.withValues(alpha: 0.12),
         highlightColor: LiquidColors.accentBlue.withValues(alpha: 0.06),
         child: DottedBorderBox(
-          color: Colors.white.withValues(alpha: 0.18),
+          color: LiquidColors.textPrimary.withValues(alpha: 0.18),
           radius: 16,
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
                 Container(
@@ -1742,10 +1805,10 @@ class _AddCategoryTile extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         'Add custom',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: LiquidColors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.1,
@@ -1757,7 +1820,7 @@ class _AddCategoryTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.grey.shade500,
+                          color: LiquidColors.textTertiary,
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                         ),

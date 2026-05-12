@@ -1,7 +1,24 @@
 import 'package:flutter/material.dart';
 
+/// App color tokens. Values resolve against the current theme brightness, which
+/// is set by [ThemeController] via [applyBrightness] (and re-applied whenever
+/// the theme mode or platform brightness changes). Everything still reads as
+/// `LiquidColors.x`, so call sites didn't change — but in light mode the
+/// surfaces become light and the text tokens become dark.
 class LiquidColors {
+  LiquidColors._();
 
+  static bool _dark = true;
+  static bool get isDark => _dark;
+
+  /// Called by [ThemeController]; safe to call from anywhere.
+  static void applyBrightness(Brightness brightness) {
+    _dark = brightness == Brightness.dark;
+  }
+
+  static Color _pick(Color dark, Color light) => _dark ? dark : light;
+
+  // ── Brand gradient (kept vivid in both modes — used for accent chrome) ──
   static const Color primaryStart = Color(0xFF4158D0);
   static const Color primaryMid = Color(0xFFC850C0);
   static const Color primaryEnd = Color(0xFFFFCC70);
@@ -9,55 +26,110 @@ class LiquidColors {
   static const Color secondaryStart = Color(0xFF0093E9);
   static const Color secondaryEnd = Color(0xFF80D0C7);
 
-  static const Color backgroundDeep = Color(0xFF0A0F1E);
-  static const Color backgroundMid = Color(0xFF141B2B);
-  static const Color backgroundLight = Color(0xFF1E2738);
+  // ── Surfaces ──
+  /// The page canvas / scaffold background.
+  static Color get backgroundDeep =>
+      _pick(const Color(0xFF0A0F1E), const Color(0xFFF4F6FB));
 
-  static const Color accentBlue = Color(0xFF3B82F6);
-  static const Color accentPurple = Color(0xFF8B5CF6);
-  static const Color accentPink = Color(0xFFEC4899);
-  static const Color accentOrange = Color(0xFFF59E0B);
+  /// Mid-elevation surface (cards, sheets).
+  static Color get backgroundMid =>
+      _pick(const Color(0xFF141B2B), const Color(0xFFFFFFFF));
 
-  static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
-  static const Color info = Color(0xFF3B82F6);
+  /// Higher-elevation surface (dialogs, raised cards).
+  static Color get backgroundLight =>
+      _pick(const Color(0xFF1E2738), const Color(0xFFF1F4FA));
 
+  /// Solid card surface (use when you want an opaque card fill).
+  static Color get surface =>
+      _pick(const Color(0xFF1A1F2E), const Color(0xFFFFFFFF));
+
+  /// Subtle fill for chips / inactive tiles / input fields.
+  static Color get surfaceMuted =>
+      _pick(const Color(0x14FFFFFF), const Color(0xFFEDF0F7));
+
+  /// Hairline border on cards.
+  static Color get cardBorder =>
+      _pick(const Color(0x12FFFFFF), const Color(0xFFE1E6EF));
+
+  static Color get divider =>
+      _pick(const Color(0x0FFFFFFF), const Color(0xFFE6EAF1));
+
+  /// Drop-shadow color for elevated surfaces.
+  static Color get shadow =>
+      _pick(const Color(0x4D000000), const Color(0x14000000));
+
+  /// Full-screen modal scrim / privacy overlay backdrop.
+  static Color get scrim =>
+      _pick(const Color(0x99000000), const Color(0x66000000));
+
+  // ── Text ──
+  static Color get textPrimary =>
+      _pick(const Color(0xFFFFFFFF), const Color(0xFF1A1F2E));
+  static Color get textSecondary =>
+      _pick(const Color(0xFF9CA3AF), const Color(0xFF5B6472));
+  static Color get textTertiary =>
+      _pick(const Color(0xFF6B7280), const Color(0xFF8A93A3));
+
+  // ── Accents (slightly deepened in light mode for contrast on white) ──
+  static Color get accentBlue =>
+      _pick(const Color(0xFF3B82F6), const Color(0xFF2563EB));
+  static Color get accentPurple =>
+      _pick(const Color(0xFF8B5CF6), const Color(0xFF7C3AED));
+  static Color get accentPink =>
+      _pick(const Color(0xFFEC4899), const Color(0xFFDB2777));
+  static Color get accentOrange =>
+      _pick(const Color(0xFFF59E0B), const Color(0xFFD97706));
+
+  static Color get success =>
+      _pick(const Color(0xFF10B981), const Color(0xFF059669));
+  static Color get warning =>
+      _pick(const Color(0xFFF59E0B), const Color(0xFFD97706));
+  static Color get error =>
+      _pick(const Color(0xFFEF4444), const Color(0xFFDC2626));
+  static Color get info => accentBlue;
+
+  // ── Gradients ──
   static Gradient get primaryGradient => const LinearGradient(
-    colors: [primaryStart, primaryMid, primaryEnd],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+        colors: [primaryStart, primaryMid, primaryEnd],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
 
   static Gradient get secondaryGradient => const LinearGradient(
-    colors: [secondaryStart, secondaryEnd],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+        colors: [secondaryStart, secondaryEnd],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
 
-  static Gradient get backgroundGradient => const LinearGradient(
-    colors: [backgroundDeep, backgroundMid, backgroundLight],
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    stops: [0.0, 0.5, 1.0],
-  );
+  static Gradient get backgroundGradient => LinearGradient(
+        colors: [backgroundDeep, backgroundMid, backgroundLight],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        stops: const [0.0, 0.5, 1.0],
+      );
 
   static Gradient get liquidFlowGradient => const RadialGradient(
-    colors: [primaryStart, primaryMid, primaryEnd],
-    center: Alignment(-0.3, -0.3),
-    radius: 1.5,
-    stops: [0.0, 0.5, 1.0],
-  );
+        colors: [primaryStart, primaryMid, primaryEnd],
+        center: Alignment(-0.3, -0.3),
+        radius: 1.5,
+        stops: [0.0, 0.5, 1.0],
+      );
 
-  static Gradient get cardGradient => LinearGradient(
-    colors: [
-      backgroundLight.withValues(alpha: 0.9),
-      backgroundMid.withValues(alpha: 0.95),
-      backgroundDeep.withValues(alpha: 0.9),
-    ],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+  static Gradient get cardGradient => _dark
+      ? LinearGradient(
+          colors: [
+            backgroundLight.withValues(alpha: 0.9),
+            backgroundMid.withValues(alpha: 0.95),
+            backgroundDeep.withValues(alpha: 0.9),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        )
+      : const LinearGradient(
+          colors: [Color(0xFFFFFFFF), Color(0xFFF6F8FC), Color(0xFFEEF2F9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
 
   static Color getMediaColor(String type) {
     switch (type) {
@@ -77,32 +149,41 @@ class LiquidColors {
   static Gradient getMediaGradient(String type) {
     switch (type) {
       case 'video':
-        return const LinearGradient(
-          colors: [Color(0xFF3B82F6), Color(0xFF8B5CF6)],
+        return LinearGradient(
+          colors: [accentBlue, accentPurple],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       case 'image':
-        return const LinearGradient(
-          colors: [Color(0xFF10B981), Color(0xFF34D399)],
+        return LinearGradient(
+          colors: [
+            success,
+            _pick(const Color(0xFF34D399), const Color(0xFF10B981)),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       case 'audio':
-        return const LinearGradient(
-          colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
+        return LinearGradient(
+          colors: [accentPurple, accentPink],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       case 'document':
-        return const LinearGradient(
-          colors: [Color(0xFFF59E0B), Color(0xFFF97316)],
+        return LinearGradient(
+          colors: [
+            accentOrange,
+            _pick(const Color(0xFFF97316), const Color(0xFFEA580C)),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       default:
-        return const LinearGradient(
-          colors: [Color(0xFFEC4899), Color(0xFFF43F5E)],
+        return LinearGradient(
+          colors: [
+            accentPink,
+            _pick(const Color(0xFFF43F5E), const Color(0xFFE11D48)),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );

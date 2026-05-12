@@ -197,7 +197,7 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
         Text(
           widget.video.title,
           style: TextStyle(
-            color: isLocked ? LiquidColors.warning : Colors.white,
+            color: isLocked ? LiquidColors.warning : LiquidColors.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -247,11 +247,11 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
         if (widget.video.deletedDate != null)
           Row(
             children: [
-              Icon(Icons.access_time, size: 14, color: Colors.grey.shade500),
+              Icon(Icons.access_time, size: 14, color: LiquidColors.textTertiary),
               const SizedBox(width: 4),
               Text(
                 'Deleted ${widget.formatDate(widget.video.deletedDate!)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                style: TextStyle(fontSize: 12, color: LiquidColors.textTertiary),
               ),
             ],
           ),
@@ -379,12 +379,12 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
             : MainAxisAlignment.end,
         children: [
           if (isLeft) ...[
-            Icon(icon, color: Colors.white, size: 28),
+            Icon(icon, color: LiquidColors.textPrimary, size: 28),
             const SizedBox(width: 10),
             Text(
               text,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -392,14 +392,14 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
           ] else ...[
             Text(
               text,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(width: 10),
-            Icon(icon, color: Colors.white, size: 28),
+            Icon(icon, color: LiquidColors.textPrimary, size: 28),
           ],
         ],
       ),
@@ -456,7 +456,7 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
                 ),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.delete_forever,
                   color: LiquidColors.error,
@@ -465,19 +465,19 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Hide File?',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
             Text(
               '"${widget.video.title}" will be hidden from the app. You can recover it later using your recovery email.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey.shade400),
+              style: TextStyle(fontSize: 14, color: LiquidColors.textSecondary),
             ),
             const SizedBox(height: 24),
             Row(
@@ -490,11 +490,11 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      side: BorderSide(color: Colors.grey.shade700),
+                      side: BorderSide(color: LiquidColors.textTertiary),
                     ),
                     child: Text(
                       'Cancel',
-                      style: TextStyle(color: Colors.grey.shade400),
+                      style: TextStyle(color: LiquidColors.textSecondary),
                     ),
                   ),
                 ),
@@ -509,9 +509,9 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Delete',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: LiquidColors.textPrimary),
                     ),
                   ),
                 ),

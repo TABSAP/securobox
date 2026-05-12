@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_app/download_screen/widgets/view.dart';
+import 'package:video_player_app/utils/vault_context.dart';
 
 class DownloadScreen extends StatefulWidget {
   const DownloadScreen({super.key});
@@ -57,7 +58,8 @@ class _DownloadScreenState extends State<DownloadScreen>
     required String fileSize,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final downloadList = prefs.getStringList('downloadHistory') ?? [];
+    final downloadList =
+        prefs.getStringList(VaultContext.instance.downloadHistoryKey) ?? [];
 
     final downloadItem = DownloadItem(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -76,7 +78,10 @@ class _DownloadScreenState extends State<DownloadScreen>
         '${downloadItem.downloadUrl}::${downloadItem.progress}';
 
     downloadList.add(downloadData);
-    await prefs.setStringList('downloadHistory', downloadList);
+    await prefs.setStringList(
+      VaultContext.instance.downloadHistoryKey,
+      downloadList,
+    );
 
     if (!mounted) return;
     setState(() => _downloads.insert(0, downloadItem));
@@ -84,7 +89,8 @@ class _DownloadScreenState extends State<DownloadScreen>
 
   Future<void> _loadDownloads() async {
     final prefs = await SharedPreferences.getInstance();
-    final downloadList = prefs.getStringList('downloadHistory') ?? [];
+    final downloadList =
+        prefs.getStringList(VaultContext.instance.downloadHistoryKey) ?? [];
 
     setState(() {
       _downloads.clear();
@@ -170,21 +176,21 @@ class _DownloadScreenState extends State<DownloadScreen>
                       ),
                     ],
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Icons.download_rounded,
                       size: 36,
-                      color: Colors.white,
+                      color: LiquidColors.textPrimary,
                     ),
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
                   'Download ${getFileTypeLabel(download.videoPath)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -195,7 +201,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.grey.shade400,
+                        color: LiquidColors.textSecondary,
                         height: 1.5,
                       ),
                     ),
@@ -236,14 +242,14 @@ class _DownloadScreenState extends State<DownloadScreen>
                             borderRadius: BorderRadius.circular(16),
                           ),
                           side: BorderSide(
-                            color: Colors.grey.shade700,
+                            color: LiquidColors.textTertiary,
                             width: 1,
                           ),
                         ),
                         child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.grey.shade400,
+                            color: LiquidColors.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -267,10 +273,10 @@ class _DownloadScreenState extends State<DownloadScreen>
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Download',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: LiquidColors.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -323,38 +329,68 @@ class _DownloadScreenState extends State<DownloadScreen>
       final fileSizeStr = _formatBytes(fileSize);
       String savedPath = filePath;
 
-      if (['mp4', 'mkv', 'avi', 'mov'].contains(ext)) {
-        _updateJob(job,
-            indeterminate: true, message: 'Saving to Movies/SecureVideo…');
+      if ([
+        'mp4',
+        'mkv',
+        'avi',
+        'mov',
+        'webm',
+        '3gp',
+        'm4v',
+        'mpg',
+        'mpeg',
+      ].contains(ext)) {
+        _updateJob(
+          job,
+          indeterminate: true,
+          message: 'Saving to Movies/SecuroBox…',
+        );
         final asset = await PhotoManager.editor.saveVideo(
           file,
           title: fileName,
-          relativePath: 'Movies/SecureVideo',
+          relativePath: 'Movies/SecuroBox',
         );
         final assetFile = await asset.file;
         if (assetFile != null) savedPath = assetFile.path;
-      } else if (['jpg', 'jpeg', 'png', 'webp'].contains(ext)) {
-        _updateJob(job,
-            indeterminate: true, message: 'Saving to Pictures/SecureImages…');
+      } else if ([
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+        'gif',
+        'bmp',
+        'heic',
+        'heif',
+      ].contains(ext)) {
+        _updateJob(
+          job,
+          indeterminate: true,
+          message: 'Saving to Pictures/SecuroBox…',
+        );
         final asset = await PhotoManager.editor.saveImage(
           await file.readAsBytes(),
           title: fileName,
-          relativePath: 'Pictures/SecureImages',
+          relativePath: 'Pictures/SecuroBox',
           filename: fileName,
         );
         final assetFile = await asset.file;
         if (assetFile != null) savedPath = assetFile.path;
       } else if (Platform.isAndroid) {
-        final folder = ['mp3', 'wav', 'aac', 'ogg', 'm4a'].contains(ext)
-            ? 'Music/SecureVideo'
-            : 'Download/SecureVideo';
+        final folder =
+            ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'opus'].contains(ext)
+            ? 'Music/SecuroBox'
+            : 'Download/SecuroBox';
         final dir = Directory('/storage/emulated/0/$folder');
         if (!await dir.exists()) {
           await dir.create(recursive: true);
         }
         final newFile = File('${dir.path}/$fileName.$ext');
-        _updateJob(job,
-            progress: 0, indeterminate: false, message: 'Copying to $folder…');
+        _updateJob(
+          job,
+          progress: 0,
+          indeterminate: false,
+          message: 'Copying to $folder…',
+        );
         await _streamCopy(file, newFile, fileSize, job);
         savedPath = newFile.path;
       } else {
@@ -364,11 +400,13 @@ class _DownloadScreenState extends State<DownloadScreen>
         );
       }
 
-      _updateJob(job,
-          progress: 1.0,
-          indeterminate: false,
-          status: _JobStatus.success,
-          message: 'Saved · $fileSizeStr');
+      _updateJob(
+        job,
+        progress: 1.0,
+        indeterminate: false,
+        status: _JobStatus.success,
+        message: 'Saved · $fileSizeStr',
+      );
 
       await _addToDownloadHistory(
         fileName: fileName,
@@ -380,11 +418,13 @@ class _DownloadScreenState extends State<DownloadScreen>
         if (mounted) _removeJob(job);
       });
     } catch (e) {
-      _updateJob(job,
-          status: _JobStatus.failed,
-          indeterminate: false,
-          message: 'Failed',
-          error: e.toString());
+      _updateJob(
+        job,
+        status: _JobStatus.failed,
+        indeterminate: false,
+        message: 'Failed',
+        error: e.toString(),
+      );
       Future.delayed(const Duration(seconds: 6), () {
         if (mounted) _removeJob(job);
       });
@@ -408,10 +448,11 @@ class _DownloadScreenState extends State<DownloadScreen>
           if (now.difference(_lastProgressTick).inMilliseconds >= 80 ||
               read >= total) {
             _lastProgressTick = now;
-            _updateJob(job,
-                progress: (read / total).clamp(0.0, 1.0),
-                message:
-                    '${_formatBytes(read)} / ${_formatBytes(total)}');
+            _updateJob(
+              job,
+              progress: (read / total).clamp(0.0, 1.0),
+              message: '${_formatBytes(read)} / ${_formatBytes(total)}',
+            );
           }
         }
       }
@@ -638,6 +679,10 @@ class _DownloadScreenState extends State<DownloadScreen>
   Future<String?> _findInGalleryByName(String fileName) async {
     if (!Platform.isAndroid || fileName.isEmpty) return null;
     const folders = [
+      '/storage/emulated/0/Movies/SecuroBox',
+      '/storage/emulated/0/Pictures/SecuroBox',
+      '/storage/emulated/0/Music/SecuroBox',
+      '/storage/emulated/0/Download/SecuroBox',
       '/storage/emulated/0/Movies/SecureVideo',
       '/storage/emulated/0/Pictures/SecureImages',
       '/storage/emulated/0/Music/SecureVideo',
@@ -701,7 +746,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                       width: 2,
                     ),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Icons.delete_forever_rounded,
                       color: LiquidColors.error,
@@ -710,12 +755,12 @@ class _DownloadScreenState extends State<DownloadScreen>
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
+                Text(
                   'Clear All Downloads?',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -724,7 +769,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     height: 1.5,
                   ),
                 ),
@@ -740,14 +785,14 @@ class _DownloadScreenState extends State<DownloadScreen>
                             borderRadius: BorderRadius.circular(16),
                           ),
                           side: BorderSide(
-                            color: Colors.grey.shade700,
+                            color: LiquidColors.textTertiary,
                             width: 1,
                           ),
                         ),
                         child: Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.grey.shade400,
+                            color: LiquidColors.textSecondary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -759,7 +804,9 @@ class _DownloadScreenState extends State<DownloadScreen>
                         onPressed: () async {
                           Navigator.pop(context);
                           final prefs = await SharedPreferences.getInstance();
-                          await prefs.remove('downloadHistory');
+                          await prefs.remove(
+                            VaultContext.instance.downloadHistoryKey,
+                          );
                           setState(() {
                             _downloads.clear();
                           });
@@ -776,7 +823,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
+                        child: Text(
                           'Clear All',
                           style: TextStyle(
                             color: Colors.white,
@@ -819,7 +866,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                   ),
                 ],
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.download_rounded,
                   color: Colors.white,
@@ -838,7 +885,7 @@ class _DownloadScreenState extends State<DownloadScreen>
             ),
           ),
         ),
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -847,7 +894,7 @@ class _DownloadScreenState extends State<DownloadScreen>
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
                 letterSpacing: 0.2,
               ),
             ),
@@ -989,7 +1036,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                 Text(
                   'Active downloads',
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: LiquidColors.textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,
@@ -998,7 +1045,9 @@ class _DownloadScreenState extends State<DownloadScreen>
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 7, vertical: 2),
+                    horizontal: 7,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: LiquidColors.accentBlue.withValues(alpha: 0.22),
                     borderRadius: BorderRadius.circular(8),
@@ -1069,7 +1118,7 @@ class _DownloadScreenState extends State<DownloadScreen>
             Container(
               width: 1,
               height: 28,
-              color: Colors.white.withValues(alpha: 0.08),
+              color: LiquidColors.textPrimary.withValues(alpha: 0.08),
             ),
             Expanded(
               child: _StatTile(
@@ -1143,7 +1192,7 @@ class _AppBarAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tint = color ?? Colors.white;
+    final tint = color ?? LiquidColors.textPrimary;
     final disabled = onTap == null;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1158,13 +1207,13 @@ class _AppBarAction extends StatelessWidget {
               width: 40,
               decoration: BoxDecoration(
                 color: disabled
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.white.withValues(alpha: 0.06),
+                    ? LiquidColors.textPrimary.withValues(alpha: 0.03)
+                    : LiquidColors.textPrimary.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: disabled
-                      ? Colors.white.withValues(alpha: 0.05)
-                      : Colors.white.withValues(alpha: 0.08),
+                      ? LiquidColors.textPrimary.withValues(alpha: 0.05)
+                      : LiquidColors.textPrimary.withValues(alpha: 0.08),
                 ),
               ),
               alignment: Alignment.center,
@@ -1215,8 +1264,8 @@ class _StatTile extends StatelessWidget {
           children: [
             Text(
               value,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
@@ -1278,9 +1327,11 @@ class _SkeletonCardState extends State<_SkeletonCard>
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
+            color: LiquidColors.textPrimary.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+            border: Border.all(
+              color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+            ),
           ),
           child: Row(
             children: [
@@ -1320,15 +1371,15 @@ class _SkeletonCardState extends State<_SkeletonCard>
       child: Container(
         width: width,
         height: height,
-        color: Colors.white.withValues(alpha: 0.05),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.05),
         foregroundDecoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment(shift - 0.3, 0),
             end: Alignment(shift + 0.3, 0),
             colors: [
-              Colors.white.withValues(alpha: 0.0),
-              Colors.white.withValues(alpha: 0.08),
-              Colors.white.withValues(alpha: 0.0),
+              LiquidColors.textPrimary.withValues(alpha: 0.0),
+              LiquidColors.textPrimary.withValues(alpha: 0.08),
+              LiquidColors.textPrimary.withValues(alpha: 0.0),
             ],
             stops: const [0.0, 0.5, 1.0],
           ),
@@ -1350,18 +1401,16 @@ class _ActiveJobCard extends StatelessWidget {
     final tint = isFailed
         ? LiquidColors.error
         : isSuccess
-            ? LiquidColors.success
-            : job.color;
+        ? LiquidColors.success
+        : job.color;
     final pct = (job.progress.clamp(0.0, 1.0) * 100).round();
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: tint.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: tint.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1386,8 +1435,8 @@ class _ActiveJobCard extends StatelessWidget {
                       job.fileName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: LiquidColors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1397,7 +1446,9 @@ class _ActiveJobCard extends StatelessWidget {
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
+                            horizontal: 6,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
                             color: job.color.withValues(alpha: 0.22),
                             borderRadius: BorderRadius.circular(6),
@@ -1417,15 +1468,15 @@ class _ActiveJobCard extends StatelessWidget {
                           child: Text(
                             isFailed
                                 ? (job.error?.isNotEmpty == true
-                                    ? job.error!
-                                    : 'Failed')
+                                      ? job.error!
+                                      : 'Failed')
                                 : job.message,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: isFailed
                                   ? LiquidColors.error
-                                  : Colors.grey.shade400,
+                                  : LiquidColors.textSecondary,
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
@@ -1449,9 +1500,11 @@ class _ActiveJobCard extends StatelessWidget {
                 value: isFailed
                     ? 0
                     : isSuccess
-                        ? 1
-                        : (job.indeterminate ? null : job.progress),
-                backgroundColor: Colors.white.withValues(alpha: 0.06),
+                    ? 1
+                    : (job.indeterminate ? null : job.progress),
+                backgroundColor: LiquidColors.textPrimary.withValues(
+                  alpha: 0.06,
+                ),
                 valueColor: AlwaysStoppedAnimation(tint),
               ),
             ),
@@ -1463,12 +1516,18 @@ class _ActiveJobCard extends StatelessWidget {
 
   Widget _statusBadge(Color tint, bool isFailed, bool isSuccess, int pct) {
     if (isFailed) {
-      return Icon(Icons.error_outline_rounded,
-          color: LiquidColors.error, size: 18);
+      return Icon(
+        Icons.error_outline_rounded,
+        color: LiquidColors.error,
+        size: 18,
+      );
     }
     if (isSuccess) {
-      return Icon(Icons.check_circle_rounded,
-          color: LiquidColors.success, size: 20);
+      return Icon(
+        Icons.check_circle_rounded,
+        color: LiquidColors.success,
+        size: 20,
+      );
     }
     if (job.indeterminate) {
       return SizedBox(
@@ -1479,11 +1538,7 @@ class _ActiveJobCard extends StatelessWidget {
     }
     return Text(
       '$pct%',
-      style: TextStyle(
-        color: tint,
-        fontSize: 12,
-        fontWeight: FontWeight.w800,
-      ),
+      style: TextStyle(color: tint, fontSize: 12, fontWeight: FontWeight.w800),
     );
   }
 }
@@ -1523,37 +1578,109 @@ class _JobKind {
     final dot = path.lastIndexOf('.');
     final ext = dot < 0 ? '' : path.substring(dot + 1).toLowerCase();
     if (const {
-      'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v',
-      'mpg', 'mpeg', '3gp', 'webm', 'ts', 'mts', 'm2ts',
+      'mp4',
+      'mkv',
+      'avi',
+      'mov',
+      'wmv',
+      'flv',
+      'm4v',
+      'mpg',
+      'mpeg',
+      '3gp',
+      'webm',
+      'ts',
+      'mts',
+      'm2ts',
     }.contains(ext)) {
-      return const _JobKind(
-          'Video', Icons.movie_outlined, LiquidColors.accentBlue);
+      return _JobKind('Video', Icons.movie_outlined, LiquidColors.accentBlue);
     }
     if (const {
-      'mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma',
-      'aiff', 'alac', 'opus', 'mid', 'midi', 'amr', 'ape',
-      'ra', 'rm', 'mka', 'm4b', 'm4p', 'ac3', 'dts',
+      'mp3',
+      'wav',
+      'aac',
+      'flac',
+      'ogg',
+      'm4a',
+      'wma',
+      'aiff',
+      'alac',
+      'opus',
+      'mid',
+      'midi',
+      'amr',
+      'ape',
+      'ra',
+      'rm',
+      'mka',
+      'm4b',
+      'm4p',
+      'ac3',
+      'dts',
     }.contains(ext)) {
-      return const _JobKind(
-          'Audio', Icons.audiotrack_rounded, LiquidColors.accentPurple);
+      return _JobKind(
+        'Audio',
+        Icons.audiotrack_rounded,
+        LiquidColors.accentPurple,
+      );
     }
     if (const {
-      'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif',
-      'svg', 'ico', 'heic', 'heif', 'raw', 'cr2', 'nef', 'arw', 'dng',
+      'jpg',
+      'jpeg',
+      'png',
+      'gif',
+      'bmp',
+      'webp',
+      'tiff',
+      'tif',
+      'svg',
+      'ico',
+      'heic',
+      'heif',
+      'raw',
+      'cr2',
+      'nef',
+      'arw',
+      'dng',
     }.contains(ext)) {
-      return const _JobKind(
-          'Photo', Icons.image_outlined, LiquidColors.success);
+      return _JobKind('Photo', Icons.image_outlined, LiquidColors.success);
     }
     if (const {
-      'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'ppt', 'pptx',
-      'xls', 'xlsx', 'csv', 'md', 'markdown', 'html', 'htm',
-      'epub', 'mobi', 'azw3', 'tex', 'latex', 'xml', 'json',
-      'yaml', 'yml',
+      'pdf',
+      'doc',
+      'docx',
+      'txt',
+      'rtf',
+      'odt',
+      'ppt',
+      'pptx',
+      'xls',
+      'xlsx',
+      'csv',
+      'md',
+      'markdown',
+      'html',
+      'htm',
+      'epub',
+      'mobi',
+      'azw3',
+      'tex',
+      'latex',
+      'xml',
+      'json',
+      'yaml',
+      'yml',
     }.contains(ext)) {
-      return const _JobKind(
-          'Document', Icons.description_outlined, LiquidColors.accentOrange);
+      return _JobKind(
+        'Document',
+        Icons.description_outlined,
+        LiquidColors.accentOrange,
+      );
     }
     return const _JobKind(
-        'File', Icons.insert_drive_file_outlined, Color(0xFF9CA3AF));
+      'File',
+      Icons.insert_drive_file_outlined,
+      Color(0xFF9CA3AF),
+    );
   }
 }

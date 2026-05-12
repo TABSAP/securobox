@@ -74,10 +74,10 @@ class _LiquidNumberButtonState extends State<LiquidNumberButton>
           ),
           child: Text(
             widget.number,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w500,
-              color: Colors.white,
+              color: LiquidColors.textPrimary,
             ),
           ),
         ),

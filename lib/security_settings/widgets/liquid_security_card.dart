@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:flutter/material.dart';
 
 class LiquidSecurityCard extends StatefulWidget {
@@ -41,29 +42,20 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
       duration: const Duration(milliseconds: 600),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.elasticOut,
-      ),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     Future.delayed(Duration(milliseconds: widget.index * 100), () {
       if (mounted) _controller.forward();
@@ -101,7 +93,7 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
                 ),
               ],
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: LiquidColors.textPrimary.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -111,9 +103,7 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
                 children: [
                   _buildIcon(),
                   const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildInfo(),
-                  ),
+                  Expanded(child: _buildInfo()),
                   _buildSwitch(),
                 ],
               ),
@@ -151,11 +141,7 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
               ),
             ),
             child: Center(
-              child: Icon(
-                widget.icon,
-                color: Colors.white,
-                size: 28,
-              ),
+              child: Icon(widget.icon, color: Colors.white, size: 28),
             ),
           ),
         );
@@ -170,7 +156,7 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
       children: [
         Text(
           widget.title,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -212,8 +198,8 @@ class _LiquidSecurityCardState extends State<LiquidSecurityCard>
             onChanged: widget.onChanged,
             activeThumbColor: Colors.white,
             activeTrackColor: Colors.white.withValues(alpha: 0.5),
-            inactiveThumbColor: Colors.grey.shade300,
-            inactiveTrackColor: Colors.grey.shade600,
+            inactiveThumbColor: LiquidColors.textSecondary,
+            inactiveTrackColor: LiquidColors.textTertiary,
           ),
         );
       },

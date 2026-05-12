@@ -19,17 +19,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                LiquidColors.backgroundDeep,
-                LiquidColors.backgroundMid,
-              ],
+              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
@@ -52,7 +49,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.privacy_tip_rounded,
                   color: Colors.white,
@@ -61,10 +58,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            const Text(
+            Text(
               'Privacy Policy',
               style: TextStyle(
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
@@ -175,7 +172,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   child: Text(
                     'Last updated: $_lastUpdated',
                     style: TextStyle(
-                      color: Colors.grey.shade500,
+                      color: LiquidColors.textTertiary,
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.4,
@@ -203,9 +200,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.success.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: LiquidColors.success.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -228,14 +223,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Your data stays on your device',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
@@ -244,7 +239,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 Text(
                   'No servers. No accounts. No tracking.',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: LiquidColors.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -267,10 +262,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
         ),
       ),
       child: Column(
@@ -291,8 +286,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.1,
@@ -305,7 +300,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           Text(
             body,
             style: TextStyle(
-              color: Colors.grey.shade300,
+              color: LiquidColors.textSecondary,
               fontSize: 13,
               height: 1.55,
             ),
@@ -360,14 +355,14 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Questions about privacy?',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: LiquidColors.textPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -376,7 +371,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       Text(
                         _supportEmail,
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: LiquidColors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -385,7 +380,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: Colors.grey.shade500,
+                  color: LiquidColors.textTertiary,
                   size: 20,
                 ),
               ],

@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:flutter/material.dart';
 import '../../../../../models/app_models.dart';
 
@@ -34,7 +35,7 @@ class MediaCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: Material(
-        color: const Color(0xFF1A1A3E),
+        color: LiquidColors.surface,
         borderRadius: BorderRadius.circular(16),
         elevation: 0,
         child: InkWell(
@@ -45,7 +46,7 @@ class MediaCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: Colors.white.withValues(alpha: .05),
+                color: LiquidColors.textPrimary.withValues(alpha: .05),
                 width: 1,
               ),
             ),
@@ -107,7 +108,7 @@ class MediaCard extends StatelessWidget {
           Text(
             media.title,
             style: TextStyle(
-              color: isLocked ? Colors.orange : Colors.white,
+              color: isLocked ? Colors.orange : LiquidColors.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -126,7 +127,7 @@ class MediaCard extends StatelessWidget {
                 MediaHelper.formatDate(media.id),
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey.shade500,
+                  color: LiquidColors.textTertiary,
                 ),
               ),
             ],
@@ -256,7 +257,7 @@ class MediaCard extends StatelessWidget {
             Icon(
               Icons.category,
               size: 18,
-              color: const Color(0xFF4788FF),
+              color: LiquidColors.accentBlue,
             ),
             const SizedBox(width: 8),
             Text(category),
@@ -293,12 +294,12 @@ class MediaCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isLocked
             ? Colors.orange.withValues(alpha: .1)
-            : Colors.white.withValues(alpha: .05),
+            : LiquidColors.textPrimary.withValues(alpha: .05),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isLocked
               ? Colors.orange.withValues(alpha: .3)
-              : Colors.white.withValues(alpha: .1),
+              : LiquidColors.textPrimary.withValues(alpha: .1),
           width: 1,
         ),
       ),
@@ -306,7 +307,7 @@ class MediaCard extends StatelessWidget {
         onPressed: onLockTap,
         icon: Icon(
           isLocked ? Icons.lock_open_rounded : Icons.lock_outline_rounded,
-          color: isLocked ? Colors.orange : Colors.white,
+          color: isLocked ? Colors.orange : LiquidColors.textPrimary,
           size: 20,
         ),
         padding: EdgeInsets.zero,
@@ -320,18 +321,18 @@ class MediaCard extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xFF4788FF).withValues(alpha: .1),
+          color: LiquidColors.accentBlue.withValues(alpha: .1),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: const Color(0xFF4788FF).withValues(alpha: .3),
+            color: LiquidColors.accentBlue.withValues(alpha: .3),
             width: 1,
           ),
         ),
         child: IconButton(
           onPressed: onDownloadTap,
-          icon: const Icon(
+          icon: Icon(
             Icons.download_rounded,
-            color: Color(0xFF4788FF),
+            color: LiquidColors.accentBlue,
             size: 20,
           ),
           padding: EdgeInsets.zero,
@@ -343,10 +344,10 @@ class MediaCard extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: .1),
+        color: LiquidColors.textTertiary.withValues(alpha: .1),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Colors.grey.withValues(alpha: .3),
+          color: LiquidColors.textTertiary.withValues(alpha: .3),
           width: 1,
         ),
       ),
@@ -354,7 +355,7 @@ class MediaCard extends StatelessWidget {
         onPressed: onDownloadTap,
         icon: Icon(
           Icons.download_rounded,
-          color: Colors.grey.withValues(alpha: .5),
+          color: LiquidColors.textTertiary.withValues(alpha: .5),
           size: 20,
         ),
         padding: EdgeInsets.zero,
@@ -391,10 +392,10 @@ class MediaCard extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: .1),
+        color: LiquidColors.textTertiary.withValues(alpha: .1),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Colors.grey.withValues(alpha: .3),
+          color: LiquidColors.textTertiary.withValues(alpha: .3),
           width: 1,
         ),
       ),
@@ -402,7 +403,7 @@ class MediaCard extends StatelessWidget {
         onPressed: onDeleteTap,
         icon: Icon(
           Icons.delete_outline_rounded,
-          color: Colors.grey.withValues(alpha: .5),
+          color: LiquidColors.textTertiary.withValues(alpha: .5),
           size: 20,
         ),
         padding: EdgeInsets.zero,

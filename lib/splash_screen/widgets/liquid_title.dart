@@ -19,8 +19,8 @@ class LiquidTitle extends StatelessWidget {
             shaderCallback: (bounds) {
               return LinearGradient(
                 colors: [
-                  Colors.white,
-                  Colors.white.withValues(alpha: 0.7),
+                  LiquidColors.textPrimary,
+                  LiquidColors.textPrimary.withValues(alpha: 0.7),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -31,7 +31,7 @@ class LiquidTitle extends StatelessWidget {
               style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
                 letterSpacing: 4.0,
                 shadows: [
                   Shadow(
@@ -53,7 +53,7 @@ class LiquidTitle extends StatelessWidget {
               style: TextStyle(
                 fontSize: 36,
                 fontWeight: FontWeight.w900,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
                 letterSpacing: 4.0,
                 shadows: [
                   Shadow(

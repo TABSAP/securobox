@@ -83,8 +83,8 @@ class _LiquidProgressIndicatorState extends State<LiquidProgressIndicator>
                       children: [
                         Text(
                           '${(widget.progress * 100).toStringAsFixed(0)}%',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: LiquidColors.textPrimary,
                             fontSize: 28,
                             fontWeight: FontWeight.w700,
                             shadows: [
@@ -163,7 +163,7 @@ class _LiquidProgressIndicatorState extends State<LiquidProgressIndicator>
                 ? 'Downloading file from URL...'
                 : 'Processing files...',
             style: TextStyle(
-              color: Colors.grey.shade400,
+              color: LiquidColors.textSecondary,
               fontSize: 14,
             ),
           ),

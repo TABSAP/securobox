@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:flutter/material.dart';
 
 class LiquidUploadCard extends StatefulWidget {
@@ -11,7 +12,7 @@ class LiquidUploadCard extends StatefulWidget {
   const LiquidUploadCard({
     super.key,
     required this.icon,
-     this.title,
+    this.title,
     required this.subtitle,
     required this.gradient,
     required this.onTap,
@@ -36,19 +37,15 @@ class _LiquidUploadCardState extends State<LiquidUploadCard>
       duration: const Duration(milliseconds: 600),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.elasticOut,
-      ),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOut,
-      ),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     Future.delayed(Duration(milliseconds: widget.index * 150), () {
       if (mounted) _controller.forward();
@@ -91,7 +88,7 @@ class _LiquidUploadCardState extends State<LiquidUploadCard>
                   ),
                 ],
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -130,7 +127,7 @@ class _LiquidUploadCardState extends State<LiquidUploadCard>
                   // Text(
                   //   widget.title!,
                   //   style: const TextStyle(
-                  //     color: Colors.white,
+                  //     color: LiquidColors.textPrimary,
                   //     fontSize: 18,
                   //     fontWeight: FontWeight.w700,
                   //     shadows: [

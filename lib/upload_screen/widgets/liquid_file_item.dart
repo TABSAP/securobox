@@ -152,8 +152,8 @@ class _LiquidFileItemState extends State<LiquidFileItem>
             ),
             title: Text(
               p.basename(widget.file.path),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 1,
@@ -165,7 +165,7 @@ class _LiquidFileItemState extends State<LiquidFileItem>
                 Text(
                   _formatFileSize(widget.file),
                   style: TextStyle(
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -211,7 +211,7 @@ class _LiquidFileItemState extends State<LiquidFileItem>
                     ),
                     child: IconButton(
                       onPressed: widget.onRemove,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close_rounded,
                         color: LiquidColors.error,
                         size: 20,

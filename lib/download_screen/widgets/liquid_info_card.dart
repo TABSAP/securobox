@@ -106,7 +106,7 @@ class _LiquidInfoCardState extends State<LiquidInfoCard>
                   child: Text(
                     widget.message,
                     style: TextStyle(
-                      color: Colors.grey.shade300,
+                      color: LiquidColors.textSecondary,
                       fontSize: 12,
                       height: 1.4,
                     ),

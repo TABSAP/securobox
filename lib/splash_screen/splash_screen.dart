@@ -153,7 +153,7 @@ class _SplashScreenState extends State<SplashScreen>
                 'Version 1.0.0',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.grey.shade600,
+                  color: LiquidColors.textTertiary,
                   fontSize: 12,
                 ),
               ),

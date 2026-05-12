@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart';
 import 'package:uuid/uuid.dart';
+import 'package:video_player_app/utils/vault_context.dart';
 
 class VaultCrypto {
   VaultCrypto._();
@@ -16,11 +17,17 @@ class VaultCrypto {
 
   static String? lastSelfTestResult;
 
-  static const _kMasterKey = 'vault_master_key_v1';
   static const _kKeyLengthBytes = 32;
   static const _kIvLengthBytes = 16;
   static const _kTempPrefix = 'sp_dec_';
-  static const _kVaultDirName = 'vault';
+
+  // every namespace this crypto layer can touch (used by resetAll / wipeAll)
+  static const _allMasterKeyIds = [
+    'vault_master_key_v1',
+    'vault_master_key_decoy_v1',
+  ];
+  static const _allVaultDirNames = ['vault', 'vault_decoy'];
+  static const _allTempDirNames = ['sp_decrypted', 'sp_decrypted_decoy'];
 
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(),
@@ -29,48 +36,66 @@ class VaultCrypto {
     ),
   );
 
-  Uint8List? _cachedKey;
+  Uint8List? _cachedRealKey;
+  Uint8List? _cachedDecoyKey;
 
   Uint8List _randomBytes(int length) {
     final r = Random.secure();
     return Uint8List.fromList(List<int>.generate(length, (_) => r.nextInt(256)));
   }
 
-  Future<Uint8List> _getMasterKey() async {
-    if (_cachedKey != null) return _cachedKey!;
-    final stored = await _secure.read(key: _kMasterKey);
+  Future<Uint8List> _getMasterKey({bool forceReal = false}) async {
+    final decoy = !forceReal && VaultContext.instance.isDecoy;
+    if (decoy && _cachedDecoyKey != null) return _cachedDecoyKey!;
+    if (!decoy && _cachedRealKey != null) return _cachedRealKey!;
+
+    final keyId = decoy ? _allMasterKeyIds[1] : _allMasterKeyIds[0];
+    final stored = await _secure.read(key: keyId);
+    final Uint8List key;
     if (stored != null) {
-      _cachedKey = base64Decode(stored);
-      return _cachedKey!;
+      key = base64Decode(stored);
+    } else {
+      key = _randomBytes(_kKeyLengthBytes);
+      await _secure.write(key: keyId, value: base64Encode(key));
     }
-    final fresh = _randomBytes(_kKeyLengthBytes);
-    await _secure.write(key: _kMasterKey, value: base64Encode(fresh));
-    _cachedKey = fresh;
-    return fresh;
+    if (decoy) {
+      _cachedDecoyKey = key;
+    } else {
+      _cachedRealKey = key;
+    }
+    return key;
   }
 
-  Future<Directory> _vaultDir() async {
+  Future<Directory> _vaultDir({bool forceReal = false}) async {
+    final decoy = !forceReal && VaultContext.instance.isDecoy;
+    final name = decoy ? _allVaultDirNames[1] : _allVaultDirNames[0];
     final docs = await getApplicationDocumentsDirectory();
-    final dir = Directory(p.join(docs.path, _kVaultDirName));
+    final dir = Directory(p.join(docs.path, name));
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
     return dir;
   }
 
-  Future<Directory> _tempDir() async {
+  Future<Directory> _tempDir({bool forceReal = false}) async {
+    final decoy = !forceReal && VaultContext.instance.isDecoy;
+    final name = decoy ? _allTempDirNames[1] : _allTempDirNames[0];
     final tmp = await getTemporaryDirectory();
-    final dir = Directory(p.join(tmp.path, 'sp_decrypted'));
+    final dir = Directory(p.join(tmp.path, name));
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }
     return dir;
   }
 
-  Future<String> importEncrypted(File source, {String? subdir}) async {
-    final key = await _getMasterKey();
+  Future<String> importEncrypted(
+    File source, {
+    String? subdir,
+    bool forceReal = false,
+  }) async {
+    final key = await _getMasterKey(forceReal: forceReal);
     final iv = _randomBytes(_kIvLengthBytes);
-    final baseDir = await _vaultDir();
+    final baseDir = await _vaultDir(forceReal: forceReal);
     final outDir = subdir == null
         ? baseDir
         : await Directory(p.join(baseDir.path, subdir)).create(recursive: true);
@@ -89,8 +114,11 @@ class VaultCrypto {
     return outPath;
   }
 
-  Future<String> decryptToTemp(String encryptedPath) async {
-    final key = await _getMasterKey();
+  Future<String> decryptToTemp(
+    String encryptedPath, {
+    bool forceReal = false,
+  }) async {
+    final key = await _getMasterKey(forceReal: forceReal);
     final encFile = File(encryptedPath);
     final raf = await encFile.open();
     final iv = await raf.read(_kIvLengthBytes);
@@ -100,7 +128,7 @@ class VaultCrypto {
       throw const FormatException('Encrypted file IV missing or truncated');
     }
 
-    final temp = await _tempDir();
+    final temp = await _tempDir(forceReal: forceReal);
     final origExt = encryptedPath.endsWith('.enc')
         ? p.extension(encryptedPath.substring(0, encryptedPath.length - 4))
         : p.extension(encryptedPath);
@@ -123,10 +151,28 @@ class VaultCrypto {
     try {
       final temp = await _tempDir();
       if (await temp.exists()) {
-        await for (final entity in temp.list()) {
+        await for (final entity in temp.list(recursive: true)) {
           try {
             if (entity is File) await entity.delete();
           } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Wipes decrypted temp files for BOTH the real and decoy namespaces.
+  /// Called by the auth router whenever the vault mode flips.
+  Future<void> wipeAllTempCache() async {
+    try {
+      final tmp = await getTemporaryDirectory();
+      for (final name in _allTempDirNames) {
+        final dir = Directory(p.join(tmp.path, name));
+        if (await dir.exists()) {
+          await for (final entity in dir.list(recursive: true)) {
+            try {
+              if (entity is File) await entity.delete();
+            } catch (_) {}
+          }
         }
       }
     } catch (_) {}
@@ -139,25 +185,30 @@ class VaultCrypto {
     } catch (_) {}
   }
 
+  /// Nukes EVERYTHING — both vaults' encrypted files, temp caches and master
+  /// keys. Used only by the (deliberate, real-PIN-gated) full wipe path.
   Future<void> resetAll() async {
-    _cachedKey = null;
+    _cachedRealKey = null;
+    _cachedDecoyKey = null;
     try {
       final docs = await getApplicationDocumentsDirectory();
-      final vault = Directory(p.join(docs.path, _kVaultDirName));
-      if (await vault.exists()) {
-        await vault.delete(recursive: true);
+      for (final name in _allVaultDirNames) {
+        final d = Directory(p.join(docs.path, name));
+        if (await d.exists()) await d.delete(recursive: true);
       }
     } catch (_) {}
     try {
       final tmp = await getTemporaryDirectory();
-      final dec = Directory(p.join(tmp.path, 'sp_decrypted'));
-      if (await dec.exists()) {
-        await dec.delete(recursive: true);
+      for (final name in _allTempDirNames) {
+        final d = Directory(p.join(tmp.path, name));
+        if (await d.exists()) await d.delete(recursive: true);
       }
     } catch (_) {}
-    try {
-      await _secure.delete(key: _kMasterKey);
-    } catch (_) {}
+    for (final keyId in _allMasterKeyIds) {
+      try {
+        await _secure.delete(key: keyId);
+      } catch (_) {}
+    }
   }
 
   Future<String> selfTest() async {

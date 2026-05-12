@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:flutter/material.dart';
 
 class DeleteDialog extends StatelessWidget {
@@ -13,11 +14,11 @@ class DeleteDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF1A1A3E),
+      backgroundColor: LiquidColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: Colors.white.withValues(alpha: .1),
+          color: LiquidColors.textPrimary.withValues(alpha: .1),
           width: 1,
         ),
       ),
@@ -46,12 +47,12 @@ class DeleteDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Move to Trash?',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
               ),
             ),
             const SizedBox(height: 12),
@@ -60,7 +61,7 @@ class DeleteDialog extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
               ),
             ),
             const SizedBox(height: 30),
@@ -75,14 +76,14 @@ class DeleteDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       side: BorderSide(
-                        color: Colors.grey.shade700,
+                        color: LiquidColors.textTertiary,
                         width: 1,
                       ),
                     ),
                     child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: Colors.grey.shade400,
+                        color: LiquidColors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -103,10 +104,10 @@ class DeleteDialog extends StatelessWidget {
                       ),
                       elevation: 0,
                     ),
-                    child: const Text(
+                    child: Text(
                       'Move to Trash',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: LiquidColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

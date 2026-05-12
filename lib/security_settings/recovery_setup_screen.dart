@@ -142,7 +142,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: _saving ? null : () => Navigator.of(context).pop(),
         ),
         title: Row(
@@ -158,19 +158,19 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 ),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.restore_rounded,
-                  color: Colors.white,
+                  color: LiquidColors.textPrimary,
                   size: 18,
                 ),
               ),
             ),
             const SizedBox(width: 10),
-            const Text(
+            Text(
               'Set Up Recovery',
               style: TextStyle(
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
@@ -256,7 +256,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 child: Text(
                   'YOUR EMAIL',
                   style: TextStyle(
-                    color: Colors.grey.shade400,
+                    color: LiquidColors.textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.6,
@@ -271,18 +271,18 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 enableSuggestions: false,
                 validator: _validateEmail,
                 cursorColor: LiquidColors.accentBlue,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: TextStyle(color: LiquidColors.textPrimary, fontSize: 14),
                 decoration: InputDecoration(
                   hintText: 'you@tabsap.com',
                   hintStyle: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: LiquidColors.textTertiary,
                     fontSize: 14,
                   ),
                   filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.04),
+                  fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
                   prefixIcon: Icon(
                     Icons.alternate_email_rounded,
-                    color: Colors.grey.shade500,
+                    color: LiquidColors.textTertiary,
                     size: 18,
                   ),
                   contentPadding: const EdgeInsets.symmetric(
@@ -292,13 +292,13 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: LiquidColors.textPrimary.withValues(alpha: 0.08),
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: LiquidColors.textPrimary.withValues(alpha: 0.08),
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
@@ -310,11 +310,11 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: LiquidColors.error),
+                    borderSide: BorderSide(color: LiquidColors.error),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(
+                    borderSide: BorderSide(
                       color: LiquidColors.error,
                       width: 1.4,
                     ),
@@ -334,7 +334,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
             onPressed: _proceedToCode,
             style: ElevatedButton.styleFrom(
               backgroundColor: LiquidColors.accentBlue,
-              foregroundColor: Colors.white,
+              foregroundColor: LiquidColors.textPrimary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -383,12 +383,12 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 icon: Icon(
                   Icons.copy_rounded,
                   size: 16,
-                  color: Colors.grey.shade300,
+                  color: LiquidColors.textSecondary,
                 ),
                 label: Text(
                   'Copy',
                   style: TextStyle(
-                    color: Colors.grey.shade300,
+                    color: LiquidColors.textSecondary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -398,7 +398,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  side: BorderSide(color: Colors.grey.shade700),
+                  side: BorderSide(color: LiquidColors.textTertiary),
                 ),
               ),
             ),
@@ -417,7 +417,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: LiquidColors.accentBlue,
-                  foregroundColor: Colors.white,
+                  foregroundColor: LiquidColors.textPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -485,7 +485,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
               disabledBackgroundColor: LiquidColors.success.withValues(
                 alpha: 0.3,
               ),
-              foregroundColor: Colors.white,
+              foregroundColor: LiquidColors.textPrimary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -495,12 +495,12 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_saving)
-                  const SizedBox(
+                  SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: LiquidColors.textPrimary,
                     ),
                   )
                 else
@@ -529,7 +529,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
             child: Text(
               'Cancel',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -566,8 +566,8 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
               fontSize: 20,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.2,
@@ -578,7 +578,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
             subtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.grey.shade400,
+              color: LiquidColors.textSecondary,
               fontSize: 13,
               height: 1.5,
             ),
@@ -608,8 +608,8 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
       child: Center(
         child: SelectableText(
           _code,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
             fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: 4,
@@ -673,7 +673,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                     child: Text(
                       b,
                       style: TextStyle(
-                        color: Colors.grey.shade300,
+                        color: LiquidColors.textSecondary,
                         fontSize: 12,
                         height: 1.4,
                       ),
@@ -691,9 +691,9 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: LiquidColors.textPrimary.withValues(alpha: 0.06)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -701,14 +701,14 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           Icon(
             Icons.info_outline_rounded,
             size: 14,
-            color: Colors.grey.shade500,
+            color: LiquidColors.textTertiary,
           ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'With recovery enabled, anyone with both your phone and access to your email can reset the PIN. Skip this if your threat model includes someone who has both.',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
                 fontSize: 11,
                 height: 1.4,
               ),

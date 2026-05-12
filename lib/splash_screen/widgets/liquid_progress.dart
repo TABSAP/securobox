@@ -47,7 +47,7 @@ class _LiquidProgressState extends State<LiquidProgress>
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w400,
-              color: Colors.grey.shade400,
+              color: LiquidColors.textSecondary,
               letterSpacing: 1.5,
             ),
           ),
@@ -90,8 +90,8 @@ class _LiquidProgressState extends State<LiquidProgress>
                             borderRadius: BorderRadius.circular(10),
                             gradient: LinearGradient(
                               colors: [
-                                Colors.white.withValues(alpha: 0.8),
-                                Colors.white.withValues(alpha: 0.5),
+                                LiquidColors.textPrimary.withValues(alpha: 0.8),
+                                LiquidColors.textPrimary.withValues(alpha: 0.5),
                               ],
                             ),
                           ),

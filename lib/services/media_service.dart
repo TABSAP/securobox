@@ -7,10 +7,14 @@ import 'package:local_auth/local_auth.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/app_models.dart';
+import '../utils/vault_context.dart';
 
 class MediaService {
-  static const String _storageKey = 'videoLibrary';
-  static const String _downloadHistoryKey = 'downloadHistory';
+  String get _storageKey => VaultContext.instance.libraryKey;
+  String get _downloadHistoryKey => VaultContext.instance.downloadHistoryKey;
+
+  /// Gallery album / folder name that downloaded media is filed under.
+  static const String galleryAlbum = 'SecuroBox';
 
   final LocalAuthentication _localAuth = LocalAuthentication();
   List<VideoItem> _mediaList = [];
@@ -310,6 +314,10 @@ class MediaService {
         '$appDocPath/secure_player',
         '$appDocPath/secure_player/videos',
         '$appDocPath/videos',
+        '/storage/emulated/0/Movies/$galleryAlbum',
+        '/storage/emulated/0/Pictures/$galleryAlbum',
+        '/storage/emulated/0/Music/$galleryAlbum',
+        '/storage/emulated/0/Download/$galleryAlbum',
         '/storage/emulated/0/Download',
         '/storage/emulated/0/Download/SecureVideo',
         '/storage/emulated/0/Movies',
@@ -390,25 +398,28 @@ class MediaService {
 
       bool saved = false;
 
-      if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp'].contains(ext)) {
+      if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'm4v', 'mpg', 'mpeg']
+          .contains(ext)) {
         await PhotoManager.editor.saveVideo(
           file,
           title: fileName,
-          relativePath: 'Movies/SecureVideo',
+          relativePath: 'Movies/$galleryAlbum',
         );
         saved = true;
-      } else if (['jpg', 'jpeg', 'png', 'webp', 'gif'].contains(ext)) {
+      } else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif']
+          .contains(ext)) {
         await PhotoManager.editor.saveImage(
           await file.readAsBytes(),
           title: fileName,
-          relativePath: 'Pictures/SecureImages',
+          relativePath: 'Pictures/$galleryAlbum',
           filename: fileName,
         );
         saved = true;
       } else if (Platform.isAndroid) {
-        final folder = ['mp3', 'wav', 'aac', 'ogg', 'm4a'].contains(ext)
-            ? 'Music/SecureVideo'
-            : 'Download/SecureVideo';
+        final folder =
+            ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'opus'].contains(ext)
+                ? 'Music/$galleryAlbum'
+                : 'Download/$galleryAlbum';
         final dir = Directory('/storage/emulated/0/$folder');
         if (!await dir.exists()) {
           await dir.create(recursive: true);

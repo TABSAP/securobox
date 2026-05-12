@@ -28,7 +28,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
   String _category = 'General';
   bool _sending = false;
 
-  static const _categories = <_FeedbackCategory>[
+  static final _categories = <_FeedbackCategory>[
     _FeedbackCategory(
       key: 'Bug',
       label: 'Bug',
@@ -51,7 +51,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       key: 'General',
       label: 'General',
       icon: Icons.chat_bubble_outline_rounded,
-      color: Color(0xFF3B82F6),
+      color: LiquidColors.accentBlue,
     ),
   ];
 
@@ -62,8 +62,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
     super.dispose();
   }
 
-  int get _totalBytes =>
-      _attachments.fold<int>(0, (sum, a) => sum + a.size);
+  int get _totalBytes => _attachments.fold<int>(0, (sum, a) => sum + a.size);
 
   Future<void> _pickAttachments({required bool imagesOnly}) async {
     if (_attachments.length >= _maxAttachments) {
@@ -89,16 +88,18 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
         if (f.path == null) continue;
         final file = File(f.path!);
         final size = await file.length();
-        newAttachments.add(_Attachment(
-          file: file,
-          name: f.name,
-          size: size,
-          isImage: imagesOnly || _looksLikeImage(f.name),
-        ));
+        newAttachments.add(
+          _Attachment(
+            file: file,
+            name: f.name,
+            size: size,
+            isImage: imagesOnly || _looksLikeImage(f.name),
+          ),
+        );
       }
 
-      final wouldBeTotal = _totalBytes +
-          newAttachments.fold<int>(0, (s, a) => s + a.size);
+      final wouldBeTotal =
+          _totalBytes + newAttachments.fold<int>(0, (s, a) => s + a.size);
       if (wouldBeTotal > _maxAttachmentBytes) {
         if (!mounted) return;
         FlushBarHelper.flushBarErrorMessage(
@@ -204,13 +205,15 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
 
   Future<bool> _tryNativeEmail(String subject, String body) async {
     try {
-      await FlutterEmailSender.send(Email(
-        subject: subject,
-        body: body,
-        recipients: [_supportEmail],
-        attachmentPaths: _attachments.map((a) => a.file.path).toList(),
-        isHTML: false,
-      ));
+      await FlutterEmailSender.send(
+        Email(
+          subject: subject,
+          body: body,
+          recipients: [_supportEmail],
+          attachmentPaths: _attachments.map((a) => a.file.path).toList(),
+          isHTML: false,
+        ),
+      );
       return true;
     } catch (_) {
       return false;
@@ -249,7 +252,8 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
   Future<bool> _tryGmailPlayStore() async {
     try {
       final uri = Uri.parse(
-          'https://play.google.com/store/apps/details?id=com.google.android.gm');
+        'https://play.google.com/store/apps/details?id=com.google.android.gm',
+      );
       return await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
       return false;
@@ -275,8 +279,8 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       backgroundColor: Colors.transparent,
       constraints: const BoxConstraints(maxWidth: 540),
       builder: (sheetContext) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1A1D2E),
+        decoration: BoxDecoration(
+          color: LiquidColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         padding: EdgeInsets.only(
@@ -293,7 +297,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -318,11 +322,11 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               ),
             ),
             const SizedBox(height: 18),
-            const Center(
+            Center(
               child: Text(
                 'No email app found',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: LiquidColors.textPrimary,
                   fontSize: 19,
                   fontWeight: FontWeight.w800,
                 ),
@@ -335,7 +339,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                 'This device doesn\'t have an email app set up. Pick a way to reach us:',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.grey.shade400,
+                  color: LiquidColors.textSecondary,
                   fontSize: 13,
                   height: 1.5,
                 ),
@@ -363,8 +367,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                           'Gmail opened in your browser. Tap Send there to deliver.',
                           context,
                         );
-                        await Future.delayed(
-                            const Duration(milliseconds: 600));
+                        await Future.delayed(const Duration(milliseconds: 600));
                         if (mounted) Navigator.of(context).pop();
                       } else {
                         FlushBarHelper.flushBarErrorMessage(
@@ -419,7 +422,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                 child: Text(
                   'Cancel',
                   style: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: LiquidColors.textTertiary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -471,8 +474,8 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: LiquidColors.textPrimary,
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
@@ -481,7 +484,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: Colors.grey.shade400,
+                        color: LiquidColors.textSecondary,
                         fontSize: 11,
                         height: 1.35,
                       ),
@@ -491,7 +494,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.grey.shade600,
+                color: LiquidColors.textTertiary,
                 size: 20,
               ),
             ],
@@ -503,8 +506,10 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
 
   String _encodeQuery(Map<String, String> params) {
     return params.entries
-        .map((e) =>
-            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .map(
+          (e) =>
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+        )
         .join('&');
   }
 
@@ -517,8 +522,8 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       backgroundColor: Colors.transparent,
       constraints: const BoxConstraints(maxWidth: 540),
       builder: (sheetContext) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1A1D2E),
+        decoration: BoxDecoration(
+          color: LiquidColors.surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         padding: EdgeInsets.only(
@@ -532,7 +537,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: LiquidColors.textPrimary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -554,19 +559,19 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   ),
                 ],
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.mark_email_read_outlined,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
                 size: 44,
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Almost there',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -575,13 +580,13 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               child: Text(
                 carriedAttachments
                     ? 'Your message and attachments are loaded in your email app. '
-                        'Tap Send there to deliver it to $_supportEmail.'
+                          'Tap Send there to deliver it to $_supportEmail.'
                     : 'Your message is loaded in your email app. '
-                        'Tap Send there to deliver it to $_supportEmail.',
+                          'Tap Send there to deliver it to $_supportEmail.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
-                  color: Colors.grey.shade400,
+                  color: LiquidColors.textSecondary,
                   height: 1.5,
                 ),
               ),
@@ -596,17 +601,14 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   onPressed: () => Navigator.of(sheetContext).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: LiquidColors.accentBlue,
-                    foregroundColor: Colors.white,
+                    foregroundColor: LiquidColors.textPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                   child: const Text(
                     'Got it',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -633,12 +635,12 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryColor =
-        _categories.firstWhere((c) => c.key == _category).color;
+    final categoryColor = _categories
+        .firstWhere((c) => c.key == _category)
+        .color;
     final media = MediaQuery.of(context);
     final width = media.size.width;
-    final horizontalPadding =
-        width < 360 ? 16.0 : (width < 600 ? 20.0 : 28.0);
+    final horizontalPadding = width < 360 ? 16.0 : (width < 600 ? 20.0 : 28.0);
     final keyboardInset = media.viewInsets.bottom;
 
     return Scaffold(
@@ -650,17 +652,14 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                LiquidColors.backgroundDeep,
-                LiquidColors.backgroundMid,
-              ],
+              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
@@ -683,17 +682,17 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   ),
                 ],
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
               ),
             ),
             const SizedBox(width: 12),
-            const Flexible(
+            Flexible(
               child: Text(
                 'Send Feedback',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: LiquidColors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.2,
@@ -734,58 +733,58 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                  _intro(),
-                  const SizedBox(height: 24),
-                  _label('What kind of feedback?'),
-                  const SizedBox(height: 10),
-                  _categoryGrid(),
-                  const SizedBox(height: 24),
-                  _label('Subject'),
-                  const SizedBox(height: 8),
-                  _textField(
-                    controller: _subjectController,
-                    hint: 'A short summary of your feedback',
-                    color: categoryColor,
-                    minLines: 1,
-                    maxLines: 1,
-                    maxLength: 80,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a subject';
-                      }
-                      if (value.trim().length < 3) {
-                        return 'Subject is too short';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 18),
-                  _label('Message'),
-                  const SizedBox(height: 8),
-                  _textField(
-                    controller: _messageController,
-                    hint:
-                        'Describe what happened, what you expected, and any steps to reproduce.',
-                    color: categoryColor,
-                    minLines: 6,
-                    maxLines: 12,
-                    maxLength: 2000,
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter a message';
-                      }
-                      if (value.trim().length < 10) {
-                        return 'Message is too short';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 22),
-                  _attachmentsSection(categoryColor),
-                  const SizedBox(height: 16),
-                  _privacyNote(),
-                  const SizedBox(height: 24),
-                  _submitButton(categoryColor),
+                      _intro(),
+                      const SizedBox(height: 24),
+                      _label('What kind of feedback?'),
+                      const SizedBox(height: 10),
+                      _categoryGrid(),
+                      const SizedBox(height: 24),
+                      _label('Subject'),
+                      const SizedBox(height: 8),
+                      _textField(
+                        controller: _subjectController,
+                        hint: 'A short summary of your feedback',
+                        color: categoryColor,
+                        minLines: 1,
+                        maxLines: 1,
+                        maxLength: 80,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter a subject';
+                          }
+                          if (value.trim().length < 3) {
+                            return 'Subject is too short';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 18),
+                      _label('Message'),
+                      const SizedBox(height: 8),
+                      _textField(
+                        controller: _messageController,
+                        hint:
+                            'Describe what happened, what you expected, and any steps to reproduce.',
+                        color: categoryColor,
+                        minLines: 6,
+                        maxLines: 12,
+                        maxLength: 2000,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter a message';
+                          }
+                          if (value.trim().length < 10) {
+                            return 'Message is too short';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 22),
+                      _attachmentsSection(categoryColor),
+                      const SizedBox(height: 16),
+                      _privacyNote(),
+                      const SizedBox(height: 24),
+                      _submitButton(categoryColor),
                     ],
                   ),
                 ),
@@ -835,14 +834,14 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'We\'d love to hear from you',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
@@ -851,7 +850,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                 Text(
                   'Tell us what\'s working, what\'s not, or what you wish the app could do.',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: LiquidColors.textSecondary,
                     fontSize: 12,
                     height: 1.4,
                   ),
@@ -870,7 +869,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.grey.shade300,
+          color: LiquidColors.textSecondary,
           fontSize: 12,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.4,
@@ -896,19 +895,16 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: selected
                     ? c.color.withValues(alpha: 0.18)
-                    : Colors.white.withValues(alpha: 0.04),
+                    : LiquidColors.textPrimary.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: selected
                       ? c.color
-                      : Colors.white.withValues(alpha: 0.08),
+                      : LiquidColors.textPrimary.withValues(alpha: 0.08),
                   width: selected ? 1.4 : 1,
                 ),
                 boxShadow: selected
@@ -928,13 +924,15 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   Icon(
                     c.icon,
                     size: 16,
-                    color: selected ? c.color : Colors.grey.shade400,
+                    color: selected ? c.color : LiquidColors.textSecondary,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     c.label,
                     style: TextStyle(
-                      color: selected ? Colors.white : Colors.grey.shade300,
+                      color: selected
+                          ? LiquidColors.textPrimary
+                          : LiquidColors.textSecondary,
                       fontSize: 13,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                     ),
@@ -964,26 +962,36 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       maxLength: maxLength,
       validator: validator,
       cursorColor: color,
-      style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+      style: TextStyle(
+        color: LiquidColors.textPrimary,
+        fontSize: 14,
+        height: 1.5,
+      ),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(
-          color: Colors.grey.shade500,
+          color: LiquidColors.textTertiary,
           fontSize: 13,
           height: 1.5,
         ),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.04),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        counterStyle: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+        fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        counterStyle: TextStyle(color: LiquidColors.textTertiary, fontSize: 11),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          borderSide: BorderSide(
+            color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          borderSide: BorderSide(
+            color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -997,7 +1005,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: LiquidColors.error, width: 1.4),
         ),
-        errorStyle: const TextStyle(color: LiquidColors.error, fontSize: 12),
+        errorStyle: TextStyle(color: LiquidColors.error, fontSize: 12),
       ),
     );
   }
@@ -1014,7 +1022,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               Text(
                 '${_attachments.length}/$_maxAttachments · ${_formatBytes(_totalBytes)}',
                 style: TextStyle(
-                  color: Colors.grey.shade500,
+                  color: LiquidColors.textTertiary,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1047,9 +1055,11 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03),
+              color: LiquidColors.textPrimary.withValues(alpha: 0.03),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              border: Border.all(
+                color: LiquidColors.textPrimary.withValues(alpha: 0.06),
+              ),
             ),
             child: Column(
               children: [
@@ -1058,7 +1068,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   if (i < _attachments.length - 1)
                     Divider(
                       height: 1,
-                      color: Colors.white.withValues(alpha: 0.04),
+                      color: LiquidColors.textPrimary.withValues(alpha: 0.04),
                     ),
                 ],
               ],
@@ -1085,12 +1095,12 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
           decoration: BoxDecoration(
             color: disabled
-                ? Colors.white.withValues(alpha: 0.02)
+                ? LiquidColors.textPrimary.withValues(alpha: 0.02)
                 : color.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: disabled
-                  ? Colors.white.withValues(alpha: 0.06)
+                  ? LiquidColors.textPrimary.withValues(alpha: 0.06)
                   : color.withValues(alpha: 0.4),
               width: 1,
             ),
@@ -1101,7 +1111,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               Icon(
                 icon,
                 size: 18,
-                color: disabled ? Colors.grey.shade600 : color,
+                color: disabled ? LiquidColors.textTertiary : color,
               ),
               const SizedBox(width: 8),
               Flexible(
@@ -1109,7 +1119,9 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   label,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: disabled ? Colors.grey.shade600 : Colors.white,
+                    color: disabled
+                        ? LiquidColors.textTertiary
+                        : LiquidColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1150,8 +1162,8 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   a.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1160,7 +1172,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                 Text(
                   _formatBytes(a.size),
                   style: TextStyle(
-                    color: Colors.grey.shade500,
+                    color: LiquidColors.textTertiary,
                     fontSize: 11,
                   ),
                 ),
@@ -1176,7 +1188,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   },
             icon: Icon(
               Icons.close_rounded,
-              color: Colors.grey.shade400,
+              color: LiquidColors.textSecondary,
               size: 18,
             ),
             tooltip: 'Remove',
@@ -1191,9 +1203,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       color: accent.withValues(alpha: 0.16),
       alignment: Alignment.center,
       child: Icon(
-        a.isImage
-            ? Icons.image_rounded
-            : Icons.insert_drive_file_rounded,
+        a.isImage ? Icons.image_rounded : Icons.insert_drive_file_rounded,
         color: accent,
         size: 22,
       ),
@@ -1204,9 +1214,11 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1214,7 +1226,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
           Icon(
             Icons.shield_outlined,
             size: 14,
-            color: Colors.grey.shade500,
+            color: LiquidColors.textTertiary,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1223,7 +1235,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               'Nothing leaves the device until you confirm there. '
               'No vault content is attached automatically.',
               style: TextStyle(
-                color: Colors.grey.shade400,
+                color: LiquidColors.textSecondary,
                 fontSize: 11,
                 height: 1.4,
               ),
@@ -1243,7 +1255,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: accent,
           disabledBackgroundColor: accent.withValues(alpha: 0.4),
-          foregroundColor: Colors.white,
+          foregroundColor: LiquidColors.textPrimary,
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1253,16 +1265,16 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (_sending)
-              const SizedBox(
+              SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.2,
-                  color: Colors.white,
+                  color: LiquidColors.textPrimary,
                 ),
               )
             else
-              const Icon(Icons.send_rounded, size: 18, color: Colors.white),
+              Icon(Icons.send_rounded, size: 18, color: Colors.white),
             const SizedBox(width: 10),
             Text(
               _sending ? 'Sending…' : 'Send Feedback',
@@ -1270,6 +1282,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.3,
+                color: Colors.white,
               ),
             ),
           ],

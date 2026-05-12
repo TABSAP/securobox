@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/liquid_colors.dart';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -126,7 +127,7 @@ class _LiquidEncryptionAnimationState extends State<LiquidEncryptionAnimation>
                           ),
                           child: Icon(
                             Icons.lock_rounded,
-                            color: Colors.white,
+                            color: LiquidColors.textPrimary,
                             size: 36,
                             shadows: [
                               Shadow(
@@ -140,8 +141,8 @@ class _LiquidEncryptionAnimationState extends State<LiquidEncryptionAnimation>
                         if (hasProgress)
                           Text(
                             '$pct%',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: LiquidColors.textPrimary,
                               fontSize: 22,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 1.0,
@@ -175,8 +176,8 @@ class _LiquidEncryptionAnimationState extends State<LiquidEncryptionAnimation>
           Text(
             widget.title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
               fontSize: 16,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.3,
@@ -283,7 +284,7 @@ class _EncryptionPainter extends CustomPainter {
   });
 
   static const _cyan = Color(0xFF22D3EE);
-  static const _blue = Color(0xFF3B82F6);
+  static final Color _blue = LiquidColors.accentBlue;
   static const _ice = Color(0xFFE6FAFF);
   static const _twoPi = math.pi * 2;
 
@@ -460,7 +461,7 @@ class _EncryptionPainter extends CustomPainter {
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3 + 3 * ef),
       );
       canvas.drawCircle(
-          pkt, 1.3, Paint()..color = Colors.white.withValues(alpha: bright));
+          pkt, 1.3, Paint()..color = LiquidColors.textPrimary.withValues(alpha: bright));
     }
   }
 
@@ -631,7 +632,7 @@ class _EncryptionPainter extends CustomPainter {
       final pr = progress!.clamp(0.0, 1.0);
       final arcR = coreR + half * 0.05;
       final rect = Rect.fromCircle(center: c, radius: arcR);
-      const start = -math.pi / 2;
+      final start = -math.pi / 2;
       canvas.drawArc(
         rect,
         0,
@@ -656,7 +657,7 @@ class _EncryptionPainter extends CustomPainter {
             ..shader = SweepGradient(
               startAngle: start,
               endAngle: start + _twoPi,
-              colors: const [_blue, _cyan, _ice, _cyan, _blue],
+              colors: [_blue, _cyan, _ice, _cyan, _blue],
             ).createShader(rect)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0),
         );
@@ -669,7 +670,7 @@ class _EncryptionPainter extends CustomPainter {
             ..color = _ice
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
         );
-        canvas.drawCircle(hp, 2.0, Paint()..color = Colors.white);
+        canvas.drawCircle(hp, 2.0, Paint()..color = LiquidColors.textPrimary);
       }
     }
   }

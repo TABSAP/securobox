@@ -80,6 +80,7 @@ class IntrusionService {
       final encryptedPath = await VaultCrypto.instance.importEncrypted(
         tempFile,
         subdir: _kSubdir,
+        forceReal: true,
       );
 
       try {

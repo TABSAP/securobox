@@ -61,7 +61,7 @@ class _LiquidCircularProgressState extends State<LiquidCircularProgress>
   @override
   Widget build(BuildContext context) {
     final palette = widget.colors ??
-        const [
+        [
           LiquidColors.accentBlue,
           LiquidColors.accentPurple,
           LiquidColors.accentPink,
@@ -153,7 +153,7 @@ class _LiquidCircularPainter extends CustomPainter {
 
   void _paintTrack(Canvas canvas, Offset center, double radius) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.06)
+      ..color = LiquidColors.textPrimary.withValues(alpha: 0.06)
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth;
     canvas.drawCircle(center, radius, paint);
@@ -198,8 +198,8 @@ class _LiquidCircularPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Colors.white.withValues(alpha: 0.10),
-          Colors.white.withValues(alpha: 0.0),
+          LiquidColors.textPrimary.withValues(alpha: 0.10),
+          LiquidColors.textPrimary.withValues(alpha: 0.0),
         ],
       ).createShader(Rect.fromLTWH(
         center.dx - innerRadius,
@@ -305,7 +305,7 @@ class _LiquidCircularPainter extends CustomPainter {
       canvas.drawCircle(
         headCenter,
         headSize,
-        Paint()..color = Colors.white.withValues(alpha: 0.85 * d.alpha),
+        Paint()..color = LiquidColors.textPrimary.withValues(alpha: 0.85 * d.alpha),
       );
     }
   }
@@ -351,7 +351,7 @@ class _LiquidCircularPainter extends CustomPainter {
     canvas.drawCircle(
       headCenter,
       strokeWidth * 0.42,
-      Paint()..color = Colors.white,
+      Paint()..color = LiquidColors.textPrimary,
     );
   }
 
@@ -361,7 +361,7 @@ class _LiquidCircularPainter extends CustomPainter {
       text: TextSpan(
         text: '$pct%',
         style: TextStyle(
-          color: Colors.white,
+          color: LiquidColors.textPrimary,
           fontSize: size * 0.18,
           fontWeight: FontWeight.w800,
           letterSpacing: 0.3,

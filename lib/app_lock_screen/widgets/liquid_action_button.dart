@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:flutter/material.dart';
 
 class LiquidActionButton extends StatefulWidget {
@@ -77,7 +78,7 @@ class _LiquidActionButtonState extends State<LiquidActionButton>
               ),
               child: Icon(
                 widget.icon,
-                color: widget.isEnabled ? widget.color : Colors.grey.shade600,
+                color: widget.isEnabled ? widget.color : LiquidColors.textTertiary,
                 size: 28,
               ),
             ),
