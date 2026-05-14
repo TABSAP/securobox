@@ -20,6 +20,7 @@ import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
+import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -149,21 +150,29 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   Future<void> _checkBiometricCapability() async {
     try {
-      final bool canAuthenticate = await _localAuth.canCheckBiometrics;
-      final List<BiometricType> availableBiometrics = await _localAuth
-          .getAvailableBiometrics();
+      // canCheckBiometrics / isDeviceSupported are the reliable signals;
+      // getAvailableBiometrics() comes back empty on many Android devices even
+      // when a fingerprint / face is actually enrolled — don't gate on it.
+      final bool canCheck = await _localAuth.canCheckBiometrics;
+      final bool supported = await _localAuth.isDeviceSupported();
+      List<BiometricType> availableBiometrics = const <BiometricType>[];
+      try {
+        availableBiometrics = await _localAuth.getAvailableBiometrics();
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
-          _biometricAvailable =
-              canAuthenticate && availableBiometrics.isNotEmpty;
+          _biometricAvailable = canCheck || supported;
           _availableBiometrics = availableBiometrics;
 
           if (!_biometricAvailable && _biometricEnabled) {
             _biometricEnabled = false;
             _saveSetting('biometric', false);
           }
-          if (!availableBiometrics.contains(BiometricType.face) &&
+          // Only force-disable Face Unlock if the OS explicitly says no face is
+          // enrolled (it listed other biometrics but not face).
+          if (availableBiometrics.isNotEmpty &&
+              !availableBiometrics.contains(BiometricType.face) &&
               _faceUnlockEnabled) {
             _faceUnlockEnabled = false;
             _saveSetting('biometric_face', false);
@@ -300,11 +309,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                settingIcon,
-                color: LiquidColors.textPrimary,
-                size: 22,
-              ),
+              child: Icon(settingIcon, color: Colors.white, size: 22),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -454,66 +459,74 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     // User cancelled
     if (confirm != true || !mounted) return;
 
-    // Show loading
+    // 1. Try biometric / Face ID first when the device supports it. If it
+    //    fails or is cancelled we fall through to the PIN keypad dialog —
+    //    EITHER biometric or the correct app PIN is enough to proceed.
     setState(() => _isLoading = true);
-
-    try {
-      bool verified = false;
-
-      if (_biometricAvailable) {
-        // Try biometric verification first
+    bool verified = false;
+    if (_biometricAvailable) {
+      try {
         verified = await _localAuth.authenticate(
           localizedReason: 'Verify your identity to disable $settingName',
           biometricOnly: true,
           sensitiveTransaction: true,
+          persistAcrossBackgrounding: true,
+        );
+      } on LocalAuthException {
+        // Sensor unavailable / user cancelled / lockout — fall through to PIN.
+      } catch (_) {
+        // Defensive: any other failure → PIN fallback.
+      }
+    }
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    // 2. PIN fallback. Always offered when biometric didn't verify (whether
+    //    because the device lacks biometrics, the user cancelled, the OS
+    //    failed, or the user tapped through without authenticating).
+    if (!verified) {
+      verified = await PinUnlockDialog.show(
+        context,
+        title: 'Confirm with PIN',
+        subtitle: 'Enter your app PIN to disable $settingName',
+      );
+      if (!mounted) return;
+    }
+
+    if (!verified) {
+      FlushBarHelper.flushBarErrorMessage(
+        'Verification failed. $settingName remains enabled.',
+        context,
+      );
+      return;
+    }
+
+    // 3. Verified — disable the setting (and clean up dependent toggles).
+    setState(() => _isLoading = true);
+    try {
+      await _saveSetting(setting, false);
+      if (setting == 'appLock' && _biometricEnabled) {
+        await _saveSetting('biometric', false);
+      }
+      if (setting == 'appLock' && _faceUnlockEnabled) {
+        await _saveSetting('biometric_face', false);
+      }
+      await _loadSecuritySettings();
+      if (mounted) {
+        FlushBarHelper.flushBarSuccessMessage(
+          '$settingName disabled successfully',
+          context,
         );
       }
-
-      if (!mounted) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      if (verified) {
-        // Successfully verified - disable the setting
-        await _saveSetting(setting, false);
-
-        // Also disable biometric if app lock is being disabled
-        if (setting == 'appLock' && _biometricEnabled) {
-          await _saveSetting('biometric', false);
-        }
-        if (setting == 'appLock' && _faceUnlockEnabled) {
-          await _saveSetting('biometric_face', false);
-        }
-
-        await _loadSecuritySettings();
-
-        if (mounted) {
-          FlushBarHelper.flushBarSuccessMessage(
-            '$settingName disabled successfully',
-            context,
-          );
-        }
-      } else {
-        // Verification failed or cancelled
-        if (mounted) {
-          FlushBarHelper.flushBarErrorMessage(
-            'Verification failed. $settingName remains enabled.',
-            context,
-          );
-        }
-      }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         FlushBarHelper.flushBarErrorMessage(
-          'Authentication error. $settingName remains enabled.',
+          'Failed to disable $settingName',
           context,
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -535,46 +548,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
-  // ============ REPLACE YOUR EXISTING _testAndEnableBiometric METHOD ============
-
-  // Future<void> _testAndEnableBiometric() async {
-  //   if (!_biometricAvailable) {
-  //     FlushBarHelper.flushBarWarningMessage('Biometric authentication not available', context);
-  //     return;
-  //   }
-  //
-  //   try {
-  //     final bool didAuthenticate = await _localAuth.authenticate(
-  //       localizedReason: 'Authenticate to enable biometric security',
-  //       biometricOnly: true,
-  //       sensitiveTransaction: true,
-  //     );
-  //
-  //     if (didAuthenticate) {
-  //       await _saveSetting('biometric', true);
-  //       if (mounted) {
-  //         setState(() => _biometricEnabled = true);
-  //       }
-  //       if (!mounted) return;
-  //       FlushBarHelper.flushBarSuccessMessage('Biometric authentication enabled', context);
-  //
-  //       // Auto-enable app lock if not already enabled
-  //       if (!_appLockEnabled) {
-  //         await _saveSetting('appLock', true);
-  //         if (mounted) setState(() => _appLockEnabled = true);
-  //         if (!mounted) return;
-  //         FlushBarHelper.flushBarInfoMessage('App lock auto-enabled for security', context);
-  //       }
-  //     } else {
-  //       if (!mounted) return;
-  //       FlushBarHelper.flushBarWarningMessage('Authentication cancelled', context);
-  //     }
-  //   } catch (e) {
-  //     if (!mounted) return;
-  //     FlushBarHelper.flushBarErrorMessage('Authentication failed. Please try again.', context);
-  //   }
-  // }
-
   // ============ PROFESSIONAL BIOMETRIC ENABLE/DISABLE ============
 
   Future<void> _testAndEnableBiometric({String prefKey = 'biometric'}) async {
@@ -585,7 +558,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
 
     final isFace = prefKey == 'biometric_face';
-    final label = isFace ? 'Face Unlock' : _getBiometricTypeName();
 
     // Show professional bottom sheet
     final confirmed = await showModalBottomSheet<bool>(
@@ -597,36 +569,106 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
     if (confirmed != true || !mounted) return;
 
-    // Show loading overlay
-    _showLoadingOverlay('Verifying $label...');
+    // Let the sheet's dismiss animation fully clear before raising the OS
+    // biometric prompt — calling it mid-route-transition makes Android cancel
+    // the prompt immediately, which looks like "it keeps failing".
+    await Future<void>.delayed(const Duration(milliseconds: 280));
+    if (!mounted) return;
 
+    final reason = isFace
+        ? 'Authenticate to enable Face Unlock'
+        : 'Authenticate to enable biometric security';
+
+    bool didAuthenticate = false;
     try {
-      final bool didAuthenticate = await _localAuth.authenticate(
-        localizedReason: isFace
-            ? 'Authenticate to enable Face Unlock'
-            : 'Authenticate to enable biometric security',
-        biometricOnly: true,
-        sensitiveTransaction: true,
-      );
-
-      // Dismiss loading
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-
-      if (didAuthenticate) {
-        await _handleBiometricEnabled(prefKey: prefKey);
-      } else {
-        if (mounted) {
-          _showVerificationFailedSheet();
+      didAuthenticate = await _authenticateOnce(reason);
+    } on LocalAuthException catch (e) {
+      if (!mounted) return;
+      if (_isTransientAuthCode(e.code)) {
+        // Sensor / UI momentarily unavailable — one quick warm-up retry.
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+        if (!mounted) return;
+        try {
+          didAuthenticate = await _authenticateOnce(reason);
+        } catch (_) {
+          if (mounted) {
+            _showErrorBottomSheet(_authErrorTitle(null), _authErrorBody(null));
+          }
+          return;
         }
+      } else {
+        _showErrorBottomSheet(_authErrorTitle(e.code), _authErrorBody(e.code));
+        return;
       }
     } catch (e) {
       if (mounted) {
-        Navigator.of(context, rootNavigator: true).pop();
-        _showErrorBottomSheet(
-          'Authentication failed',
-          'Please try again later',
-        );
+        _showErrorBottomSheet(_authErrorTitle(null), _authErrorBody(null));
       }
+      return;
+    }
+
+    if (!mounted) return;
+    if (didAuthenticate) {
+      await _handleBiometricEnabled(prefKey: prefKey);
+    } else {
+      _showVerificationFailedSheet(prefKey: prefKey);
+    }
+  }
+
+  Future<bool> _authenticateOnce(String reason) {
+    return _localAuth.authenticate(
+      localizedReason: reason,
+      biometricOnly: true,
+      sensitiveTransaction: true,
+      persistAcrossBackgrounding: true,
+    );
+  }
+
+  bool _isTransientAuthCode(LocalAuthExceptionCode code) =>
+      code == LocalAuthExceptionCode.biometricHardwareTemporarilyUnavailable ||
+      code == LocalAuthExceptionCode.uiUnavailable ||
+      code == LocalAuthExceptionCode.systemCanceled ||
+      code == LocalAuthExceptionCode.authInProgress ||
+      code == LocalAuthExceptionCode.timeout ||
+      code == LocalAuthExceptionCode.deviceError ||
+      code == LocalAuthExceptionCode.unknownError;
+
+  String _authErrorTitle(LocalAuthExceptionCode? code) {
+    switch (code) {
+      case LocalAuthExceptionCode.noBiometricsEnrolled:
+        return 'No biometric enrolled';
+      case LocalAuthExceptionCode.noBiometricHardware:
+        return 'Not supported';
+      case LocalAuthExceptionCode.noCredentialsSet:
+        return 'Screen lock required';
+      case LocalAuthExceptionCode.temporaryLockout:
+      case LocalAuthExceptionCode.biometricLockout:
+        return 'Biometrics locked';
+      case LocalAuthExceptionCode.userCanceled:
+      case LocalAuthExceptionCode.userRequestedFallback:
+        return 'Cancelled';
+      default:
+        return 'Couldn\'t verify';
+    }
+  }
+
+  String _authErrorBody(LocalAuthExceptionCode? code) {
+    switch (code) {
+      case LocalAuthExceptionCode.noBiometricsEnrolled:
+        return 'Enroll a fingerprint or face in your device settings, then try again.';
+      case LocalAuthExceptionCode.noBiometricHardware:
+        return 'This device doesn\'t have biometric hardware.';
+      case LocalAuthExceptionCode.noCredentialsSet:
+        return 'Set a screen lock (PIN, pattern or password) in your device settings to use biometrics.';
+      case LocalAuthExceptionCode.temporaryLockout:
+        return 'Too many attempts. Wait a moment, then try again.';
+      case LocalAuthExceptionCode.biometricLockout:
+        return 'Unlock your device with your screen lock first, then try again.';
+      case LocalAuthExceptionCode.userCanceled:
+      case LocalAuthExceptionCode.userRequestedFallback:
+        return 'You cancelled the verification. Tap the toggle again to retry.';
+      default:
+        return 'Biometric verification isn\'t available right now. Please try again.';
     }
   }
 
@@ -973,7 +1015,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   // ============ VERIFICATION FAILED SHEET ============
-  void _showVerificationFailedSheet() {
+  void _showVerificationFailedSheet({String prefKey = 'biometric'}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1065,7 +1107,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     child: ElevatedButton(
                       onPressed: () {
                         Navigator.pop(context);
-                        _testAndEnableBiometric();
+                        _testAndEnableBiometric(prefKey: prefKey);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: LiquidColors.accentPurple,
@@ -1183,91 +1225,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
             const SizedBox(height: 12),
           ],
-        ),
-      ),
-    );
-  }
-
-  // ============ LOADING OVERLAY ============
-  void _showLoadingOverlay(String message) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withValues(alpha: 0.7),
-      builder: (context) => PopScope(
-        canPop: false,
-        child: Center(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 40),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: LiquidColors.surface,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  blurRadius: 30,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Animated fingerprint
-                TweenAnimationBuilder<double>(
-                  tween: Tween<double>(begin: 0.9, end: 1.1),
-                  duration: const Duration(milliseconds: 1000),
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: value,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              LiquidColors.accentPurple.withValues(alpha: 0.3),
-                              LiquidColors.accentPink.withValues(alpha: 0.1),
-                            ],
-                          ),
-                        ),
-                        child: Center(
-                          child: Icon(
-                            _getBiometricIcon(),
-                            color: LiquidColors.accentPurple,
-                            size: 40,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: LiquidColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: LiquidColors.accentPurple,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -2664,6 +2621,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           localizedReason: 'Verify your identity to turn off Face Unlock',
           biometricOnly: true,
           sensitiveTransaction: true,
+          persistAcrossBackgrounding: true,
         );
       } catch (_) {}
       if (!mounted) return;
@@ -3007,8 +2965,21 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   Future<void> _openRecoverySetup() async {
     HapticFeedback.lightImpact();
     final wasEnabled = _recoveryEnabled;
+
+    // Re-issuing replaces the stored hash + email, so require the previously-
+    // saved email first — otherwise anyone with momentary access to an unlocked
+    // app could quietly rotate the recovery target.
+    if (wasEnabled) {
+      final verified = await _verifyRecoveryEmail();
+      if (!verified || !mounted) return;
+    }
+
     final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const RecoverySetupScreen()),
+      MaterialPageRoute(
+        builder: (_) => RecoverySetupScreen(
+          lockedEmail: wasEnabled ? _recoveryEmail : null,
+        ),
+      ),
     );
     if (result == true && mounted) {
       await _loadSecuritySettings();
@@ -3018,6 +2989,197 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         context,
       );
     }
+  }
+
+  Future<bool> _verifyRecoveryEmail() async {
+    final storedEmail = (_recoveryEmail ?? '').trim();
+    if (storedEmail.isEmpty) return true;
+
+    final controller = TextEditingController();
+    final target = storedEmail.toLowerCase();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final entered = controller.text.trim().toLowerCase();
+          final matches = entered.isNotEmpty && entered == target;
+          return AlertDialog(
+            backgroundColor: LiquidColors.backgroundLight,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            title: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: LiquidColors.accentBlue.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.autorenew_rounded,
+                    color: LiquidColors.accentBlue,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Verify to re-issue',
+                    style: TextStyle(
+                      color: LiquidColors.textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Type the recovery email you used previously to prove it\'s '
+                  'you. A new code will only be generated after this matches.',
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    height: 1.5,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    'Hint: ${RecoveryService.mask(storedEmail)}',
+                    style: TextStyle(
+                      color: LiquidColors.textTertiary,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.emailAddress,
+                  onChanged: (_) => setDialogState(() {}),
+                  cursorColor: LiquidColors.accentBlue,
+                  style: TextStyle(
+                    color: matches
+                        ? LiquidColors.accentBlue
+                        : LiquidColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'previous@gmail.com',
+                    hintStyle: TextStyle(
+                      color: LiquidColors.textTertiary,
+                      fontSize: 13,
+                    ),
+                    filled: true,
+                    fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
+                    prefixIcon: Icon(
+                      Icons.alternate_email_rounded,
+                      color: matches
+                          ? LiquidColors.accentBlue
+                          : LiquidColors.textTertiary,
+                      size: 18,
+                    ),
+                    suffixIcon: matches
+                        ? Icon(
+                            Icons.check_circle_rounded,
+                            color: LiquidColors.accentBlue,
+                            size: 18,
+                          )
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(
+                        color: LiquidColors.accentBlue,
+                        width: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: matches
+                    ? () => Navigator.of(dialogContext).pop(true)
+                    : null,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                ),
+                child: Text(
+                  'Verify',
+                  style: TextStyle(
+                    color: matches
+                        ? LiquidColors.accentBlue
+                        : LiquidColors.textTertiary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (ok != true && mounted) {
+      FlushBarHelper.flushBarErrorMessage(
+        'Email didn\'t match — re-issue cancelled',
+        context,
+      );
+    }
+    return ok == true;
   }
 
   Future<void> _openDecoySetup() async {
@@ -3439,10 +3601,18 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _openRecoverySetup,
-                icon: const Icon(Icons.add_rounded, size: 18),
+                icon: const Icon(
+                  Icons.add_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
                 label: const Text(
                   'Set up recovery',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: LiquidColors.accentBlue,

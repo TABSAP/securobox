@@ -1513,16 +1513,12 @@ class _UploadScreenState extends State<UploadScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.lock_rounded,
-                size: 18,
-                color: LiquidColors.textPrimary,
-              ),
+              Icon(Icons.lock_rounded, size: 18, color: Colors.white),
               const SizedBox(width: 10),
               Text(
                 'Encrypt & Add to $category',
                 style: TextStyle(
-                  color: LiquidColors.textPrimary,
+                  color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.3,
@@ -1532,13 +1528,13 @@ class _UploadScreenState extends State<UploadScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
-                  color: LiquidColors.textPrimary.withValues(alpha: 0.22),
+                  color: Colors.white.withValues(alpha: 0.22),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   '${_selectedFiles.length}',
                   style: TextStyle(
-                    color: LiquidColors.textPrimary,
+                    color: Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),

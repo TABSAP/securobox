@@ -200,16 +200,15 @@ class MediaService {
   Future<bool> authenticateUser({String reason = 'Authenticate to access locked media'}) async {
     try {
       final bool canCheck = await _localAuth.canCheckBiometrics;
-      if (!canCheck) return false;
-
-      final List<BiometricType> availableBiometrics =
-      await _localAuth.getAvailableBiometrics();
-      if (availableBiometrics.isEmpty) return false;
-
+      final bool supported = await _localAuth.isDeviceSupported();
+      if (!canCheck && !supported) return false;
+      // Note: getAvailableBiometrics() returns an empty list on many Android
+      // devices even when biometrics are enrolled — don't gate on it.
       return await _localAuth.authenticate(
         localizedReason: reason,
         biometricOnly: true,
         sensitiveTransaction: true,
+        persistAcrossBackgrounding: true,
       );
     } catch (e) {
       return false;

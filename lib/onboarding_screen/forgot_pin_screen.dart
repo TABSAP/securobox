@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
@@ -15,20 +14,18 @@ class ForgotPinScreen extends StatefulWidget {
   State<ForgotPinScreen> createState() => _ForgotPinScreenState();
 }
 
-enum _CodeStage { idle, entry }
+enum _CodeStage { confirmEmail, enterCode }
 
 class _ForgotPinScreenState extends State<ForgotPinScreen> {
   final TextEditingController _codeController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   bool _resetting = false;
-  bool _sendingCode = false;
   String? _error;
   String? _codeError;
   String? _emailError;
   bool _recoveryEnabled = false;
   String? _recoveryEmail;
-  String? _ephemeralCode;
-  _CodeStage _codeStage = _CodeStage.idle;
+  _CodeStage _codeStage = _CodeStage.confirmEmail;
 
   @override
   void initState() {
@@ -65,101 +62,40 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     } catch (_) {}
   }
 
-  String _normalizeCode(String code) =>
-      code.replaceAll(RegExp(r'[\s\-]'), '').toUpperCase();
+  void _confirmEmail() {
+    final stored = (_recoveryEmail ?? '').trim();
+    if (stored.isEmpty || _resetting) return;
 
-  String _encodeQuery(Map<String, String> params) {
-    return params.entries
-        .map(
-          (e) =>
-              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
-        )
-        .join('&');
-  }
-
-  Future<void> _sendFreshCode({bool requireEmailMatch = false}) async {
-    final email = (_recoveryEmail ?? '').trim();
-    if (email.isEmpty || _sendingCode || _resetting) return;
-
-    if (requireEmailMatch) {
-      final entered = _emailController.text.trim();
-      if (entered.isEmpty) {
-        setState(() => _emailError = 'Enter your recovery email');
-        HapticFeedback.heavyImpact();
-        return;
-      }
-      if (entered.toLowerCase() != email.toLowerCase()) {
-        setState(
-          () =>
-              _emailError = 'Email doesn\'t match the one set up for recovery.',
-        );
-        HapticFeedback.heavyImpact();
-        return;
-      }
-    }
-
-    HapticFeedback.lightImpact();
-    setState(() {
-      _sendingCode = true;
-      _codeError = null;
-      _emailError = null;
-      _error = null;
-    });
-
-    final code = RecoveryService.instance.generateCode();
-    const subject = 'SecuroBox — PIN Reset Code';
-
-    final uri = Uri(
-      scheme: 'mailto',
-      path: email,
-      query: _encodeQuery({'subject': subject, 'body': code}),
-    );
-
-    try {
-      bool launched = false;
-      if (await canLaunchUrl(uri)) {
-        launched = await launchUrl(uri);
-      }
-      if (!mounted) return;
-
-      if (!launched) {
-        setState(() {
-          _sendingCode = false;
-          _error =
-              'No email app found. Set up an email app on this device '
-              'so the recovery code can be sent to $email, then try again.';
-        });
-        HapticFeedback.heavyImpact();
-        return;
-      }
-
-      setState(() {
-        _ephemeralCode = code;
-        _codeStage = _CodeStage.entry;
-        _sendingCode = false;
-        _codeController.clear();
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _sendingCode = false;
-        _error = 'Could not open email app: ${e.toString()}';
-      });
-    }
-  }
-
-  Future<void> _verifyCodeAndReset() async {
-    if (_resetting || _ephemeralCode == null) return;
-
-    final entered = _codeController.text.trim();
+    final entered = _emailController.text.trim();
     if (entered.isEmpty) {
-      setState(() => _codeError = 'Enter the code from your email');
+      setState(() => _emailError = 'Enter your recovery email');
+      HapticFeedback.heavyImpact();
+      return;
+    }
+    if (entered.toLowerCase() != stored.toLowerCase()) {
+      setState(
+        () => _emailError = 'Email doesn\'t match the one set up for recovery.',
+      );
       HapticFeedback.heavyImpact();
       return;
     }
 
-    if (_normalizeCode(entered) != _normalizeCode(_ephemeralCode!)) {
-      setState(() => _codeError = 'Code doesn\'t match. Check your email.');
+    HapticFeedback.lightImpact();
+    setState(() {
+      _codeStage = _CodeStage.enterCode;
+      _emailError = null;
+      _codeError = null;
+      _error = null;
+      _codeController.clear();
+    });
+  }
+
+  Future<void> _verifyCodeAndReset() async {
+    if (_resetting) return;
+
+    final entered = _codeController.text.trim();
+    if (entered.isEmpty) {
+      setState(() => _codeError = 'Enter the recovery code from your email');
       HapticFeedback.heavyImpact();
       return;
     }
@@ -169,8 +105,24 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
       _codeError = null;
       _error = null;
     });
-    HapticFeedback.heavyImpact();
 
+    final ok = await RecoveryService.instance.verifyEmailAndCode(
+      email: _emailController.text.trim(),
+      code: entered,
+    );
+    if (!mounted) return;
+
+    if (!ok) {
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _resetting = false;
+        _codeError =
+            'Code doesn\'t match. Check the email you received when you set up recovery.';
+      });
+      return;
+    }
+
+    HapticFeedback.heavyImpact();
     try {
       await PinCrypto.instance.clearPin();
 
@@ -407,8 +359,8 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     if (!_recoveryEnabled || (_recoveryEmail ?? '').trim().isEmpty) {
       return _buildNoRecoveryWarning();
     }
-    if (_codeStage == _CodeStage.idle) {
-      return _buildSendCodeStage();
+    if (_codeStage == _CodeStage.confirmEmail) {
+      return _buildConfirmEmailStage();
     }
     return _buildEnterCodeStage();
   }
@@ -459,7 +411,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     );
   }
 
-  Widget _buildSendCodeStage() {
+  Widget _buildConfirmEmailStage() {
     final masked = RecoveryService.mask(_recoveryEmail!.trim());
     final hasEmailError = _emailError != null;
     return Column(
@@ -485,7 +437,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  Icons.outgoing_mail,
+                  Icons.alternate_email_rounded,
                   color: LiquidColors.accentBlue,
                   size: 20,
                 ),
@@ -505,7 +457,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Enter the email you set up for recovery. A one-time code will be sent there once it matches.',
+                      'Enter the email you registered when you set up recovery. Once it matches we\'ll ask for the recovery code you received then.',
                       style: TextStyle(
                         color: LiquidColors.textSecondary,
                         fontSize: 12,
@@ -537,8 +489,9 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
           autocorrect: false,
           enableSuggestions: false,
           keyboardType: TextInputType.emailAddress,
-          enabled: !_sendingCode && !_resetting,
+          enabled: !_resetting,
           cursorColor: LiquidColors.accentBlue,
+          onSubmitted: (_) => _confirmEmail(),
           style: TextStyle(
             color: LiquidColors.textPrimary,
             fontSize: 14,
@@ -603,9 +556,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         SizedBox(
           height: 54,
           child: ElevatedButton(
-            onPressed: _sendingCode
-                ? null
-                : () => _sendFreshCode(requireEmailMatch: true),
+            onPressed: _resetting ? null : _confirmEmail,
             style: ElevatedButton.styleFrom(
               backgroundColor: LiquidColors.accentBlue,
               disabledBackgroundColor: LiquidColors.accentBlue.withValues(
@@ -617,28 +568,18 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_sendingCode)
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: LiquidColors.textPrimary,
-                    ),
-                  )
-                else
-                  const Icon(
-                    Icons.mail_outline_rounded,
-                    size: 18,
-                    color: Colors.white,
-                  ),
-                const SizedBox(width: 10),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
+                SizedBox(width: 10),
                 Text(
-                  _sendingCode ? 'Opening email…' : 'Send recovery code',
-                  style: const TextStyle(
+                  'Continue',
+                  style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.2,
@@ -697,7 +638,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Code sent',
+                      'Enter your recovery code',
                       style: TextStyle(
                         color: LiquidColors.textPrimary,
                         fontSize: 14,
@@ -706,7 +647,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Open the email at $masked and paste the code below.',
+                      'Open the email at $masked sent when you set up recovery and paste the code below.',
                       style: TextStyle(
                         color: LiquidColors.textSecondary,
                         fontSize: 12,
@@ -741,6 +682,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
           textAlign: TextAlign.center,
           cursorColor: LiquidColors.accentBlue,
           enabled: !_resetting,
+          onSubmitted: (_) => _verifyCodeAndReset(),
           style: TextStyle(
             color: LiquidColors.textPrimary,
             fontSize: 16,
@@ -827,7 +769,11 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     ),
                   )
                 else
-                  const Icon(Icons.lock_reset_rounded, size: 18),
+                  const Icon(
+                    Icons.lock_reset_rounded,
+                    size: 18,
+                    color: Colors.white,
+                  ),
                 const SizedBox(width: 10),
                 Text(
                   _resetting ? 'Resetting PIN…' : 'Verify & Reset PIN',
@@ -835,6 +781,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.2,
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -844,9 +791,15 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         const SizedBox(height: 6),
         Center(
           child: TextButton(
-            onPressed: (_resetting || _sendingCode) ? null : _sendFreshCode,
+            onPressed: _resetting
+                ? null
+                : () => setState(() {
+                    _codeStage = _CodeStage.confirmEmail;
+                    _codeError = null;
+                    _codeController.clear();
+                  }),
             child: Text(
-              _sendingCode ? 'Sending…' : 'Re-send code',
+              'Use a different email',
               style: TextStyle(
                 color: LiquidColors.textSecondary,
                 fontSize: 13,

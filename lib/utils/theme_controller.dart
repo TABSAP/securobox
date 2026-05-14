@@ -18,7 +18,7 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
 
   static const _kPrefKey = 'themeMode';
 
-  ThemeMode _mode = ThemeMode.dark;
+  ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
 
   /// The brightness actually in effect right now (resolves `system`).
@@ -33,14 +33,14 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Loads the persisted preference. Defaults to dark (the app's original look)
+  /// Loads the persisted preference. Defaults to following the system theme
   /// when nothing is stored.
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _mode = _decode(prefs.getString(_kPrefKey)) ?? ThemeMode.dark;
+      _mode = _decode(prefs.getString(_kPrefKey)) ?? ThemeMode.system;
     } catch (_) {
-      _mode = ThemeMode.dark;
+      _mode = ThemeMode.system;
     }
     LiquidColors.applyBrightness(effectiveBrightness);
   }

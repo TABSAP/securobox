@@ -5,11 +5,7 @@ class DeleteDialog extends StatelessWidget {
   final String title;
   final VoidCallback onConfirm;
 
-  const DeleteDialog({
-    super.key,
-    required this.title,
-    required this.onConfirm,
-  });
+  const DeleteDialog({super.key, required this.title, required this.onConfirm});
 
   @override
   Widget build(BuildContext context) {
@@ -59,10 +55,7 @@ class DeleteDialog extends StatelessWidget {
             Text(
               '"$title" will be moved to recycle bin.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: LiquidColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 14, color: LiquidColors.textSecondary),
             ),
             const SizedBox(height: 30),
             Row(
@@ -107,7 +100,7 @@ class DeleteDialog extends StatelessWidget {
                     child: Text(
                       'Move to Trash',
                       style: TextStyle(
-                        color: LiquidColors.textPrimary,
+                        color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

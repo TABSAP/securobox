@@ -598,7 +598,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'you@tabsap.com',
+                    hintText: 'you@gmail.com',
                     hintStyle: TextStyle(
                       color: LiquidColors.textTertiary,
                       fontSize: 13,
@@ -1009,7 +1009,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                       ),
                       child: Text(
                         'Empty Trash',
-                        style: TextStyle(color: LiquidColors.textPrimary),
+                        style: TextStyle(color: Colors.white),
                       ),
                     ),
                   ),

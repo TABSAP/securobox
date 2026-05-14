@@ -199,6 +199,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       final ok = await _localAuth.authenticate(
         localizedReason: 'Enable biometric unlock for SecuroBox',
         biometricOnly: true,
+        persistAcrossBackgrounding: true,
       );
       if (ok) {
         final prefs = await SharedPreferences.getInstance();
@@ -281,7 +282,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                 ],
               ),
-              child: Icon(Icons.shield_rounded, color: LiquidColors.textPrimary, size: 60),
+              child: Icon(Icons.shield_rounded, color: Colors.white, size: 60),
             ),
             const SizedBox(height: 36),
             Text(
@@ -339,7 +340,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   elevation: 0,
                 ),
                 child: Text('Get Started',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: LiquidColors.textPrimary)),
+                
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
             const SizedBox(height: 20),
@@ -385,7 +387,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: Icon(Icons.pin_outlined, color: LiquidColors.textPrimary, size: 50),
+            child: Icon(Icons.pin_outlined, color: Colors.white, size: 50),
           ),
           const SizedBox(height: 28),
           Text('Choose Your PIN Length',
@@ -415,7 +417,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 elevation: 0,
               ),
               child: Text('Continue',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: LiquidColors.textPrimary)),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),
           const SizedBox(height: 16),
@@ -452,7 +454,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 border: Border.all(color: selected ? LiquidColors.accentBlue : LiquidColors.textTertiary, width: 2),
                 color: selected ? LiquidColors.accentBlue : Colors.transparent,
               ),
-              child: selected ? Icon(Icons.check, color: LiquidColors.textPrimary, size: 16) : null,
+              child: selected ? Icon(Icons.check, color: Colors.white, size: 16) : null,
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -659,7 +661,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ),
               ],
             ),
-            child: Icon(Icons.fingerprint_rounded, color: LiquidColors.textPrimary, size: 60),
+            child: Icon(Icons.fingerprint_rounded, color: Colors.white, size: 60),
           ),
           const SizedBox(height: 32),
           Text('Enable Biometric Unlock?',
@@ -681,7 +683,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 elevation: 0,
               ),
               child: Text('Enable Biometric',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: LiquidColors.textPrimary)),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),
           const SizedBox(height: 12),

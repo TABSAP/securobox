@@ -9,6 +9,10 @@ class SessionManager {
   static const _kSessionLastActive = 'sessionLastActive';
   static const _kFailedAttempts = 'failedPinAttempts';
   static const _kCooldownUntil = 'cooldownUntil';
+  static const _kFailedBio = 'failedBioAttempts';
+  static const _kBioCooldownUntil = 'bioCooldownUntil';
+  static const bioCooldownThreshold = 3;
+  static const _bioCooldownSeconds = 60;
 
   static const Map<int, String> autoLockOptions = {
     0: 'Immediately',
@@ -58,6 +62,7 @@ class SessionManager {
   Future<void> unlock() async {
     shouldLock.value = false;
     await resetFailedAttempts();
+    await resetFailedBiometricAttempts();
     await markActive();
   }
 
@@ -104,6 +109,43 @@ class SessionManager {
     final remainingMs = until - DateTime.now().millisecondsSinceEpoch;
     if (remainingMs <= 0) {
       await prefs.remove(_kCooldownUntil);
+      return null;
+    }
+    return Duration(milliseconds: remainingMs);
+  }
+
+  Future<int> recordFailedBiometricAttempt() async {
+    final prefs = await SharedPreferences.getInstance();
+    final n = (prefs.getInt(_kFailedBio) ?? 0) + 1;
+    await prefs.setInt(_kFailedBio, n);
+    if (n >= bioCooldownThreshold) {
+      final until = DateTime.now()
+          .add(const Duration(seconds: _bioCooldownSeconds))
+          .millisecondsSinceEpoch;
+      await prefs.setInt(_kBioCooldownUntil, until);
+    }
+    return n;
+  }
+
+  Future<int> getFailedBiometricAttempts() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_kFailedBio) ?? 0;
+  }
+
+  Future<void> resetFailedBiometricAttempts() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kFailedBio);
+    await prefs.remove(_kBioCooldownUntil);
+  }
+
+  Future<Duration?> getBiometricCooldownRemaining() async {
+    final prefs = await SharedPreferences.getInstance();
+    final until = prefs.getInt(_kBioCooldownUntil);
+    if (until == null) return null;
+    final remainingMs = until - DateTime.now().millisecondsSinceEpoch;
+    if (remainingMs <= 0) {
+      await prefs.remove(_kBioCooldownUntil);
+      await prefs.remove(_kFailedBio);
       return null;
     }
     return Duration(milliseconds: remainingMs);

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
+import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/vault_context.dart';
+import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -175,9 +177,34 @@ class HomeScreenState extends State<HomeScreen>
     }
   }
 
+  /// Identity gate for any action on a locked item. Tries biometric / Face ID
+  /// via the OS prompt first; if that's unavailable, cancelled or fails, falls
+  /// back to the app PIN. Returns true only when the user verified.
+  Future<bool> _unlockProtectedItem({required String reason}) async {
+    if (await _mediaService.authenticateUser(reason: reason)) return true;
+    if (!mounted) return false;
+    return _verifyWithAppPin();
+  }
+
+  Future<bool> _verifyWithAppPin() async {
+    if (!await PinCrypto.instance.hasPin()) {
+      if (mounted) {
+        FlushBarHelper.flushBarErrorMessage('No PIN is set', context);
+      }
+      return false;
+    }
+    final pinLength = await PinCrypto.instance.getPinLength();
+    if (!mounted) return false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => PinUnlockDialog(pinLength: pinLength),
+    );
+    return ok == true;
+  }
+
   Future<void> _renameMedia(VideoItem media) async {
     if (media.isLocked) {
-      final authenticated = await _mediaService.authenticateUser(
+      final authenticated = await _unlockProtectedItem(
         reason: 'Authenticate to rename locked media',
       );
       if (!authenticated) return;
@@ -385,7 +412,7 @@ class HomeScreenState extends State<HomeScreen>
 
   Future<void> _deleteMedia(VideoItem media) async {
     if (media.isLocked) {
-      final authenticated = await _mediaService.authenticateUser(
+      final authenticated = await _unlockProtectedItem(
         reason: 'Authenticate to delete locked media',
       );
       if (!authenticated) return;
@@ -490,7 +517,7 @@ class HomeScreenState extends State<HomeScreen>
 
   void _showDownloadConfirmation(VideoItem media) async {
     if (media.isLocked) {
-      final authenticated = await _mediaService.authenticateUser(
+      final authenticated = await _unlockProtectedItem(
         reason: 'Authenticate to download locked media',
       );
       if (!authenticated) return;
@@ -581,13 +608,13 @@ class HomeScreenState extends State<HomeScreen>
 
   Future<void> _toggleMediaLock(VideoItem media) async {
     if (media.isLocked) {
-      final authenticated = await _mediaService.authenticateUser(
+      final authenticated = await _unlockProtectedItem(
         reason: 'Authenticate to unlock media',
       );
       if (!authenticated) {
         if (!mounted) return;
         FlushBarHelper.flushBarErrorMessage(
-          'Authentication required to unlock',
+          'Verify with biometrics, Face ID or PIN to unlock',
           context,
         );
         return;
@@ -602,10 +629,15 @@ class HomeScreenState extends State<HomeScreen>
 
   Future<void> _openMedia(VideoItem media) async {
     if (media.isLocked) {
-      final authenticated = await _mediaService.authenticateUser();
+      final authenticated = await _unlockProtectedItem(
+        reason: 'Authenticate to open locked media',
+      );
       if (!authenticated) {
         if (!mounted) return;
-        FlushBarHelper.flushBarErrorMessage('Authentication failed', context);
+        FlushBarHelper.flushBarErrorMessage(
+          'Verify with biometrics, Face ID or PIN to open this item',
+          context,
+        );
         return;
       }
     }
@@ -1454,6 +1486,7 @@ class _SkeletonCardState extends State<_SkeletonCard>
     );
   }
 }
+
 
 class _PrimaryAction extends StatelessWidget {
   final IconData icon;

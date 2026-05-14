@@ -6,7 +6,12 @@ import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
 
 class RecoverySetupScreen extends StatefulWidget {
-  const RecoverySetupScreen({super.key});
+  /// When non-null the screen is in re-issue mode: the email is pre-filled,
+  /// the input is locked, and the user only confirms before generating a new
+  /// code against the same address.
+  final String? lockedEmail;
+
+  const RecoverySetupScreen({super.key, this.lockedEmail});
 
   @override
   State<RecoverySetupScreen> createState() => _RecoverySetupScreenState();
@@ -23,6 +28,16 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
   bool _saving = false;
   String? _saveError;
 
+  bool get _reissueMode => (widget.lockedEmail ?? '').trim().isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_reissueMode) {
+      _emailController.text = widget.lockedEmail!.trim();
+    }
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -36,11 +51,23 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
       r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$',
     ).hasMatch(value);
     if (!ok) return 'That doesn\'t look like a valid email';
+    if (!value.toLowerCase().endsWith('@gmail.com')) {
+      return 'Recovery email must be a Gmail address (end with @gmail.com)';
+    }
     return null;
   }
 
   void _proceedToCode() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final emailError = _validateEmail(_emailController.text);
+    if (emailError != null) {
+      // The form's inline error is easy to miss on small screens — also
+      // surface a banner and a haptic so the user can't accidentally proceed
+      // believing it worked.
+      HapticFeedback.heavyImpact();
+      _formKey.currentState?.validate();
+      FlushBarHelper.flushBarErrorMessage(emailError, context);
+      return;
+    }
     HapticFeedback.lightImpact();
     setState(() {
       _code = RecoveryService.instance.generateCode();
@@ -161,7 +188,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
               child: Center(
                 child: Icon(
                   Icons.restore_rounded,
-                  color: LiquidColors.textPrimary,
+                  color: Colors.white,
                   size: 18,
                 ),
               ),
@@ -227,10 +254,13 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHero(
-          icon: Icons.mark_email_read_outlined,
-          title: 'Recover with email',
-          subtitle:
-              'We\'ll generate a one-time code and open your email app so you can send it to yourself. We never store the code or read your email.',
+          icon: _reissueMode
+              ? Icons.autorenew_rounded
+              : Icons.mark_email_read_outlined,
+          title: _reissueMode ? 'Re-issue recovery code' : 'Recover with email',
+          subtitle: _reissueMode
+              ? 'A new code will be generated for the same email address you set up before. The old code becomes invalid as soon as you save.'
+              : 'We\'ll generate a one-time code and open your email app so you can send it to yourself. We never store the code or read your email.',
         ),
         const SizedBox(height: 24),
         _buildInfoCard(
@@ -238,6 +268,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           icon: Icons.shield_outlined,
           title: 'How this works',
           bullets: const [
+            'Only Gmail addresses (@gmail.com) are accepted',
             'You\'ll see a recovery code on the next screen',
             'You email it to yourself from your own email app',
             'Only a hash of the code is stored on this device',
@@ -248,15 +279,18 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
         const SizedBox(height: 18),
         Form(
           key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 8),
                 child: Text(
-                  'YOUR EMAIL',
+                  _reissueMode ? 'RECOVERY EMAIL · LOCKED' : 'YOUR EMAIL',
                   style: TextStyle(
-                    color: LiquidColors.textSecondary,
+                    color: _reissueMode
+                        ? LiquidColors.textTertiary
+                        : LiquidColors.textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.6,
@@ -265,15 +299,32 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
               ),
               TextFormField(
                 controller: _emailController,
-                autofocus: true,
+                autofocus: !_reissueMode,
+                readOnly: _reissueMode,
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
                 enableSuggestions: false,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: _validateEmail,
                 cursorColor: LiquidColors.accentBlue,
-                style: TextStyle(color: LiquidColors.textPrimary, fontSize: 14),
+                style: TextStyle(
+                  color: _reissueMode
+                      ? LiquidColors.textSecondary
+                      : LiquidColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: _reissueMode
+                      ? FontWeight.w600
+                      : FontWeight.normal,
+                ),
                 decoration: InputDecoration(
-                  hintText: 'you@tabsap.com',
+                  hintText: 'you@gmail.com',
+                  suffixIcon: _reissueMode
+                      ? Icon(
+                          Icons.lock_outline_rounded,
+                          color: LiquidColors.textTertiary,
+                          size: 16,
+                        )
+                      : null,
                   hintStyle: TextStyle(
                     color: LiquidColors.textTertiary,
                     fontSize: 14,
@@ -340,17 +391,24 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.arrow_forward_rounded, size: 18),
-                SizedBox(width: 10),
+                Icon(
+                  _reissueMode
+                      ? Icons.autorenew_rounded
+                      : Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 10),
                 Text(
-                  'Continue',
-                  style: TextStyle(
+                  _reissueMode ? 'Generate new code' : 'Continue',
+                  style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.2,
+                    color: Colors.white,
                   ),
                 ),
               ],
@@ -407,12 +465,13 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
               flex: 2,
               child: ElevatedButton.icon(
                 onPressed: _openEmailClient,
-                icon: const Icon(Icons.mail_outline_rounded, size: 18),
+                icon: const Icon(Icons.mail_outline_rounded, size: 18,color: Colors.white,),
                 label: Text(
                   _emailSent ? 'Re-send email' : 'Email it to me',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -504,7 +563,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                     ),
                   )
                 else
-                  const Icon(Icons.check_rounded, size: 18),
+                  const Icon(Icons.check_rounded, size: 18,color: Colors.white,),
                 const SizedBox(width: 10),
                 Text(
                   _saving
@@ -516,6 +575,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.2,
+                    color: Colors.white,
                   ),
                 ),
               ],
