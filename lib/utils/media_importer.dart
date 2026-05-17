@@ -10,29 +10,23 @@ import 'package:video_player_app/utils/vault_crypto.dart';
 
 class ImportResult {
   final int added;
+  final int failed;
   final int deletedOriginals;
   final bool deleteOriginalsRequested;
   ImportResult({
     required this.added,
+    required this.failed,
     required this.deletedOriginals,
     required this.deleteOriginalsRequested,
   });
 }
 
-/// A file chosen via the system picker, paired with the picker's platform
-/// identifier (on Android, the source content URI) when one is available.
-/// The identifier embeds the exact MediaStore id, so the importer can delete
-/// the precise gallery asset instead of guessing it back by name + size.
 class PickedMedia {
   final File file;
   final String? identifier;
   const PickedMedia(this.file, {this.identifier});
 }
 
-/// Bridges the file picker output to the encrypted vault library. Each file is
-/// AES-encrypted via [VaultCrypto], appended to the routed library list, and
-/// (when import settings allow) the source file is wiped so the import is
-/// invisible to the system gallery / file manager.
 class MediaImporter {
   MediaImporter._();
   static final MediaImporter instance = MediaImporter._();
@@ -79,15 +73,6 @@ class MediaImporter {
     }
   }
 
-  /// Imports [items] into the vault. When [category] is null the category is
-  /// derived from each file's extension. Calls [onProgress] after every file
-  /// so callers can drive a progress UI.
-  ///
-  /// When delete-originals is enabled, the picker's temp copy is always
-  /// removed and the matching gallery asset id (image / audio) is collected,
-  /// then deleted as a single batch at the end — that keeps the Android 11+
-  /// system delete sheet to a single prompt for the whole import. Videos are
-  /// deliberately excluded, so a video-only import raises no delete sheet.
   Future<ImportResult> importFiles({
     required List<PickedMedia> items,
     String? category,
@@ -98,12 +83,10 @@ class MediaImporter {
     final list = prefs.getStringList(libKey) ?? [];
     final deleteOriginals = await ImportSettings.instance
         .deleteOriginalsEnabled();
-    // Videos are intentionally left in the gallery — removing them would
-    // raise the system "Delete these items?" sheet, which is suppressed for
-    // video imports. Only images and audio are routed to MediaStore deletion.
-    const galleryTypes = {'image', 'audio'};
+    const galleryTypes = {'image', 'audio', 'video'};
 
     int added = 0;
+    int failed = 0;
     int deletedOriginals = 0;
     final pendingGalleryIds = <String>[];
 
@@ -120,19 +103,19 @@ class MediaImporter {
         );
         added++;
 
-        if (deleteOriginals) {
-          if (galleryTypes.contains(fileType)) {
-            final id = await ImportSettings.instance.findGalleryAssetId(
-              f,
-              identifier: items[i].identifier,
-            );
-            if (id != null && !pendingGalleryIds.contains(id)) {
-              pendingGalleryIds.add(id);
-            }
+        if (deleteOriginals && galleryTypes.contains(fileType)) {
+          final id = await ImportSettings.instance.findGalleryAssetId(
+            f,
+            identifier: items[i].identifier,
+          );
+          if (id != null && !pendingGalleryIds.contains(id)) {
+            pendingGalleryIds.add(id);
           }
-          await ImportSettings.instance.deleteOriginal(f);
         }
-      } catch (_) {}
+        await ImportSettings.instance.deleteOriginal(f);
+      } catch (_) {
+        failed++;
+      }
       onProgress?.call(i + 1, items.length);
     }
 
@@ -147,14 +130,13 @@ class MediaImporter {
 
     return ImportResult(
       added: added,
+      failed: failed,
       deletedOriginals: deletedOriginals,
       deleteOriginalsRequested: deleteOriginals,
     );
   }
 
-  /// Re-labels every library item currently filed under category [from] to
-  /// [to]. Used when a custom category is renamed (from → new name) or
-  /// deleted (from → 'Others'). Returns how many items were changed.
+
   Future<int> moveCategoryItems(String from, String to) async {
     if (from == to) return 0;
     final prefs = await SharedPreferences.getInstance();

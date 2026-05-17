@@ -285,10 +285,21 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
       _captureError = null;
     });
     try {
-      await MediaImporter.instance.importFiles(
+      final result = await MediaImporter.instance.importFiles(
         items: [PickedMedia(File(path))],
         category: _reviewIsVideo ? 'Videos' : 'Photos',
       );
+      // importFiles swallows per-file encryption errors, so added == 0 is the
+      // only signal the capture never reached the vault. Keep the review open
+      // (and the temp file) so the user can retry Save.
+      if (mounted && result.added == 0) {
+        setState(() {
+          _saving = false;
+          _captureError = 'Couldn\'t save to your vault. Please try again.';
+        });
+        HapticFeedback.heavyImpact();
+        return;
+      }
       // importFiles may leave the source temp file behind — wipe any leftover.
       _wipeReviewFile(path);
       final video = _reviewVideo;

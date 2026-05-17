@@ -7,16 +7,16 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugins.GeneratedPluginRegistrant
 
-class MainActivity: FlutterFragmentActivity() {
+open class MainActivity: FlutterFragmentActivity() {
     private val channelName = "secure_player/disguise"
 
-    private val aliasMap = mapOf(
+    private val disguiseComponents = mapOf(
         "default"    to "MainActivity",
-        "calculator" to "CalculatorAlias",
-        "notes"      to "NotesAlias",
-        "weather"    to "WeatherAlias",
-        "compass"    to "CompassAlias",
-        "utilities"  to "UtilitiesAlias",
+        "calculator" to "CalculatorActivity",
+        "notes"      to "NotesActivity",
+        "weather"    to "WeatherActivity",
+        "compass"    to "CompassActivity",
+        "utilities"  to "UtilitiesActivity",
     )
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -24,13 +24,13 @@ class MainActivity: FlutterFragmentActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
-                    "getCurrent" -> result.success(currentAlias())
+                    "getCurrent" -> result.success(currentDisguise())
                     "set" -> {
                         val key = call.argument<String>("name")
-                        if (key == null || !aliasMap.containsKey(key)) {
+                        if (key == null || !disguiseComponents.containsKey(key)) {
                             result.error("BAD_ARG", "Unknown disguise: $key", null)
                         } else {
-                            applyAlias(key)
+                            applyDisguise(key)
                             result.success(true)
                         }
                     }
@@ -39,35 +39,41 @@ class MainActivity: FlutterFragmentActivity() {
             }
     }
 
-    private fun currentAlias(): String {
+    private fun currentDisguise(): String {
         val pm = packageManager
-        for ((key, suffix) in aliasMap) {
-            val component = ComponentName(packageName, "$packageName.$suffix")
-            val state = pm.getComponentEnabledSetting(component)
-            if (state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
+        for ((key, name) in disguiseComponents) {
+            val component = ComponentName(packageName, "$packageName.$name")
+            if (pm.getComponentEnabledSetting(component) ==
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
                 return key
             }
         }
         return "default"
     }
 
-    private fun applyAlias(targetKey: String) {
+    private fun applyDisguise(targetKey: String) {
         val pm = packageManager
-        for ((key, suffix) in aliasMap) {
-            val component = ComponentName(packageName, "$packageName.$suffix")
+        for ((key, name) in disguiseComponents) {
+            val component = ComponentName(packageName, "$packageName.$name")
             val desired = if (key == targetKey) {
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED
             } else {
                 PackageManager.COMPONENT_ENABLED_STATE_DISABLED
             }
-            val current = pm.getComponentEnabledSetting(component)
-            if (current != desired) {
-                pm.setComponentEnabledSetting(
-                    component,
-                    desired,
-                    PackageManager.DONT_KILL_APP,
-                )
+            if (pm.getComponentEnabledSetting(component) != desired) {
+                pm.setComponentEnabledSetting(component, desired, PackageManager.DONT_KILL_APP)
             }
         }
     }
 }
+
+// Disguise launcher entries. Each needs to be a distinct manifest <activity> so
+// it can carry its own theme + icon — that is what puts the selected disguise
+// icon on the Android launch/splash screen. An <activity-alias> cannot do this
+// because it has no android:theme attribute. They inherit MainActivity's Flutter
+// engine setup and disguise MethodChannel unchanged.
+class CalculatorActivity : MainActivity()
+class NotesActivity : MainActivity()
+class WeatherActivity : MainActivity()
+class CompassActivity : MainActivity()
+class UtilitiesActivity : MainActivity()

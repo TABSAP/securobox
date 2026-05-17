@@ -6,16 +6,37 @@
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
-        <item name="android:windowSplashScreenBackground">#0F0F23</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/android12splash</item>
+        <!-- Match the Flutter splash: same background colour + same brand logo,
+             so the Android 12+ system splash hands off without a visual jump. -->
+        <item name="android:windowSplashScreenBackground">@color/launch_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_logo_default</item>
     </style>
     <!-- Theme applied to the Android Window as soon as the process has started.
          This theme determines the color of the Android Window while your
          Flutter UI initializes, as well as behind your Flutter UI while its
          running.
-         
+
          This Theme is only used starting with V2 of Flutter's Android embedding. -->
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+
+    <!-- Per-disguise launch themes (Android 12+ system splash). The dotted names
+         implicitly inherit LaunchTheme; each swaps in that disguise's logo so the
+         launch screen matches both the home-screen icon and the Flutter splash. -->
+    <style name="LaunchTheme.Calculator">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_logo_calculator</item>
+    </style>
+    <style name="LaunchTheme.Notes">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_logo_notes</item>
+    </style>
+    <style name="LaunchTheme.Weather">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_logo_weather</item>
+    </style>
+    <style name="LaunchTheme.Compass">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_logo_compass</item>
+    </style>
+    <style name="LaunchTheme.Utilities">
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/launch_logo_utilities</item>
     </style>
 </resources>

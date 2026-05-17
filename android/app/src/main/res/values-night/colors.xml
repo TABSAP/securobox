@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark-mode launch background — mirrors LiquidColors.backgroundDeep (dark)
+         so the native launch screen matches the Flutter splash. -->
+    <color name="launch_bg">#0A0F1E</color>
+</resources>

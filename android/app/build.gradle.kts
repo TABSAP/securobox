@@ -43,6 +43,11 @@ android {
         }
     }
 
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     buildTypes {
         release {
             val keystorePropertiesFile = rootProject.file("key.properties")

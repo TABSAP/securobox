@@ -175,6 +175,15 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
 
       if (!mounted) return;
       final label = category ?? 'auto-detected';
+      if (import.added == 0) {
+        FlushBarHelper.flushBarErrorMessage(
+          import.failed > 0
+              ? 'Import failed — ${import.failed} file${import.failed == 1 ? '' : 's'} could not be encrypted. Your originals were left untouched.'
+              : 'Nothing was imported.',
+          context,
+        );
+        return;
+      }
       final base = import.added == 1
           ? '1 file encrypted into $label'
           : '${import.added} files encrypted into $label';
@@ -184,7 +193,14 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       } else if (import.deleteOriginalsRequested && Platform.isIOS) {
         msg = '$base. iOS will confirm removal from Photos.';
       }
-      FlushBarHelper.flushBarSuccessMessage(msg, context);
+      if (import.failed > 0) {
+        FlushBarHelper.flushBarErrorMessage(
+          '$msg  ${import.failed} file${import.failed == 1 ? '' : 's'} could not be imported.',
+          context,
+        );
+      } else {
+        FlushBarHelper.flushBarSuccessMessage(msg, context);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _importing = false);

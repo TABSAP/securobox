@@ -15,6 +15,15 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 
+    // Some plugins (e.g. google_mlkit_*) still compile their Android module
+    // with source/target Java 8, which the JDK reports as "obsolete". They
+    // are third-party modules we can't change; silence the cosmetic warning
+    // with the flag the JDK itself recommends. Changing the Java version
+    // instead would risk a Java/Kotlin jvmTarget mismatch.
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.add("-Xlint:-options")
+    }
+
     // ML Kit AARs (google_mlkit_commons, etc.) reference platform attrs
     // introduced in API 31 (e.g. android:attr/lStar). Their own compileSdk
     // defaults can be lower than the app's, which makes

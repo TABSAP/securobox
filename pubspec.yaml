@@ -42,13 +42,18 @@ dependencies:
   camera: ^0.11.1
   google_mlkit_face_detection: 0.9.0
   connectivity_plus: ^6.1.0
+  # Must stay in dependencies, not dev_dependencies: flutter_native_splash
+  # ships a native Android plugin. As a dev_dependency the Flutter tool still
+  # writes it into GeneratedPluginRegistrant.java, but Gradle skips building
+  # its module, so the release build fails to compile. It is only used at
+  # build time (splash codegen); the shipped native plugin is a tiny no-op.
+  flutter_native_splash: ^2.4.7
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: ^2.10.4
   flutter_launcher_icons: ^0.14.4
-  flutter_native_splash: ^2.4.7
   flutter_lints: ^6.0.0
 
 flutter_launcher_icons:

@@ -14,7 +14,9 @@ class ImportSettings {
 
   Future<bool> deleteOriginalsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kDeleteOriginalsKey) ?? true;
+    // Off by default: an import never triggers Android's "Allow … to delete?"
+    // system prompt unless the user explicitly opts in from Settings.
+    return prefs.getBool(_kDeleteOriginalsKey) ?? false;
   }
 
   Future<void> setDeleteOriginalsEnabled(bool value) async {

@@ -19,4 +19,22 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+
+    <!-- Per-disguise launch themes (pre-Android-12 starting window). The dotted
+         names implicitly inherit LaunchTheme; each only swaps the icon shown. -->
+    <style name="LaunchTheme.Calculator">
+        <item name="android:windowBackground">@drawable/launch_background_calculator</item>
+    </style>
+    <style name="LaunchTheme.Notes">
+        <item name="android:windowBackground">@drawable/launch_background_notes</item>
+    </style>
+    <style name="LaunchTheme.Weather">
+        <item name="android:windowBackground">@drawable/launch_background_weather</item>
+    </style>
+    <style name="LaunchTheme.Compass">
+        <item name="android:windowBackground">@drawable/launch_background_compass</item>
+    </style>
+    <style name="LaunchTheme.Utilities">
+        <item name="android:windowBackground">@drawable/launch_background_utilities</item>
+    </style>
 </resources>

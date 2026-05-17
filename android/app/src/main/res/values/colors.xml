@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#0F0F23</color>
+    <!-- Launch (starting window) background. Mirrors LiquidColors.backgroundDeep
+         so the native launch screen matches the Flutter splash. This light
+         value is overridden by values-night/colors.xml in dark mode. -->
+    <color name="launch_bg">#F4F6FB</color>
 </resources>
