@@ -386,9 +386,10 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                     subtitle:
                         'Copies the full message to your clipboard so you can paste it anywhere',
                     onTap: () async {
+                      final navigator = Navigator.of(sheetContext);
                       await _copyMessageToClipboard(subject, body);
                       if (!mounted) return;
-                      Navigator.of(sheetContext).pop();
+                      navigator.pop();
                       FlushBarHelper.flushBarSuccessMessage(
                         'Copied. Paste it into any email or chat to $_supportEmail.',
                         context,
