@@ -1,7 +1,7 @@
 export 'package:video_player_app/utils/flush_bar_helper.dart';
-export 'package:video_player_app/download_screen/widgets/liquid_info_card.dart';
-export 'package:video_player_app/download_screen/widgets/liquid_empty_state.dart';
-export 'package:video_player_app/download_screen/widgets/liquid_download_card.dart';
+export 'package:video_player_app/history_screen/widgets/liquid_info_card.dart';
+export 'package:video_player_app/history_screen/widgets/liquid_empty_state.dart';
+export 'package:video_player_app/history_screen/widgets/liquid_history_card.dart';
 export 'package:video_player_app/models/app_models.dart';
 export 'package:video_player_app/utils/liquid_colors.dart';
 export 'package:shared_preferences/shared_preferences.dart';

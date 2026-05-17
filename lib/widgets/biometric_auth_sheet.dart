@@ -23,6 +23,8 @@ class BiometricAuthSheet extends StatefulWidget {
   final String subtitle;
   final String? localizedReason;
   final bool allowPinFallback;
+  final String fallbackLabel;
+  final IconData fallbackIcon;
 
   const BiometricAuthSheet({
     super.key,
@@ -30,6 +32,8 @@ class BiometricAuthSheet extends StatefulWidget {
     this.subtitle = 'Use Fingerprint or Face ID to continue',
     this.localizedReason,
     this.allowPinFallback = true,
+    this.fallbackLabel = 'Use PIN instead',
+    this.fallbackIcon = Icons.dialpad_rounded,
   });
 
   static Future<BiometricAuthResult?> show(
@@ -38,6 +42,8 @@ class BiometricAuthSheet extends StatefulWidget {
     String subtitle = 'Use Fingerprint or Face ID to continue',
     String? localizedReason,
     bool allowPinFallback = true,
+    String fallbackLabel = 'Use PIN instead',
+    IconData fallbackIcon = Icons.dialpad_rounded,
   }) {
     return Navigator.of(context).push<BiometricAuthResult>(
       MaterialPageRoute<BiometricAuthResult>(
@@ -47,6 +53,8 @@ class BiometricAuthSheet extends StatefulWidget {
           subtitle: subtitle,
           localizedReason: localizedReason,
           allowPinFallback: allowPinFallback,
+          fallbackLabel: fallbackLabel,
+          fallbackIcon: fallbackIcon,
         ),
       ),
     );
@@ -285,6 +293,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   void _startCooldown(Duration initial, String message) {
     _cooldownTimer?.cancel();
     _sweep.stop();
+    _pulse.stop();
+    _ping.stop();
     setState(() {
       _phase = _AuthPhase.failed;
       _errorMessage = message;
@@ -349,6 +359,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
   void _toFailed(String message) {
     _sweep.stop();
+    _pulse.stop();
+    _ping.stop();
     setState(() {
       _phase = _AuthPhase.failed;
       _errorMessage = message;
@@ -584,7 +596,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     const disc = 128.0;
     const reserved = 184.0;
 
-    return SizedBox(
+    return RepaintBoundary(
+      child: SizedBox(
       width: reserved,
       height: reserved,
       child: AnimatedBuilder(
@@ -741,6 +754,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
             ),
           );
         },
+      ),
       ),
     );
   }
@@ -899,8 +913,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
           children: [
             if (widget.allowPinFallback) ...[
               _primaryButton(
-                icon: Icons.dialpad_rounded,
-                label: 'Use PIN instead',
+                icon: widget.fallbackIcon,
+                label: widget.fallbackLabel,
                 onTap: () => _close(BiometricAuthResult.usePin),
               ),
               const SizedBox(height: 10),
@@ -924,8 +938,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
               const SizedBox(height: 14),
               if (widget.allowPinFallback) ...[
                 _primaryButton(
-                  icon: Icons.dialpad_rounded,
-                  label: 'Use PIN instead',
+                  icon: widget.fallbackIcon,
+                  label: widget.fallbackLabel,
                   onTap: () => _close(BiometricAuthResult.usePin),
                 ),
                 const SizedBox(height: 10),
@@ -954,8 +968,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
               ],
               if (widget.allowPinFallback) ...[
                 _ghostButton(
-                  icon: Icons.dialpad_rounded,
-                  label: 'Use PIN instead',
+                  icon: widget.fallbackIcon,
+                  label: widget.fallbackLabel,
                   onTap: () => _close(BiometricAuthResult.usePin),
                 ),
                 const SizedBox(height: 6),

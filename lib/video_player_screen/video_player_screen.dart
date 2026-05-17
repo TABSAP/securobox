@@ -188,64 +188,119 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void _showErrorDialog() {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: const Color(0xFF1A1A3E),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.error_outline_rounded,
-                color: Colors.red,
-                size: 60,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Playback Error',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                constraints: const BoxConstraints(maxHeight: 240),
-                child: SingleChildScrollView(
-                  child: SelectableText(
-                    _errorDetail ?? 'Unable to play video file',
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontFamily: 'monospace',
-                      fontSize: 12,
+      builder: (dialogContext) {
+        bool showDetails = false;
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => Dialog(
+            backgroundColor: const Color(0xFF1A1A3E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.14),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.videocam_off_rounded,
+                      color: Colors.red,
+                      size: 32,
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4788FF),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Can\'t play this video',
+                    style: TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-                child: const Text(
-                  'OK',
-                  style: TextStyle(color: Colors.white),
-                ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'This file may be damaged or in a format that isn\'t '
+                    'supported.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                  if (showDetails) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: SingleChildScrollView(
+                        child: SelectableText(
+                          _errorDetail ?? 'No additional details.',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontFamily: 'monospace',
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () =>
+                        setDialogState(() => showDetails = !showDetails),
+                    child: Text(
+                      showDetails
+                          ? 'Hide technical details'
+                          : 'Show technical details',
+                      style: const TextStyle(
+                        color: Color(0xFF4788FF),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(dialogContext).pop();
+                        if (mounted) Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4788FF),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Close',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -422,22 +477,28 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4788FF).withValues(alpha: 0.8),
+                          color: const Color(0xFF4788FF),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF4788FF).withValues(alpha: 0.5),
-                              blurRadius: 15,
-                              spreadRadius: 5,
+                              color: const Color(
+                                0xFF4788FF,
+                              ).withValues(alpha: 0.35),
+                              blurRadius: 22,
+                              spreadRadius: -4,
+                              offset: const Offset(0, 6),
                             ),
                           ],
                         ),
-                        child: Icon(
-                          _videoPlayerController.value.isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          color: Colors.white,
-                          size: 40,
+                        child: ValueListenableBuilder<VideoPlayerValue>(
+                          valueListenable: _videoPlayerController,
+                          builder: (context, value, _) => Icon(
+                            value.isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 40,
+                          ),
                         ),
                       ),
                     ),
@@ -488,12 +549,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
 
-                      Text(
-                        _formatDuration(_videoPlayerController.value.position),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                      ValueListenableBuilder<VideoPlayerValue>(
+                        valueListenable: _videoPlayerController,
+                        builder: (context, value, _) => Text(
+                          '${_formatDuration(value.position)}  /  '
+                          '${_formatDuration(value.duration)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
 
@@ -682,37 +748,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ),
 
           _buildCustomControls(),
-
-          if (_showOverlay)
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 80,
-              left: 0,
-              right: 0,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: _showOverlay ? 1.0 : 0.0,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'Speed: ${_playbackSpeed}x',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
         ],
       ),
     );

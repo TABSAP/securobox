@@ -12,10 +12,10 @@ class IntrusionLogScreen extends StatefulWidget {
   const IntrusionLogScreen({super.key});
 
   @override
-  State<IntrusionLogScreen> createState() => _IntrusionLogScreenState();
+  State<IntrusionLogScreen> createState() => IntrusionLogScreenState();
 }
 
-class _IntrusionLogScreenState extends State<IntrusionLogScreen>
+class IntrusionLogScreenState extends State<IntrusionLogScreen>
     with SingleTickerProviderStateMixin {
   List<IntrusionEntry> _entries = [];
   bool _loading = true;
@@ -38,6 +38,13 @@ class _IntrusionLogScreenState extends State<IntrusionLogScreen>
     _enter.dispose();
     VaultCrypto.instance.wipeAllTempCache();
     super.dispose();
+  }
+
+  /// Re-reads the encrypted log from disk. Called by [MainScreen] every time
+  /// the Intrusions tab is opened, since the screen is kept alive inside an
+  /// [IndexedStack] and would otherwise show whatever was captured at launch.
+  void reload() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
@@ -608,6 +615,9 @@ class _IntrusionLogScreenState extends State<IntrusionLogScreen>
                       child: Image.file(
                         File(path),
                         fit: BoxFit.cover,
+                        // Decode at thumbnail size, not full camera resolution.
+                        cacheWidth: 240,
+                        cacheHeight: 240,
                         errorBuilder: (_, _, _) => fallback(),
                       ),
                     ),

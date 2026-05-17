@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -35,9 +36,18 @@ class IntrusionService {
 
   bool _capturing = false;
 
+  /// Live count of break-in photos in the log. The bottom-nav Intrusions tab
+  /// watches this, so a new capture surfaces in the app in real time.
+  final ValueNotifier<int> logCount = ValueNotifier<int>(0);
+
+  /// Syncs [logCount] with what's stored — call once when the app starts.
+  Future<void> refreshCount() async {
+    logCount.value = await count();
+  }
+
   Future<bool> isEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kEnabledKey) ?? false;
+    return prefs.getBool(_kEnabledKey) ?? true;
   }
 
   Future<void> setEnabled(bool value) async {
@@ -95,6 +105,7 @@ class IntrusionService {
       );
       log.add(entry.toStorageString());
       await prefs.setStringList(_kLogKey, log);
+      logCount.value = log.length;
 
       return true;
     } catch (_) {
@@ -122,6 +133,7 @@ class IntrusionService {
     final log = prefs.getStringList(_kLogKey) ?? [];
     log.removeWhere((s) => s.startsWith('${entry.timestamp}|'));
     await prefs.setStringList(_kLogKey, log);
+    logCount.value = log.length;
   }
 
   Future<void> clearAll() async {
@@ -131,6 +143,7 @@ class IntrusionService {
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kLogKey);
+    logCount.value = 0;
   }
 
   Future<int> count() async {

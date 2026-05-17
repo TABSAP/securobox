@@ -44,6 +44,7 @@ Out of scope:
 | Reading vault files from disk on rooted device | Each file is AES-256-CTR encrypted with a per-device master key stored in OS-backed keystore. Filenames on disk are random UUIDs; original filenames are stored in app metadata and would also need decryption to be meaningful |
 | App Switcher / multitasking snapshot leakage | Native UIView privacy shield on iOS attached during `applicationWillResignActive`; Flutter overlay on inactive/paused/hidden lifecycle states; `FLAG_SECURE` (via `flutter_screenshot_blocker`) on Android |
 | Timing attack on PIN compare | Constant-time XOR-OR comparison of hash bytes |
+| Remote exfiltration while the device is online | **Offline Integrity Lock** (opt-in, off by default). Continuously monitors the device's network interfaces; the instant any Wi-Fi / mobile / ethernet / VPN path is detected, the in-memory encryption session is revoked, the decrypted temp cache is wiped, and the vault locks. While enabled, no credential opens the vault until the device is fully offline (Airplane Mode). All local — no server, no reachability probe |
 
 ## Threat model — what we do NOT promise
 
@@ -52,6 +53,7 @@ Out of scope:
 - We do not protect against **shoulder-surfing** beyond enabling biometric.
 - We do not have **forgot-PIN recovery**. By design. Lose your PIN → lose your vault. There is no email reset, no security questions, no master key escrow.
 - We are **not** a chat / messaging app — there are no end-to-end transport guarantees beyond HTTPS for the optional URL download feature.
+- The **Offline Integrity Lock** narrows the window in which decrypted content is reachable, but it is *not* a substitute for the root/jailbreak caveat above. It keys off the OS-reported network interface state (`connectivity_plus`), not true internet reachability, and it does not regenerate the at-rest AES master key — re-authentication re-derives a fresh *in-memory* session from the existing key (rotating the at-rest key would orphan every already-encrypted file).
 
 ## Cryptographic primitives
 

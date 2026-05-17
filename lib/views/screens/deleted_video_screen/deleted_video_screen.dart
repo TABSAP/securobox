@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player_app/download_screen/widgets/view.dart';
+import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
 import 'package:video_player_app/utils/vault_context.dart';
+import 'package:video_player_app/utils/vault_crypto.dart';
+import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 import 'package:video_player_app/views/screens/deleted_video_screen/widgets/view.dart';
 
 class DeletedVideosScreen extends StatefulWidget {
@@ -21,6 +23,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   final List<VideoItem> _deletedVideos = [];
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -32,6 +35,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     _initAnimations();
     _loadDeletedVideos();
     _searchController.addListener(_onSearchChanged);
+    _searchFocusNode.addListener(_onSearchChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoDeleteOldFiles();
@@ -40,7 +44,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _searchFocusNode.removeListener(_onSearchChanged);
+    _searchFocusNode.dispose();
     _animationController.dispose();
 
     super.dispose();
@@ -490,209 +497,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     }
   }
 
+  /// Restoring an item from the recycle bin is free — a single tap brings it
+  /// straight back to the library, no recovery email required.
   Future<void> _confirmRestore(VideoItem video) async {
-    final enabled = await RecoveryService.instance.isEnabled();
-    if (!mounted) return;
-
-    if (!enabled) {
-      await _restoreVideo(video);
-      return;
-    }
-
-    final storedEmail = (await RecoveryService.instance.getEmail() ?? '')
-        .trim();
-    if (!mounted) return;
-    if (storedEmail.isEmpty) {
-      await _restoreVideo(video);
-      return;
-    }
-
-    final controller = TextEditingController();
-    final target = storedEmail.toLowerCase();
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final entered = controller.text.trim().toLowerCase();
-          final matches = entered.isNotEmpty && entered == target;
-          return AlertDialog(
-            backgroundColor: LiquidColors.backgroundLight,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            title: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: LiquidColors.success.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.restore_rounded,
-                    color: LiquidColors.success,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Confirm restore',
-                    style: TextStyle(
-                      color: LiquidColors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Restoring deleted items requires your recovery email. '
-                  'Type it exactly as you set it up to bring "${video.title}" back to your library.',
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    height: 1.5,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 6),
-                  child: Text(
-                    'Hint: ${RecoveryService.mask(storedEmail)}',
-                    style: TextStyle(
-                      color: LiquidColors.textTertiary,
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-                TextField(
-                  smartDashesType: SmartDashesType.disabled,
-                  smartQuotesType: SmartQuotesType.disabled,
-                  controller: controller,
-                  autofocus: true,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  enableIMEPersonalizedLearning: false,
-                  autofillHints: const <String>[],
-                  keyboardType: TextInputType.visiblePassword,
-                  focusNode: FocusNode(skipTraversal: true),
-                  onChanged: (_) => setDialogState(() {}),
-                  cursorColor: LiquidColors.success,
-                  style: TextStyle(
-                    color: matches
-                        ? LiquidColors.success
-                        : LiquidColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'you@gmail.com',
-                    hintStyle: TextStyle(
-                      color: LiquidColors.textTertiary,
-                      fontSize: 13,
-                    ),
-                    filled: true,
-                    fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
-                    prefixIcon: Icon(
-                      Icons.alternate_email_rounded,
-                      color: matches
-                          ? LiquidColors.success
-                          : LiquidColors.textTertiary,
-                      size: 18,
-                    ),
-                    suffixIcon: matches
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            color: LiquidColors.success,
-                            size: 18,
-                          )
-                        : null,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: matches
-                            ? LiquidColors.success
-                            : LiquidColors.accentBlue,
-                        width: 1.4,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: matches
-                    ? () => Navigator.of(dialogContext).pop(true)
-                    : null,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-                child: Text(
-                  'Restore',
-                  style: TextStyle(
-                    color: matches
-                        ? LiquidColors.success
-                        : LiquidColors.textTertiary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    if (ok != true || !mounted) return;
     await _restoreVideo(video);
   }
 
@@ -739,7 +546,128 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     }
   }
 
+  /// A red, two-button confirmation for an irreversible delete.
+  Future<bool?> _confirmDeleteForever(String title, String body) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                LiquidColors.backgroundLight,
+                LiquidColors.backgroundMid,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: LiquidColors.error.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      LiquidColors.error.withValues(alpha: 0.3),
+                      LiquidColors.error.withValues(alpha: 0.1),
+                    ],
+                    center: Alignment.center,
+                    radius: 0.8,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.delete_forever_rounded,
+                    color: LiquidColors.error,
+                    size: 30,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: LiquidColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                body,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: LiquidColors.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: LiquidColors.textTertiary),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(color: LiquidColors.textSecondary),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: LiquidColors.error,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Permanently deletes a single item — wipes its encrypted file from disk
+  /// and drops the library entry. Irreversible, so it is gated by a confirm.
   Future<void> _permanentDelete(VideoItem video) async {
+    final confirmed = await _confirmDeleteForever(
+      'Delete forever?',
+      '"${video.title}" will be permanently deleted from your vault. '
+          'This cannot be undone.',
+    );
+    if (confirmed != true || !mounted) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       final mediaList =
@@ -750,8 +678,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         try {
           final v = VideoItem.fromStorageString(mediaData);
           if (v.id == video.id) {
-            v.isHidden = true;
-            updatedMediaList.add(v.toStorageString());
+            // Wipe the encrypted file from disk, then drop the entry.
+            await VaultCrypto.instance.deleteEncryptedFile(v.path);
           } else {
             updatedMediaList.add(mediaData);
           }
@@ -766,8 +694,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         updatedMediaList,
       );
       if (!mounted) return;
-      FlushBarHelper.flushBarErrorMessage(
-        '"${video.title}" hidden — recoverable via email',
+      FlushBarHelper.flushBarSuccessMessage(
+        '"${video.title}" permanently deleted',
         context,
       );
       await _loadDeletedVideos();
@@ -776,7 +704,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         widget.onVideosChanged!();
       }
     } catch (e) {
-      _showErrorDialog('Failed to hide file');
+      _showErrorDialog('Failed to delete file');
     }
   }
 
@@ -789,12 +717,14 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
       final updatedMediaList = <String>[];
 
+      int removed = 0;
       for (final mediaData in mediaList) {
         try {
           final v = VideoItem.fromStorageString(mediaData);
           if (v.isDeleted && !v.isHidden) {
-            v.isHidden = true;
-            updatedMediaList.add(v.toStorageString());
+            // Empty Trash is permanent — wipe the encrypted file and drop it.
+            await VaultCrypto.instance.deleteEncryptedFile(v.path);
+            removed++;
           } else {
             updatedMediaList.add(mediaData);
           }
@@ -812,7 +742,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       );
       if (!mounted) return;
       FlushBarHelper.flushBarSuccessMessage(
-        'Trash hidden — recoverable via email',
+        '$removed ${removed == 1 ? "file" : "files"} permanently deleted',
         context,
       );
       await _loadDeletedVideos();
@@ -969,7 +899,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               ),
               const SizedBox(height: 12),
               Text(
-                'All ${_deletedVideos.length} files will be hidden from the app. You can bring them back anytime using your recovery email.',
+                'All ${_deletedVideos.length} files will be permanently deleted from your vault. This cannot be undone.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -1083,6 +1013,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: const LiquidBottomNav(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -1176,24 +1107,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           },
         ),
         actions: [
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.elasticOut,
-            builder: (context, double value, child) {
-              return Transform.scale(
-                scale: value,
-                child: IconButton(
-                  icon: Icon(
-                    Icons.lock_open_rounded,
-                    color: LiquidColors.textPrimary,
-                  ),
-                  tooltip: 'Recover Deleted Data',
-                  onPressed: _recoverHiddenData,
-                ),
-              );
-            },
-          ),
           if (_deletedVideos.isNotEmpty)
             TweenAnimationBuilder(
               tween: Tween<double>(begin: 0, end: 1),
@@ -1255,82 +1168,88 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: 0.9),
-            LiquidColors.backgroundMid.withValues(alpha: 0.95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: LiquidColors.error.withValues(alpha: 0.1),
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: const Offset(0, 4),
+    final hasQuery = _searchController.text.isNotEmpty;
+    final active = hasQuery || _searchFocusNode.hasFocus;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: LiquidColors.textPrimary.withValues(
+            alpha: active ? 0.07 : 0.05,
           ),
-        ],
-      ),
-      child: TweenAnimationBuilder(
-        tween: Tween<double>(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.elasticOut,
-        builder: (context, double value, child) {
-          return Transform.scale(
-            scale: value,
-            child: Container(
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    LiquidColors.backgroundDeep.withValues(alpha: 0.8),
-                    LiquidColors.backgroundMid.withValues(alpha: 0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.search_rounded,
+              color: active ? LiquidColors.error : LiquidColors.textTertiary,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                textInputAction: TextInputAction.search,
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                 ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: LiquidColors.error.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: LiquidColors.error),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      style: TextStyle(color: LiquidColors.textPrimary),
-                      decoration: InputDecoration(
-                        hintText: 'Search deleted files...',
-                        hintStyle: TextStyle(color: LiquidColors.textTertiary),
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
+                cursorColor: LiquidColors.error,
+                decoration: InputDecoration(
+                  hintText: 'Search deleted files',
+                  hintStyle: TextStyle(
+                    color: LiquidColors.textTertiary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
                   ),
-                  if (_searchController.text.isNotEmpty)
-                    IconButton(
-                      onPressed: () => _searchController.clear(),
-                      icon: Icon(
-                        Icons.close,
-                        color: LiquidColors.error,
-                        size: 20,
-                      ),
-                      padding: EdgeInsets.zero,
-                    ),
-                ],
+                  // Every state set explicitly — otherwise the focused state
+                  // falls back to the app theme's blue input border.
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  filled: false,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
             ),
-          );
-        },
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 160),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(scale: anim, child: child),
+              ),
+              child: hasQuery
+                  ? GestureDetector(
+                      key: const ValueKey('clear'),
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _searchController.clear();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: LiquidColors.textTertiary,
+                          size: 18,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(key: ValueKey('empty')),
+            ),
+          ],
+        ),
       ),
     );
   }

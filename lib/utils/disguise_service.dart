@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class DisguiseOption {
@@ -13,7 +14,7 @@ class DisguiseOption {
   });
 }
 
-class DisguiseService {
+class DisguiseService extends ChangeNotifier {
   DisguiseService._();
   static final DisguiseService instance = DisguiseService._();
 
@@ -54,21 +55,49 @@ class DisguiseService {
 
   bool get isSupported => Platform.isAndroid;
 
+  String _currentKey = 'default';
+  String get currentKey => _currentKey;
+
+  DisguiseOption get currentOption =>
+      options.firstWhere((o) => o.key == _currentKey, orElse: () => options.first);
+
+  DisguiseOption optionFor(String key) =>
+      options.firstWhere((o) => o.key == key, orElse: () => options.first);
+
+  Future<void> load() async {
+    final value = await getCurrent();
+    if (value != _currentKey) {
+      _currentKey = value;
+      notifyListeners();
+    }
+  }
+
   Future<String> getCurrent() async {
-    if (!isSupported) return 'default';
+    if (!isSupported) return _currentKey;
     try {
       final value = await _channel.invokeMethod<String>('getCurrent');
-      return value ?? 'default';
+      return value ?? _currentKey;
     } catch (_) {
-      return 'default';
+      return _currentKey;
     }
   }
 
   Future<bool> set(String key) async {
-    if (!isSupported) return false;
+    if (!isSupported) {
+      if (key != _currentKey) {
+        _currentKey = key;
+        notifyListeners();
+      }
+      return false;
+    }
     try {
       final ok = await _channel.invokeMethod<bool>('set', {'name': key});
-      return ok ?? false;
+      final success = ok ?? false;
+      if (success && key != _currentKey) {
+        _currentKey = key;
+        notifyListeners();
+      }
+      return success;
     } catch (_) {
       return false;
     }

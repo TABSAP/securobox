@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../utils/liquid_colors.dart';
+import '../../widgets/app_brand_icon.dart';
 
 class LiquidLogo extends StatelessWidget {
   final Animation<double> animation;
@@ -38,29 +39,10 @@ class LiquidLogo extends StatelessWidget {
                 ),
               ],
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(35),
-              child: Image.asset(
-                'assets/splash/logo.png',
-                width: 140,
-                height: 140,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      gradient: LiquidColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(35),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.lock_outline,
-                        size: 70,
-                        color: LiquidColors.textPrimary,
-                      ),
-                    ),
-                  );
-                },
-              ),
+            child: const AppBrandIcon(
+              size: 140,
+              radius: 35,
+              showShadow: false,
             ),
           ),
         );

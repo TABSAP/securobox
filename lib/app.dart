@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player_app/splash_screen/splash_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/liquid_page_transitions.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 
 class MyApp extends StatelessWidget {
@@ -59,6 +60,7 @@ class MyApp extends StatelessWidget {
 
     return base.copyWith(
       colorScheme: scheme,
+      pageTransitionsTheme: liquidPageTransitionsTheme,
       scaffoldBackgroundColor: bg,
       canvasColor: bg,
       dividerColor: divider,

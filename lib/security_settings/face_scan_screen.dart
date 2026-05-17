@@ -186,9 +186,11 @@ class _FaceScanScreenState extends State<FaceScanScreen>
       _completeEnrollment();
       return;
     }
-    _toFailed(_isEnroll
-        ? 'Couldn\'t read your face clearly. Use good lighting and keep your whole face in the circle.'
-        : 'We couldn\'t recognize you. Use your PIN, or try again.');
+    _toFailed(
+      _isEnroll
+          ? 'Couldn\'t read your face clearly. Use good lighting and keep your whole face in the circle.'
+          : 'We couldn\'t recognize you. Use your PIN, or try again.',
+    );
   }
 
   void _forceCapture() {
@@ -205,8 +207,9 @@ class _FaceScanScreenState extends State<FaceScanScreen>
     XFile? shot;
     try {
       shot = await controller.takePicture();
-      final res = await FaceRecognitionService.instance
-          .signatureFromImageFile(shot.path);
+      final res = await FaceRecognitionService.instance.signatureFromImageFile(
+        shot.path,
+      );
       if (_finished || !mounted) return;
 
       if (res.vector == null) {
@@ -219,12 +222,15 @@ class _FaceScanScreenState extends State<FaceScanScreen>
         if (_samples.length >= FaceRecognitionService.enrollSamples) {
           await _completeEnrollment();
         } else {
-          setState(() => _hint =
-              'Captured ${_samples.length}/${FaceRecognitionService.enrollSamples} — hold still');
+          setState(
+            () => _hint =
+                'Captured ${_samples.length}/${FaceRecognitionService.enrollSamples} — hold still',
+          );
         }
       } else {
-        final v =
-            await FaceRecognitionService.instance.verifyVector(res.vector!);
+        final v = await FaceRecognitionService.instance.verifyVector(
+          res.vector!,
+        );
         if (_finished || !mounted) return;
         if (v.matched) {
           _verifyHits++;
@@ -239,10 +245,13 @@ class _FaceScanScreenState extends State<FaceScanScreen>
           _verifyHits = 0;
           _verifyAttempts++;
           if (_verifyAttempts >= _maxVerifyAttempts) {
-            _toFailed('We couldn\'t recognize you. Use your PIN, or try again.');
+            _toFailed(
+              'We couldn\'t recognize you. Use your PIN, or try again.',
+            );
           } else {
             setState(
-                () => _hint = 'Not recognized — keep looking at the camera');
+              () => _hint = 'Not recognized — keep looking at the camera',
+            );
           }
         }
       }
@@ -277,8 +286,9 @@ class _FaceScanScreenState extends State<FaceScanScreen>
       _verifyHits = 0;
       _finished = false;
       if (!mounted) return;
-      setState(() =>
-          _hint = 'Those readings didn\'t match — let\'s try once more.');
+      setState(
+        () => _hint = 'Those readings didn\'t match — let\'s try once more.',
+      );
       _beginTicking(38);
     }
   }
@@ -294,14 +304,14 @@ class _FaceScanScreenState extends State<FaceScanScreen>
     if (!mounted) return;
     setState(() {
       _phase = _Phase.success;
-      _hint = _isEnroll
-          ? 'Face Unlock is set up.'
-          : 'Identity confirmed.';
+      _hint = _isEnroll ? 'Face Unlock is set up.' : 'Identity confirmed.';
     });
     _success.forward(from: 0);
     HapticFeedback.heavyImpact();
-    Future<void>.delayed(const Duration(milliseconds: 160),
-        () => HapticFeedback.lightImpact());
+    Future<void>.delayed(
+      const Duration(milliseconds: 160),
+      () => HapticFeedback.lightImpact(),
+    );
     Future<void>.delayed(const Duration(milliseconds: 840), () {
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop(true);
@@ -324,8 +334,10 @@ class _FaceScanScreenState extends State<FaceScanScreen>
     });
     _shake.forward(from: 0);
     HapticFeedback.heavyImpact();
-    Future<void>.delayed(const Duration(milliseconds: 130),
-        () => HapticFeedback.heavyImpact());
+    Future<void>.delayed(
+      const Duration(milliseconds: 130),
+      () => HapticFeedback.heavyImpact(),
+    );
   }
 
   void _retry() {
@@ -405,14 +417,14 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                               const SizedBox(height: 16),
                             ],
                             _hintText(),
-                            if (_phase == _Phase.scanning &&
-                                _cameraReady) ...[
+                            if (_phase == _Phase.scanning && _cameraReady) ...[
                               const SizedBox(height: 8),
                               Text(
                                 'Tap the circle to capture now',
                                 style: TextStyle(
-                                    color: LiquidColors.textTertiary,
-                                    fontSize: 12),
+                                  color: LiquidColors.textTertiary,
+                                  fontSize: 12,
+                                ),
                               ),
                             ],
                             const SizedBox(height: 26),
@@ -428,8 +440,10 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                 top: 2,
                 left: 2,
                 child: IconButton(
-                  icon: Icon(Icons.close_rounded,
-                      color: LiquidColors.textPrimary),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: LiquidColors.textPrimary,
+                  ),
                   onPressed: () => _close(false),
                 ),
               ),
@@ -520,13 +534,12 @@ class _FaceScanScreenState extends State<FaceScanScreen>
           key: ValueKey(_phase == _Phase.failed ? _failedReason : _hint),
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: _phase == _Phase.failed
-                ? _kRed
-                : LiquidColors.textSecondary,
+            color: _phase == _Phase.failed ? _kRed : LiquidColors.textSecondary,
             fontSize: 13.5,
             height: 1.45,
-            fontWeight:
-                _phase == _Phase.failed ? FontWeight.w600 : FontWeight.w500,
+            fontWeight: _phase == _Phase.failed
+                ? FontWeight.w600
+                : FontWeight.w500,
           ),
         ),
       ),
@@ -551,7 +564,9 @@ class _FaceScanScreenState extends State<FaceScanScreen>
             boxShadow: filled
                 ? [
                     BoxShadow(
-                        color: _kGreen.withValues(alpha: 0.5), blurRadius: 8)
+                      color: _kGreen.withValues(alpha: 0.5),
+                      blurRadius: 8,
+                    ),
                   ]
                 : null,
           ),
@@ -573,18 +588,22 @@ class _FaceScanScreenState extends State<FaceScanScreen>
           final c = _phaseColor;
           final cBright = _phaseColorBright;
           final breathing = _phase == _Phase.scanning ? _pulse.value : 0.0;
-          final scanGlow = (_phase == _Phase.scanning && _cameraReady) ? 1.0 : 0.0;
-          final successT = Curves.elasticOut
-              .transform(_phase == _Phase.success ? _success.value : 0.0);
+          final scanGlow = (_phase == _Phase.scanning && _cameraReady)
+              ? 1.0
+              : 0.0;
+          final successT = Curves.elasticOut.transform(
+            _phase == _Phase.success ? _success.value : 0.0,
+          );
           final shakeDx = _phase == _Phase.failed
               ? math.sin(_shake.value * math.pi * 4) * 12 * (1 - _shake.value)
               : 0.0;
 
-          final glowAlpha = (0.28 +
-                  0.14 * breathing +
-                  0.18 * scanGlow +
-                  0.18 * successT.clamp(0.0, 1.0))
-              .clamp(0.0, 0.65);
+          final glowAlpha =
+              (0.28 +
+                      0.14 * breathing +
+                      0.18 * scanGlow +
+                      0.18 * successT.clamp(0.0, 1.0))
+                  .clamp(0.0, 0.65);
           final glowBlur = 34 + 16 * breathing + 24 * scanGlow + 20 * successT;
           final glowSpread =
               4 + 5 * breathing + 9 * scanGlow + 7 * successT.clamp(0.0, 1.0);
@@ -603,8 +622,10 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                       height: size * (0.86 + _ping.value * 0.6),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border:
-                            Border.all(color: c.withValues(alpha: 0.6), width: 2),
+                        border: Border.all(
+                          color: c.withValues(alpha: 0.6),
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -618,7 +639,9 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: cBright.withValues(alpha: 0.7), width: 3),
+                          color: cBright.withValues(alpha: 0.7),
+                          width: 3,
+                        ),
                       ),
                     ),
                   ),
@@ -628,10 +651,12 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                   height: size * 1.06,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: RadialGradient(colors: [
-                      c.withValues(alpha: 0.14),
-                      c.withValues(alpha: 0.0),
-                    ]),
+                    gradient: RadialGradient(
+                      colors: [
+                        c.withValues(alpha: 0.14),
+                        c.withValues(alpha: 0.0),
+                      ],
+                    ),
                   ),
                 ),
                 // the camera circle
@@ -670,8 +695,11 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                               Container(
                                 color: LiquidColors.backgroundLight,
                                 alignment: Alignment.center,
-                                child: Icon(Icons.no_photography_rounded,
-                                    color: LiquidColors.textTertiary, size: 54),
+                                child: Icon(
+                                  Icons.no_photography_rounded,
+                                  color: LiquidColors.textTertiary,
+                                  size: 54,
+                                ),
                               )
                             else if (_cameraReady && controller != null)
                               FittedBox(
@@ -679,10 +707,10 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                                 child: SizedBox(
                                   width:
                                       controller.value.previewSize?.height ??
-                                          480,
+                                      480,
                                   height:
                                       controller.value.previewSize?.width ??
-                                          640,
+                                      640,
                                   child: CameraPreview(controller),
                                 ),
                               )
@@ -694,7 +722,9 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                                   width: 30,
                                   height: 30,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2.6, color: _kGreenBright),
+                                    strokeWidth: 2.6,
+                                    color: _kGreenBright,
+                                  ),
                                 ),
                               ),
                             // scanning sweep line
@@ -709,15 +739,24 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                                     child: Container(
                                       height: 4,
                                       decoration: BoxDecoration(
-                                        gradient: LinearGradient(colors: [
-                                          _kGreenBright.withValues(alpha: 0.0),
-                                          _kGreenBright.withValues(alpha: 0.95),
-                                          _kGreenBright.withValues(alpha: 0.0),
-                                        ]),
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            _kGreenBright.withValues(
+                                              alpha: 0.0,
+                                            ),
+                                            _kGreenBright.withValues(
+                                              alpha: 0.95,
+                                            ),
+                                            _kGreenBright.withValues(
+                                              alpha: 0.0,
+                                            ),
+                                          ],
+                                        ),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: _kGreenBright
-                                                .withValues(alpha: 0.7),
+                                            color: _kGreenBright.withValues(
+                                              alpha: 0.7,
+                                            ),
                                             blurRadius: 10,
                                           ),
                                         ],
@@ -731,10 +770,10 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                                 (_phase == _Phase.failed && !_initFailed))
                               Container(
                                 color: c.withValues(
-                                    alpha: _phase == _Phase.success
-                                        ? 0.45 *
-                                            successT.clamp(0.0, 1.0)
-                                        : 0.42),
+                                  alpha: _phase == _Phase.success
+                                      ? 0.45 * successT.clamp(0.0, 1.0)
+                                      : 0.42,
+                                ),
                                 alignment: Alignment.center,
                                 child: Transform.scale(
                                   scale: _phase == _Phase.success
@@ -796,8 +835,9 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                 child: _cameraReady
                     ? LinearProgressIndicator(
                         backgroundColor: _kGreen.withValues(alpha: 0.15),
-                        valueColor:
-                            const AlwaysStoppedAnimation<Color>(_kGreenBright),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          _kGreenBright,
+                        ),
                       )
                     : Container(color: _kGreen.withValues(alpha: 0.15)),
               ),
@@ -828,12 +868,17 @@ class _FaceScanScreenState extends State<FaceScanScreen>
               Row(
                 children: [
                   Expanded(
-                    child:
-                        _textLink('Use PIN instead', onTap: () => _close(false)),
+                    child: _textLink(
+                      'Use PIN instead',
+                      onTap: () => _close(false),
+                    ),
                   ),
                   Expanded(
-                    child: _textLink('Cancel',
-                        onTap: () => _close(false), muted: true),
+                    child: _textLink(
+                      'Cancel',
+                      onTap: () => _close(false),
+                      muted: true,
+                    ),
                   ),
                 ],
               )
@@ -878,12 +923,15 @@ class _FaceScanScreenState extends State<FaceScanScreen>
           children: [
             Icon(icon, color: Colors.white, size: 19),
             const SizedBox(width: 9),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.3)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
           ],
         ),
       ),
@@ -911,19 +959,25 @@ class _FaceScanScreenState extends State<FaceScanScreen>
           children: [
             Icon(icon, color: LiquidColors.textPrimary, size: 18),
             const SizedBox(width: 9),
-            Text(label,
-                style: TextStyle(
-                    color: LiquidColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _textLink(String label,
-      {required VoidCallback onTap, bool muted = false}) {
+  Widget _textLink(
+    String label, {
+    required VoidCallback onTap,
+    bool muted = false,
+  }) {
     return TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(

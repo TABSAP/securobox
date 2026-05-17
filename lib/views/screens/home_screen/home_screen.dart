@@ -4,14 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/vault_context.dart';
+import 'package:video_player_app/views/screens/secure_camera/secure_camera_screen.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onVideosChanged;
-  final VoidCallback? onAddRequested;
 
-  const HomeScreen({super.key, this.onVideosChanged, this.onAddRequested});
+  const HomeScreen({super.key, this.onVideosChanged});
 
   @override
   State<HomeScreen> createState() => HomeScreenState();
@@ -29,6 +29,8 @@ class HomeScreenState extends State<HomeScreen>
   bool _isLoading = true;
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  Timer? _searchDebounce;
   String _selectedCategory = "All";
 
   List<String> get _allCategoriesForFilter {
@@ -53,6 +55,7 @@ class HomeScreenState extends State<HomeScreen>
     _loadMedia();
 
     _searchController.addListener(_onSearchChanged);
+    _searchFocusNode.addListener(_onSearchFocusChanged);
 
     _headerAnimationController = AnimationController(
       vsync: this,
@@ -76,15 +79,27 @@ class HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _scrollController.dispose();
-    _searchController.dispose();
-    _headerAnimationController.dispose();
     _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _searchFocusNode.removeListener(_onSearchFocusChanged);
+    _searchFocusNode.dispose();
+    _headerAnimationController.dispose();
     super.dispose();
   }
 
+  // Debounced: filtering the whole vault and rebuilding the screen on every
+  // keystroke causes visible lag on large libraries.
   void _onSearchChanged() {
-    _filterMedia();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 280), () {
+      if (mounted) _filterMedia();
+    });
+  }
+
+  void _onSearchFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   void _filterMedia() {
@@ -98,10 +113,11 @@ class HomeScreenState extends State<HomeScreen>
         return;
       }
 
+      final selectedCat = _selectedCategory.trim().toLowerCase();
       for (final media in _allMedia) {
         bool matchesCategory =
             _selectedCategory == "All" ||
-            media.category.toLowerCase() == _selectedCategory.toLowerCase();
+            media.category.trim().toLowerCase() == selectedCat;
 
         bool matchesSearch =
             query.isEmpty ||
@@ -117,6 +133,29 @@ class HomeScreenState extends State<HomeScreen>
 
   Future<void> refreshVideos() async {
     await _loadMedia();
+  }
+
+  Future<void> _openAddSheet() async {
+    HapticFeedback.lightImpact();
+    await AddToVaultSheet.show(
+      context,
+      onImported: () async {
+        await _loadMedia();
+        widget.onVideosChanged?.call();
+      },
+    );
+  }
+
+  Future<void> _openSecureCamera() async {
+    HapticFeedback.lightImpact();
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const SecureCameraScreen()),
+    );
+    if (mounted) {
+      await _loadMedia();
+      widget.onVideosChanged?.call();
+    }
   }
 
   Future<void> _loadMedia() async {
@@ -186,6 +225,7 @@ class HomeScreenState extends State<HomeScreen>
     return _verifyWithAppPin();
   }
 
+  /// Verifies the vault's PIN through the unlock dialog.
   Future<bool> _verifyWithAppPin() async {
     if (!await PinCrypto.instance.hasPin()) {
       if (mounted) {
@@ -874,6 +914,12 @@ class HomeScreenState extends State<HomeScreen>
           ),
           actions: [
             _buildAppBarAction(
+              icon: Icons.photo_camera_rounded,
+              tooltip: 'Secure Camera',
+              onTap: _openSecureCamera,
+            ),
+            SizedBox(width: 10),
+            _buildAppBarAction(
               icon: Icons.delete_outline_rounded,
               tooltip: 'Recycle Bin',
               onTap: () {
@@ -890,6 +936,7 @@ class HomeScreenState extends State<HomeScreen>
             const SizedBox(width: 8),
           ],
         ),
+        floatingActionButton: _buildAddFab(),
         body: Column(
           children: [
             _buildAnimatedHeader(),
@@ -917,6 +964,41 @@ class HomeScreenState extends State<HomeScreen>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddFab() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _openAddSheet,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: LiquidColors.accentBlue.withValues(alpha: 0.45),
+                blurRadius: 22,
+                spreadRadius: -2,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.add_rounded, color: Colors.white, size: 22),
+            ],
+          ),
         ),
       ),
     );
@@ -997,63 +1079,77 @@ class HomeScreenState extends State<HomeScreen>
 
   Widget _buildSearchBar() {
     final hasQuery = _searchController.text.isNotEmpty;
-    return Container(
-      height: 46,
+    final focused = _searchFocusNode.hasFocus;
+    final active = hasQuery || focused;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: LiquidColors.textPrimary.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: hasQuery
-              ? LiquidColors.accentBlue.withValues(alpha: 0.5)
-              : LiquidColors.textPrimary.withValues(alpha: 0.08),
-          width: 1,
-        ),
+        color: LiquidColors.textPrimary.withValues(alpha: active ? 0.07 : 0.05),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
           Icon(
             Icons.search_rounded,
-            color: hasQuery
-                ? LiquidColors.accentBlue
-                : LiquidColors.textTertiary,
+            color: active ? LiquidColors.accentBlue : LiquidColors.textTertiary,
             size: 20,
           ),
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchController,
-              style: TextStyle(color: LiquidColors.textPrimary, fontSize: 14),
+              focusNode: _searchFocusNode,
+              textInputAction: TextInputAction.search,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
               cursorColor: LiquidColors.accentBlue,
               decoration: InputDecoration(
-                hintText: 'Search your vault…',
+                hintText: 'Search your vault',
                 hintStyle: TextStyle(
                   color: LiquidColors.textTertiary,
                   fontSize: 14,
+                  fontWeight: FontWeight.w400,
                 ),
+                // Every state set explicitly — otherwise the focused state
+                // falls back to the app theme's blue input border.
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                filled: false,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
             ),
           ),
           AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
+            duration: const Duration(milliseconds: 160),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: ScaleTransition(scale: anim, child: child),
+            ),
             child: hasQuery
                 ? GestureDetector(
                     key: const ValueKey('clear'),
-                    onTap: () => _searchController.clear(),
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                        shape: BoxShape.circle,
-                      ),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _searchController.clear();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 6),
                       child: Icon(
                         Icons.close_rounded,
-                        color: LiquidColors.textSecondary,
-                        size: 14,
+                        color: LiquidColors.textTertiary,
+                        size: 18,
                       ),
                     ),
                   )
@@ -1098,10 +1194,11 @@ class HomeScreenState extends State<HomeScreen>
               isCustom: isCustom,
               onTap: () {
                 HapticFeedback.selectionClick();
-                setState(() {
-                  _selectedCategory = isSelected ? "All" : category;
-                  _filterMedia();
-                });
+                // Tapping the active category again clears back to "All".
+                // _filterMedia() runs its own setState, so set the field
+                // first and call it directly — no nested setState.
+                _selectedCategory = isSelected ? "All" : category;
+                _filterMedia();
               },
             );
           },
@@ -1241,14 +1338,11 @@ class HomeScreenState extends State<HomeScreen>
                       ),
                     ),
                     const SizedBox(height: 22),
-                    if (!hasFilters && widget.onAddRequested != null)
+                    if (!hasFilters)
                       _PrimaryAction(
                         icon: Icons.add_rounded,
                         label: 'Add your first file',
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          widget.onAddRequested!();
-                        },
+                        onTap: _openAddSheet,
                       ),
                     if (hasFilters)
                       _PrimaryAction(
@@ -1486,7 +1580,6 @@ class _SkeletonCardState extends State<_SkeletonCard>
     );
   }
 }
-
 
 class _PrimaryAction extends StatelessWidget {
   final IconData icon;

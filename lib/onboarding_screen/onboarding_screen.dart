@@ -6,6 +6,7 @@ import 'package:video_player_app/main_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
+import 'package:video_player_app/security_settings/recovery_setup_screen.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
@@ -18,7 +19,14 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-enum _Step { welcome, pickLength, setPin, confirmPin, biometric }
+enum _Step {
+  welcome,
+  pickLength,
+  setPin,
+  confirmPin,
+  recovery,
+  biometric,
+}
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
@@ -186,6 +194,28 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     HapticFeedback.mediumImpact();
     if (!mounted) return;
 
+    setState(() => _step = _Step.recovery);
+    _animateForward();
+  }
+
+  Future<void> _addRecoveryEmail() async {
+    HapticFeedback.lightImpact();
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const RecoverySetupScreen()),
+    );
+    if (!mounted) return;
+    if (saved == true) _afterRecovery();
+  }
+
+  void _skipRecovery() {
+    HapticFeedback.lightImpact();
+    _afterRecovery();
+  }
+
+  /// Moves past the recovery step into biometric setup (if available) or
+  /// straight into the app.
+  void _afterRecovery() {
+    if (!mounted) return;
     if (_biometricAvailable) {
       setState(() => _step = _Step.biometric);
       _animateForward();
@@ -254,6 +284,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       case _Step.setPin:
       case _Step.confirmPin:
         return _pinEntryScreen();
+      case _Step.recovery:
+        return _recoveryPrompt();
       case _Step.biometric:
         return _biometricPrompt();
     }
@@ -633,6 +665,122 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           onPressed: () => _onDigit('${index + 1}'),
         );
       },
+    );
+  }
+
+  // ============ RECOVERY EMAIL PROMPT ============
+  Widget _recoveryPrompt() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          children: [
+            const SizedBox(height: 44),
+            Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: LiquidColors.accentBlue.withValues(alpha: 0.4),
+                    blurRadius: 30,
+                    spreadRadius: 4,
+                  ),
+                ],
+              ),
+              child: Icon(Icons.mark_email_read_rounded,
+                  color: Colors.white, size: 56),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Add a Recovery Email',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: LiquidColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Link an email address so you can reset your PIN if you ever '
+              'forget it. SecuroBox creates a one-time recovery code for you '
+              'to email to yourself — your files and email are never uploaded '
+              'anywhere.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: LiquidColors.textSecondary,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: LiquidColors.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: LiquidColors.warning.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      color: LiquidColors.warning, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'If you don\'t add an email, a forgotten PIN cannot be '
+                      'recovered — you may permanently lose access to your '
+                      'vault and everything inside it.',
+                      style: TextStyle(
+                        color: LiquidColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _addRecoveryEmail,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  backgroundColor: LiquidColors.accentBlue,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: Text('Add Recovery Email',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white)),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: _skipRecovery,
+              child: Text('Skip — I understand the risk',
+                  style: TextStyle(
+                      color: LiquidColors.textSecondary, fontSize: 14)),
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
     );
   }
 

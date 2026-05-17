@@ -7,6 +7,7 @@ import 'package:video_player_app/app_lock_screen/app_lock_screen.dart';
 import 'package:video_player_app/main_screen.dart';
 import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/widgets/app_brand_icon.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -76,7 +77,11 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       final hasOnboarded = prefs.getBool('hasOnboarded') ?? false;
-      final lockEnabled = prefs.getBool('appLock') ?? false;
+      // Any of the three lock layers is enough to gate the app — the user
+      // keeps full control of which factor(s) they want.
+      final lockEnabled = (prefs.getBool('appLock') ?? false) ||
+          (prefs.getBool('biometric') ?? false) ||
+          (prefs.getBool('biometric_face') ?? false);
       next = !hasOnboarded
           ? const OnboardingScreen()
           : (lockEnabled ? const AppLockScreen() : const MainScreen());
@@ -246,23 +251,10 @@ class _SplashScreenState extends State<SplashScreen>
           child: child,
         );
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: Image.asset(
-          'assets/splash/logo.png',
-          width: 120,
-          height: 120,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => Container(
-            decoration: BoxDecoration(
-              gradient: LiquidColors.primaryGradient,
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: const Center(
-              child: Icon(Icons.lock_rounded, color: Colors.white, size: 56),
-            ),
-          ),
-        ),
+      child: const AppBrandIcon(
+        size: 120,
+        radius: 30,
+        showShadow: false,
       ),
     );
   }

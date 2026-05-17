@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:video_player_app/download_screen/widgets/view.dart';
+import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/vault_context.dart';
+import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 
-class DownloadScreen extends StatefulWidget {
-  const DownloadScreen({super.key});
+class HistoryScreen extends StatefulWidget {
+  const HistoryScreen({super.key});
 
   @override
-  State<DownloadScreen> createState() => _DownloadScreenState();
+  State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
-class _DownloadScreenState extends State<DownloadScreen>
+class _HistoryScreenState extends State<HistoryScreen>
     with SingleTickerProviderStateMixin {
   final List<DownloadItem> _downloads = [];
   final List<_ActiveJob> _activeJobs = [];
@@ -186,7 +187,8 @@ class _DownloadScreenState extends State<DownloadScreen>
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Download ${getFileTypeLabel(download.videoPath)}',
+                  'Save this ${getFileTypeLabel(download.videoPath).toLowerCase()} again?',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -197,7 +199,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                 Column(
                   children: [
                     Text(
-                      'Do you want to download this ${getFileTypeLabel(download.videoPath)}?',
+                      'A fresh decrypted copy will be written to the gallery or file manager.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
@@ -274,7 +276,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                           elevation: 0,
                         ),
                         child: Text(
-                          'Download',
+                          'Save again',
                           style: TextStyle(
                             color: LiquidColors.textPrimary,
                             fontWeight: FontWeight.w600,
@@ -706,13 +708,14 @@ class _DownloadScreenState extends State<DownloadScreen>
 
     setState(() => _isLoading = true);
     await _loadDownloads();
-    FlushBarHelper.flushBarSuccessMessage('Downloads refreshed', context);
+    if (!mounted) return;
+    FlushBarHelper.flushBarSuccessMessage('History refreshed', context);
   }
 
   Future<void> _clearDownloads() async {
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
           decoration: BoxDecoration(
@@ -756,7 +759,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Clear All Downloads?',
+                  'Clear export history?',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -765,7 +768,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'This will permanently remove all download history.',
+                  'Only this list is cleared. Files already saved to your device stay where they are, and your vault is not touched.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
@@ -778,7 +781,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(dialogContext),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -802,16 +805,17 @@ class _DownloadScreenState extends State<DownloadScreen>
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          Navigator.pop(context);
+                          Navigator.pop(dialogContext);
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.remove(
                             VaultContext.instance.downloadHistoryKey,
                           );
+                          if (!mounted) return;
                           setState(() {
                             _downloads.clear();
                           });
                           FlushBarHelper.flushBarSuccessMessage(
-                            'Download history cleared',
+                            'History cleared',
                             context,
                           );
                         },
@@ -846,34 +850,18 @@ class _DownloadScreenState extends State<DownloadScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: const LiquidBottomNav(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leadingWidth: 60,
+        titleSpacing: 6,
+        leadingWidth: 58,
         leading: Padding(
-          padding: const EdgeInsets.only(left: 12),
-          child: Center(
-            child: Container(
-              width: 45,
-              height: 45,
-              decoration: BoxDecoration(
-                gradient: LiquidColors.primaryGradient,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.success.withValues(alpha: 0.35),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: Center(
-                child: Icon(
-                  Icons.download_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
+          padding: const EdgeInsets.only(left: 8),
+          child: _AppBarAction(
+            icon: Icons.arrow_back_rounded,
+            tooltip: 'Back',
+            onTap: () => Navigator.pop(context),
           ),
         ),
         flexibleSpace: Container(
@@ -885,39 +873,72 @@ class _DownloadScreenState extends State<DownloadScreen>
             ),
           ),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        title: Row(
           children: [
-            Text(
-              'Export History',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: LiquidColors.textPrimary,
-                letterSpacing: 0.2,
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    LiquidColors.accentBlue,
+                    LiquidColors.accentPurple,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(11),
+                boxShadow: [
+                  BoxShadow(
+                    color: LiquidColors.accentBlue.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    spreadRadius: -2,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.history_rounded,
+                color: Colors.white,
+                size: 20,
               ),
             ),
-            Text(
-              'Files saved out of the vault',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF8A8FA3),
-                fontWeight: FontWeight.w500,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'History',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: LiquidColors.textPrimary,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                  Text(
+                    'Files you exported to this device',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: LiquidColors.textTertiary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
         actions: [
           _AppBarAction(
-            icon: Icons.refresh_rounded,
-            tooltip: 'Refresh',
-            onTap: _refreshDownloads,
-          ),
-          const SizedBox(width: 8),
-          _AppBarAction(
             icon: Icons.delete_outline_rounded,
-            tooltip: 'Clear all',
+            tooltip: _downloads.isEmpty ? 'Nothing to clear' : 'Clear history',
             color: LiquidColors.error,
             onTap: _downloads.isEmpty ? null : _clearDownloads,
           ),
@@ -962,15 +983,12 @@ class _DownloadScreenState extends State<DownloadScreen>
                             key: const ValueKey('empty'),
                             child: LiquidEmptyState(
                               icon: Icons.download_done_outlined,
-                              title: 'No Exports Yet',
+                              title: 'Nothing exported yet',
                               subtitle:
-                                  'Files you download from your vault will show up here.',
-                              buttonText: 'Go to Library',
-                              onButtonPressed: () {
-                                Navigator.of(
-                                  context,
-                                ).popUntil((route) => route.isFirst);
-                              },
+                                  'Open a file from your library and tap the download icon to save a copy to your device. Saved files appear here.',
+                              buttonText: 'Close',
+                              onButtonPressed: () =>
+                                  Navigator.of(context).pop(),
                               iconColor: LiquidColors.success,
                             ),
                           )
@@ -1034,7 +1052,7 @@ class _DownloadScreenState extends State<DownloadScreen>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Active downloads',
+                  'SAVING TO YOUR DEVICE',
                   style: TextStyle(
                     color: LiquidColors.textSecondary,
                     fontSize: 11,
@@ -1063,7 +1081,16 @@ class _DownloadScreenState extends State<DownloadScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
+            Text(
+              'Decrypting from your vault and copying into the gallery / file manager.',
+              style: TextStyle(
+                color: LiquidColors.textTertiary,
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 10),
             for (final job in _activeJobs)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -1089,47 +1116,111 @@ class _DownloadScreenState extends State<DownloadScreen>
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              LiquidColors.success.withValues(alpha: 0.14),
-              LiquidColors.accentBlue.withValues(alpha: 0.06),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: LiquidColors.success.withValues(alpha: 0.25),
-          ),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _StatTile(
-                icon: Icons.folder_open_rounded,
-                color: LiquidColors.success,
-                label: 'Files',
-                value: '${_downloads.length}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildExplainerBanner(),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  LiquidColors.success.withValues(alpha: 0.14),
+                  LiquidColors.accentBlue.withValues(alpha: 0.06),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: LiquidColors.success.withValues(alpha: 0.25),
               ),
             ),
-            Container(
-              width: 1,
-              height: 28,
-              color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _StatTile(
+                    icon: Icons.folder_open_rounded,
+                    color: LiquidColors.success,
+                    label: 'Items saved',
+                    value: '${_downloads.length}',
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 28,
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+                ),
+                Expanded(
+                  child: _StatTile(
+                    icon: Icons.storage_rounded,
+                    color: LiquidColors.accentBlue,
+                    label: 'Total size',
+                    value: sizeText,
+                  ),
+                ),
+              ],
             ),
-            Expanded(
-              child: _StatTile(
-                icon: Icons.storage_rounded,
-                color: LiquidColors.accentBlue,
-                label: 'Size',
-                value: sizeText,
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExplainerBanner() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
         ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: LiquidColors.accentBlue.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.info_outline_rounded,
+              color: LiquidColors.accentBlue,
+              size: 17,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'These files now live on your device',
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Each item here was decrypted out of your vault and saved to the gallery or file manager. The encrypted original stays inside SecuroBox.',
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'package:video_player_app/security_settings/face_scan_screen.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/face_recognition_service.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
+import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/vault_context.dart';
@@ -37,19 +39,15 @@ class _AppLockScreenState extends State<AppLockScreen>
   bool _faceRecogEnrolled = false;
   bool _isAuthenticating = false;
   bool _hasError = false;
-  // Banking-style flow: open on the biometric / face-scan stage, fall back to
-  // the PIN keypad only if biometrics fail or the user taps "Use PIN".
   bool _showPin = false;
 
   Duration? _cooldownRemaining;
-  // Separate, parallel cooldown that locks ONLY the biometric / face-scan path
-  // after 3 failed attempts; the PIN keypad stays usable throughout.
+
   Duration? _bioCooldownRemaining;
   int _bioFailCount = 0;
   Timer? _cooldownTicker;
 
   late AnimationController _errorController;
-  late Animation<double> _shakeAnimation;
   late final AnimationController _bioPulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1700),
@@ -63,10 +61,7 @@ class _AppLockScreenState extends State<AppLockScreen>
 
     _errorController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
-    );
-    _shakeAnimation = Tween<double>(begin: -10, end: 10).animate(
-      CurvedAnimation(parent: _errorController, curve: Curves.elasticIn),
+      duration: const Duration(milliseconds: 500),
     );
   }
 
@@ -87,8 +82,8 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   Future<void> _refreshCooldown() async {
     final remaining = await SessionManager.instance.getCooldownRemaining();
-    final bioRemaining =
-        await SessionManager.instance.getBiometricCooldownRemaining();
+    final bioRemaining = await SessionManager.instance
+        .getBiometricCooldownRemaining();
     final bioFails = await SessionManager.instance.getFailedBiometricAttempts();
     if (mounted) {
       setState(() {
@@ -103,8 +98,8 @@ class _AppLockScreenState extends State<AppLockScreen>
     final prefs = await SharedPreferences.getInstance();
     final pinLen = await PinCrypto.instance.getPinLength();
     final faceEnrolled = await FaceRecognitionService.instance.isEnrolled();
-    final bioCooldown =
-        await SessionManager.instance.getBiometricCooldownRemaining();
+    final bioCooldown = await SessionManager.instance
+        .getBiometricCooldownRemaining();
     final bioFails = await SessionManager.instance.getFailedBiometricAttempts();
     if (!mounted) return;
     final bioEnabled =
@@ -116,17 +111,21 @@ class _AppLockScreenState extends State<AppLockScreen>
       _pinLength = pinLen;
       _bioCooldownRemaining = bioCooldown;
       _bioFailCount = bioFails;
-      // Nothing to verify with → go straight to the PIN keypad.
+      // The bio stage rests when any biometric / face method exists;
+      // otherwise the PIN keypad is the resting stage.
       if (!bioEnabled && !faceEnrolled) _showPin = true;
     });
 
-    if (_biometricEnabled &&
+    if (_cooldownRemaining == null &&
         mounted &&
-        _cooldownRemaining == null &&
-        !_bioLocked) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted && !_showPin && !_bioLocked) _useBiometric();
-      });
+        !NetworkGuard.instance.blockUnlock) {
+      if (_biometricEnabled && !_bioLocked) {
+        // Biometric / Face ID is triggered first on open; otherwise the
+        // PIN keypad is already the resting stage.
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted && !_showPin && !_bioLocked) _useBiometric();
+        });
+      }
     }
   }
 
@@ -137,8 +136,8 @@ class _AppLockScreenState extends State<AppLockScreen>
   /// 60-second biometric cooldown kicks in (PIN keypad still works).
   Future<void> _recordBioFailure() async {
     final count = await SessionManager.instance.recordFailedBiometricAttempt();
-    final remaining =
-        await SessionManager.instance.getBiometricCooldownRemaining();
+    final remaining = await SessionManager.instance
+        .getBiometricCooldownRemaining();
     if (!mounted) return;
     final justLocked = !_bioLocked && remaining != null;
     setState(() {
@@ -146,6 +145,55 @@ class _AppLockScreenState extends State<AppLockScreen>
       _bioFailCount = count;
     });
     if (justLocked) HapticFeedback.heavyImpact();
+  }
+
+  /// Inline "Incorrect PIN" feedback right under the dots. Lighter than the
+  /// previous floating snackbar — the user keeps the context of their entry.
+  Widget _wrongPinBanner() {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      transitionBuilder: (child, anim) =>
+          FadeTransition(opacity: anim, child: child),
+      child: !_hasError
+          ? const SizedBox.shrink(key: ValueKey('clean'))
+          : Padding(
+              key: const ValueKey('error'),
+              padding: const EdgeInsets.only(top: 14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: LiquidColors.error.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: LiquidColors.error.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.error_outline_rounded,
+                      size: 15,
+                      color: LiquidColors.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Incorrect PIN — try again',
+                      style: TextStyle(
+                        color: LiquidColors.error,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
   }
 
   /// Small "attempts before biometric lock" hint, shown once the user has at
@@ -165,7 +213,9 @@ class _AppLockScreenState extends State<AppLockScreen>
         decoration: BoxDecoration(
           color: LiquidColors.warning.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: LiquidColors.warning.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: LiquidColors.warning.withValues(alpha: 0.3),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -193,6 +243,70 @@ class _AppLockScreenState extends State<AppLockScreen>
           ],
         ),
       ),
+    );
+  }
+
+  /// Shown whenever the Offline Integrity Lock is on and the device has a
+  /// network path: the vault is sealed and no credential will open it until
+  /// the user goes fully offline. Reacts live to connectivity changes.
+  Widget _networkSealBanner() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: NetworkGuard.instance.online,
+      builder: (context, online, _) {
+        if (!NetworkGuard.instance.enabled || !online) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: 18),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: LiquidColors.warning.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: LiquidColors.warning.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.wifi_off_rounded,
+                  color: LiquidColors.warning,
+                  size: 22,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Vault sealed while online',
+                        style: TextStyle(
+                          color: LiquidColors.warning,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.1,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Offline Integrity Lock is on. Turn on Airplane Mode '
+                        '(or disable Wi-Fi and mobile data) to unlock.',
+                        style: TextStyle(
+                          color: LiquidColors.textSecondary,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -240,21 +354,31 @@ class _AppLockScreenState extends State<AppLockScreen>
       return;
     }
 
-    // 3. Wrong → cooldown + intruder capture.
+    // 3. Wrong → cooldown. Capture a break-in photo only on the 3rd failed
+    //    attempt — the first two misses are usually the owner mistyping, so
+    //    capturing earlier would just photograph them.
     HapticFeedback.heavyImpact();
-    await SessionManager.instance.recordFailedAttempt();
-    unawaited(IntrusionService.instance.captureSilently());
+    final failedAttempts = await SessionManager.instance.recordFailedAttempt();
+    if (failedAttempts == 3) {
+      unawaited(IntrusionService.instance.captureSilently());
+    }
     if (!mounted) return;
     setState(() {
       _enteredPin = '';
       _hasError = true;
     });
-    _errorController.forward().then((_) => _errorController.reverse());
+    _errorController.forward(from: 0);
     await _refreshCooldown();
-    _showErrorFeedback();
   }
 
   Future<void> _unlockApp() async {
+    // Offline Integrity Lock: even a correct credential cannot open the vault
+    // while the device has a network path — decrypted content must never be
+    // available during network exposure. The banner explains why.
+    if (NetworkGuard.instance.blockUnlock) {
+      HapticFeedback.heavyImpact();
+      return;
+    }
     await SessionManager.instance.unlock();
     if (!mounted) return;
     final modeChanged = VaultContext.instance.modeChanged;
@@ -272,33 +396,14 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 
   String _formatCooldown(Duration d) {
+    final totalSeconds = d.inSeconds;
+    if (totalSeconds < 60) {
+      return '$totalSeconds second${totalSeconds == 1 ? '' : 's'}';
+    }
     final m = d.inMinutes;
-    final s = d.inSeconds % 60;
-    if (m > 0) return '${m}m ${s}s';
-    return '${s}s';
-  }
-
-  void _showErrorFeedback() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              color: LiquidColors.textPrimary,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            const Text('Incorrect PIN'),
-          ],
-        ),
-        backgroundColor: LiquidColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    final s = totalSeconds % 60;
+    if (s == 0) return '$m minute${m == 1 ? '' : 's'}';
+    return '${m}m ${s}s';
   }
 
   Future<void> _useBiometric() async {
@@ -319,7 +424,7 @@ class _AppLockScreenState extends State<AppLockScreen>
         return;
       }
       if (result == BiometricAuthResult.usePin) {
-        // Deliberate switch to the keypad — not a failed attempt.
+        // Deliberate switch away from biometric — not a failed attempt.
         HapticFeedback.selectionClick();
         setState(() => _showPin = true);
       }
@@ -361,7 +466,8 @@ class _AppLockScreenState extends State<AppLockScreen>
   /// the (strong) device biometric is offered — the in-app face scan is hidden.
   Widget _buildBiometricOptions() {
     final showFace = _faceRecogEnrolled && !_padDisabled && !_bioLocked;
-    final fingerprintActive = (_biometricEnabled || _padDisabled) && !_bioLocked;
+    final fingerprintActive =
+        (_biometricEnabled || _padDisabled) && !_bioLocked;
     // Nothing useful to offer.
     if (!fingerprintActive && !showFace && !_faceRecogEnrolled && !_bioLocked) {
       return const SizedBox.shrink();
@@ -384,7 +490,8 @@ class _AppLockScreenState extends State<AppLockScreen>
       label: 'Face Scan',
       accent: LiquidColors.accentPurple,
       onTap: (showFace && !_isAuthenticating) ? _useFaceUnlock : null,
-      disabledHint: bioLockHint ??
+      disabledHint:
+          bioLockHint ??
           (_padDisabled
               ? 'Locked during cooldown'
               : (_faceRecogEnrolled ? null : 'Set up in Settings')),
@@ -434,7 +541,7 @@ class _AppLockScreenState extends State<AppLockScreen>
         ),
         const SizedBox(height: 22),
         Text(
-          'Biometric unlock locked',
+          'Biometrics paused',
           style: TextStyle(
             color: LiquidColors.textPrimary,
             fontSize: 20,
@@ -444,8 +551,8 @@ class _AppLockScreenState extends State<AppLockScreen>
         ),
         const SizedBox(height: 8),
         Text(
-          'Too many failed attempts. Try Face ID or fingerprint again in '
-          '${_formatCooldown(_bioCooldownRemaining!)} — or unlock with your PIN.',
+          'Too many failed tries. You can try Face ID or fingerprint again in '
+          '${_formatCooldown(_bioCooldownRemaining!)}, or unlock with your PIN below.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: LiquidColors.textSecondary,
@@ -503,57 +610,63 @@ class _AppLockScreenState extends State<AppLockScreen>
     }
 
     final String status = _isAuthenticating
-        ? 'Authenticating…'
+        ? 'Checking your identity…'
         : _padDisabled
-        ? 'Biometrics still work during the cooldown — tap to unlock.'
+        ? 'Your PIN is locked for now — tap to unlock with biometrics.'
+        : faceOnly
+        ? 'Tap to unlock with Face ID.'
         : 'Tap to unlock with your fingerprint or face.';
 
     return Column(
       children: [
         const SizedBox(height: 8),
-        AnimatedBuilder(
-          animation: _bioPulse,
-          builder: (context, _) {
-            final t = _bioPulse.value;
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _isAuthenticating ? null : primary,
-              child: Container(
-                width: 108,
-                height: 108,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [accent, accent.withValues(alpha: 0.65)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.28 + 0.18 * t),
-                      blurRadius: 30 + 16 * t,
-                      spreadRadius: 3 + 5 * t,
+        // Isolated so the orb's 60fps pulse + glow blur repaints only itself,
+        // not the rest of the lock card.
+        RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _bioPulse,
+            builder: (context, _) {
+              final t = _bioPulse.value;
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _isAuthenticating ? null : primary,
+                child: Container(
+                  width: 108,
+                  height: 108,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [accent, accent.withValues(alpha: 0.65)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.28 + 0.18 * t),
+                        blurRadius: 30 + 16 * t,
+                        spreadRadius: 3 + 5 * t,
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: _isAuthenticating
+                      ? const SizedBox(
+                          width: 30,
+                          height: 30,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.6,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(icon, color: Colors.white, size: 48),
                 ),
-                alignment: Alignment.center,
-                child: _isAuthenticating
-                    ? const SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.6,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Icon(icon, color: Colors.white, size: 48),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
         const SizedBox(height: 22),
         Text(
-          'Verify Your Identity',
+          'Welcome back',
           style: TextStyle(
             color: LiquidColors.textPrimary,
             fontSize: 20,
@@ -654,27 +767,23 @@ class _AppLockScreenState extends State<AppLockScreen>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      LiquidColors.backgroundLight.withValues(alpha: .3),
-                      LiquidColors.backgroundMid.withValues(alpha: .4),
+                      LiquidColors.backgroundLight.withValues(alpha: .28),
+                      LiquidColors.backgroundMid.withValues(alpha: .36),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(32),
                   border: Border.all(
-                    color: LiquidColors.accentBlue.withValues(alpha: .2),
+                    color: LiquidColors.accentBlue.withValues(alpha: .16),
                     width: 1,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: .3),
-                      blurRadius: 30,
-                      spreadRadius: 5,
-                    ),
-                    BoxShadow(
-                      color: LiquidColors.accentBlue.withValues(alpha: .1),
-                      blurRadius: 20,
-                      spreadRadius: 2,
+                      color: LiquidColors.accentBlue.withValues(alpha: .12),
+                      blurRadius: 28,
+                      spreadRadius: -4,
+                      offset: const Offset(0, 14),
                     ),
                   ],
                 ),
@@ -684,129 +793,217 @@ class _AppLockScreenState extends State<AppLockScreen>
                     LiquidLockHeader(
                       title: 'SecuroBox',
                       subtitle: _showPin
-                          ? 'Enter your PIN to continue'
-                          : 'Verify your identity to unlock',
+                          ? 'Type your PIN to unlock the vault'
+                          : 'Tap to unlock with your fingerprint or face',
                     ),
 
-                    if (_showPin) ...[
-                      const SizedBox(height: 32),
+                    _networkSealBanner(),
 
-                      AnimatedBuilder(
-                        animation: _errorController,
-                        builder: (context, child) {
-                          return Transform.translate(
-                            offset: Offset(_shakeAnimation.value, 0),
-                            child: LiquidPinDots(
-                              enteredLength: _enteredPin.length,
-                              totalLength: _pinLength,
-                              hasError: _hasError,
-                            ),
-                          );
-                        },
+                    // Smooth, professional swap between the biometric stage
+                    // and the PIN keypad — a gentle crossfade + rise, with
+                    // the card height easing between the two.
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 340),
+                      curve: Curves.easeInOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeIn,
+                        transitionBuilder: (child, anim) => FadeTransition(
+                          opacity: anim,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.04),
+                              end: Offset.zero,
+                            ).animate(anim),
+                            child: child,
+                          ),
+                        ),
+                        child: _showPin
+                            ? Column(
+                                key: const ValueKey('pinStage'),
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(height: 28),
+
+                                  AnimatedBuilder(
+                                    animation: _errorController,
+                                    builder: (context, child) {
+                                      // Damped horizontal shake: a few oscillations whose
+                                      // amplitude decays to zero — settles instead of
+                                      // swinging back like the old elastic tween.
+                                      final v = _errorController.value;
+                                      final dx =
+                                          math.sin(v * math.pi * 6) *
+                                          8 *
+                                          (1 - v);
+                                      return Transform.translate(
+                                        offset: Offset(dx, 0),
+                                        child: LiquidPinDots(
+                                          enteredLength: _enteredPin.length,
+                                          totalLength: _pinLength,
+                                          hasError: _hasError,
+                                        ),
+                                      );
+                                    },
+                                  ),
+
+                                  _wrongPinBanner(),
+
+                                  const SizedBox(height: 24),
+
+                                  if (!_padDisabled)
+                                    GridView.builder(
+                                      shrinkWrap: true,
+                                      itemCount: 12,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      gridDelegate:
+                                          const SliverGridDelegateWithFixedCrossAxisCount(
+                                            crossAxisCount: 3,
+                                            mainAxisSpacing: 16,
+                                            crossAxisSpacing: 16,
+                                            childAspectRatio: 1.2,
+                                          ),
+                                      itemBuilder: (context, index) {
+                                        if (index == 9) {
+                                          return LiquidActionButton(
+                                            icon: Icons.fingerprint,
+                                            color: LiquidColors.success,
+                                            onPressed: _useBiometric,
+                                            isEnabled:
+                                                _biometricEnabled &&
+                                                !_isAuthenticating &&
+                                                !_bioLocked,
+                                          );
+                                        }
+
+                                        if (index == 10) {
+                                          return LiquidNumberButton(
+                                            number: '0',
+                                            onPressed: () =>
+                                                _onNumberPressed('0'),
+                                          );
+                                        }
+                                        if (index == 11) {
+                                          return LiquidActionButton(
+                                            icon: Icons.backspace,
+                                            color: LiquidColors.error,
+                                            onPressed: _onDeletePressed,
+                                          );
+                                        }
+                                        return LiquidNumberButton(
+                                          number: '${index + 1}',
+                                          onPressed: () =>
+                                              _onNumberPressed('${index + 1}'),
+                                        );
+                                      },
+                                    ),
+
+                                  if (_padDisabled)
+                                    Container(
+                                      padding: const EdgeInsets.all(20),
+                                      decoration: BoxDecoration(
+                                        gradient: RadialGradient(
+                                          colors: [
+                                            LiquidColors.error.withValues(
+                                              alpha: .2,
+                                            ),
+                                            LiquidColors.error.withValues(
+                                              alpha: .1,
+                                            ),
+                                          ],
+                                          center: Alignment.center,
+                                          radius: 0.8,
+                                        ),
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(
+                                          color: LiquidColors.error.withValues(
+                                            alpha: .3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Icon(
+                                            Icons.lock_clock_rounded,
+                                            color: LiquidColors.error,
+                                            size: 40,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'PIN locked for now',
+                                            style: TextStyle(
+                                              color: LiquidColors.error,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'Too many wrong tries. Try again in ${_formatCooldown(_cooldownRemaining!)}.',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: LiquidColors.textSecondary,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'You can still unlock with biometrics.',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: LiquidColors.textTertiary,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+
+                                  const SizedBox(height: 16),
+
+                                  // During PIN cooldown the keypad is hidden — give a
+                                  // prominent biometric escape hatch instead of a link.
+                                  if (_padDisabled) _buildBiometricOptions(),
+
+                                  if (!_padDisabled &&
+                                      _faceRecogEnrolled &&
+                                      !_bioLocked &&
+                                      !_isAuthenticating)
+                                    TextButton.icon(
+                                      onPressed: _useFaceUnlock,
+                                      icon: Icon(
+                                        Icons.face_retouching_natural,
+                                        size: 18,
+                                        color: LiquidColors.accentPurple,
+                                      ),
+                                      label: Text(
+                                        'Use Face Scan instead',
+                                        style: TextStyle(
+                                          color: LiquidColors.accentPurple,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  _bioAttemptsBanner(),
+                                ],
+                              )
+                            : Column(
+                                key: const ValueKey('bioStage'),
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(height: 26),
+                                  _buildBiometricStage(),
+                                ],
+                              ),
                       ),
-
-                      const SizedBox(height: 32),
-
-                      if (!_padDisabled)
-                        GridView.builder(
-                          shrinkWrap: true,
-                          itemCount: 12,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                mainAxisSpacing: 16,
-                                crossAxisSpacing: 16,
-                                childAspectRatio: 1.2,
-                              ),
-                          itemBuilder: (context, index) {
-                            // if (index == 9) {
-                            //   return LiquidActionButton(
-                            //     icon: Icons.fingerprint,
-                            //     color: LiquidColors.success,
-                            //     onPressed: _useBiometric,
-                            //     isEnabled:
-                            //         _biometricEnabled && !_isAuthenticating,
-                            //   );
-                            // }
-                            if (index == 9) {
-                              return Container();
-                            }
-                            if (index == 10) {
-                              return LiquidNumberButton(
-                                number: '0',
-                                onPressed: () => _onNumberPressed('0'),
-                              );
-                            }
-                            if (index == 11) {
-                              return LiquidActionButton(
-                                icon: Icons.backspace,
-                                color: LiquidColors.error,
-                                onPressed: _onDeletePressed,
-                              );
-                            }
-                            return LiquidNumberButton(
-                              number: '${index + 1}',
-                              onPressed: () => _onNumberPressed('${index + 1}'),
-                            );
-                          },
-                        ),
-
-                      if (_padDisabled)
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              colors: [
-                                LiquidColors.error.withValues(alpha: .2),
-                                LiquidColors.error.withValues(alpha: .1),
-                              ],
-                              center: Alignment.center,
-                              radius: 0.8,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: LiquidColors.error.withValues(alpha: .3),
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.lock_clock_rounded,
-                                color: LiquidColors.error,
-                                size: 40,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Too many wrong attempts',
-                                style: TextStyle(
-                                  color: LiquidColors.error,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Try again in ${_formatCooldown(_cooldownRemaining!)}',
-                                style: TextStyle(
-                                  color: LiquidColors.textSecondary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      const SizedBox(height: 20),
-
-                      _buildBiometricOptions(),
-                      _bioAttemptsBanner(),
-                     ]
-                     else ...[
-                       const SizedBox(height: 26),
-                      _buildBiometricStage(),
-                     ],
+                    ),
 
                     const SizedBox(height: 8),
 
@@ -827,7 +1024,7 @@ class _AppLockScreenState extends State<AppLockScreen>
                         color: LiquidColors.textSecondary,
                       ),
                       label: Text(
-                        'Forgot PIN?',
+                        'Forgot your PIN?',
                         style: TextStyle(
                           color: LiquidColors.textSecondary,
                           fontSize: 13,

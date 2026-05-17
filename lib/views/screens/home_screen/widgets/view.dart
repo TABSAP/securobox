@@ -12,6 +12,7 @@ export 'package:video_player_app/views/screens/home_screen/widgets/liquid_animat
 export 'package:video_player_app/views/screens/home_screen/widgets/liquid_animations/animated_media_card.dart';
 export 'package:video_player_app/views/screens/home_screen/widgets/liquid_animations/delete_dialog.dart';
 export 'package:video_player_app/views/screens/home_screen/widgets/liquid_animations/download_dialog.dart';
+export 'package:video_player_app/views/screens/home_screen/widgets/add_to_vault_sheet.dart';
 export 'package:video_player_app/views/screens/deleted_video_screen/deleted_video_screen.dart';
 export 'package:video_player_app/views/screens/home_screen/widgets/view.dart';
 export 'dart:async';

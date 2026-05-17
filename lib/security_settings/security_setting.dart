@@ -1,25 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:video_player_app/download_screen/widgets/view.dart';
+import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/security_settings/decoy_setup_screen.dart';
 import 'package:video_player_app/security_settings/face_scan_screen.dart';
 import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
-import 'package:video_player_app/security_settings/privacy_policy_screen.dart';
 import 'package:video_player_app/security_settings/recovery_setup_screen.dart';
-import 'package:video_player_app/security_settings/send_feedback_screen.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/face_recognition_service.dart';
 import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
+import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
 import 'package:video_player_app/utils/session_manager.dart';
-import 'package:video_player_app/utils/theme_controller.dart';
+import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
@@ -37,6 +34,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _faceUnlockEnabled = false;
   bool _faceRecogEnrolled = false;
   bool _intrusionEnabled = false;
+  bool _offlineIntegrityLock = false;
   int _intrusionCount = 0;
   bool _deleteOriginals = false;
   String _currentDisguise = 'default';
@@ -130,6 +128,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _faceUnlockEnabled = prefs.getBool('biometric_face') ?? false;
         _pinLength = pinLen;
         _intrusionEnabled = intrusionEnabled;
+        _offlineIntegrityLock = NetworkGuard.instance.enabled;
         _intrusionCount = intrusionCount;
         _deleteOriginals = deleteOriginals;
         _currentDisguise = currentDisguise;
@@ -194,7 +193,54 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool get _fingerprintAvailable =>
       _availableBiometrics.contains(BiometricType.fingerprint);
 
+  /// Names of the three protections that share the "at least one must stay
+  /// enabled" invariant.
+  static const Set<String> _lockSettings = {
+    'appLock',
+    'biometric',
+    'biometric_face',
+  };
+
+  /// Returns true if disabling [setting] right now would leave the user with
+  /// no lock layers — used to refuse the toggle and keep the vault protected.
+  bool _wouldDisableAllLocks(String setting) {
+    if (!_lockSettings.contains(setting)) return false;
+    final remaining = <String, bool>{
+      'appLock': _appLockEnabled,
+      'biometric': _biometricEnabled,
+      'biometric_face': _faceUnlockEnabled,
+    };
+    remaining[setting] = false;
+    return !remaining.values.any((on) => on);
+  }
+
+  String _lockDisplayName(String setting) {
+    switch (setting) {
+      case 'appLock':
+        return 'App Lock';
+      case 'biometric':
+        return 'Biometric Unlock';
+      case 'biometric_face':
+        return 'Face Unlock';
+      default:
+        return setting;
+    }
+  }
+
   Future<void> _toggleSetting(String setting, bool value) async {
+    // Enforce: at least one of App Lock / Biometric / Face Unlock must stay
+    // enabled. Block the toggle BEFORE biometric verification so the user
+    // doesn't authenticate just to be told the request is refused.
+    if (!value && _wouldDisableAllLocks(setting)) {
+      HapticFeedback.heavyImpact();
+      FlushBarHelper.flushBarWarningMessage(
+        '${_lockDisplayName(setting)} is the only active lock. Enable another '
+        'lock first to keep the vault protected.',
+        context,
+      );
+      return;
+    }
+
     // Handle biometric enable
     if (setting == 'biometric' && value) {
       await _testAndEnableBiometric();
@@ -501,16 +547,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       return;
     }
 
-    // 3. Verified — disable the setting (and clean up dependent toggles).
+    // 3. Verified — disable just this setting. The other two locks (if any)
+    //    stay on so the vault keeps a working lock layer.
     setState(() => _isLoading = true);
     try {
       await _saveSetting(setting, false);
-      if (setting == 'appLock' && _biometricEnabled) {
-        await _saveSetting('biometric', false);
-      }
-      if (setting == 'appLock' && _faceUnlockEnabled) {
-        await _saveSetting('biometric_face', false);
-      }
       await _loadSecuritySettings();
       if (mounted) {
         FlushBarHelper.flushBarSuccessMessage(
@@ -536,7 +577,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   String _getDisableWarningMessage(String setting) {
     switch (setting) {
       case 'appLock':
-        return 'Disabling app lock will remove the authentication requirement to open the app. Anyone with access to your device can view your vault contents.';
+        return 'Disabling App Lock removes the PIN prompt when the app opens. Biometric or Face Unlock (if enabled) will still gate access.';
       case 'videoLock':
         return 'Disabling video lock will remove individual video protection. All locked videos will become accessible without additional authentication.';
       case 'biometric':
@@ -1404,6 +1445,191 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
+  Future<void> _toggleOfflineIntegrityLock(bool value) async {
+    HapticFeedback.lightImpact();
+    if (value) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          backgroundColor: LiquidColors.backgroundLight,
+          title: Text(
+            'Enable Offline Integrity Lock?',
+            style: TextStyle(color: LiquidColors.textPrimary),
+          ),
+          content: Text(
+            'While this is on, the vault stays sealed whenever the device is '
+            'online. The moment Wi-Fi or mobile data connects, the encryption '
+            'session is revoked and the app locks.\n\n'
+            'You will only be able to unlock the vault in Airplane Mode — with '
+            'Wi-Fi and mobile data fully off.',
+            style: TextStyle(color: LiquidColors.textSecondary, height: 1.45),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: LiquidColors.textSecondary),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(
+                'Enable',
+                style: TextStyle(color: LiquidColors.accentBlue),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    await NetworkGuard.instance.setEnabled(value);
+    if (!mounted) return;
+    setState(() => _offlineIntegrityLock = value);
+    FlushBarHelper.flushBarSuccessMessage(
+      value
+          ? 'Offline Integrity Lock enabled'
+          : 'Offline Integrity Lock disabled',
+      context,
+    );
+  }
+
+  Widget _buildIntegrityLockCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: .9),
+            LiquidColors.backgroundMid.withValues(alpha: .95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: LiquidColors.accentBlue.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      LiquidColors.accentBlue,
+                      LiquidColors.primaryMid,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.cloud_off_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'OFFLINE INTEGRITY LOCK',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: LiquidColors.textPrimary,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _offlineIntegrityLock,
+                onChanged: _toggleOfflineIntegrityLock,
+                activeThumbColor: Colors.white,
+                activeTrackColor: LiquidColors.accentBlue,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Keeps the vault sealed whenever the device is online. The instant '
+            'Wi-Fi or mobile data connects, the encryption session is revoked '
+            'and the app locks — so decrypted files are never exposed to a '
+            'network.',
+            style: TextStyle(
+              fontSize: 12,
+              color: LiquidColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'While this is on, the vault only opens in Airplane Mode.',
+            style: TextStyle(
+              fontSize: 11,
+              color: LiquidColors.textTertiary,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ValueListenableBuilder<bool>(
+            valueListenable: NetworkGuard.instance.online,
+            builder: (context, online, _) {
+              final color = online
+                  ? LiquidColors.warning
+                  : LiquidColors.success;
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: color.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      online
+                          ? Icons.public_rounded
+                          : Icons.public_off_rounded,
+                      size: 16,
+                      color: color,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        online
+                            ? 'Network detected — vault would be sealed'
+                            : 'Offline — vault can be unlocked',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _toggleDeleteOriginals(bool value) async {
     HapticFeedback.lightImpact();
     if (value && Platform.isIOS) {
@@ -1713,6 +1939,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: const LiquidBottomNav(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -1766,7 +1993,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Security Setting',
+                          'Security',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1777,7 +2004,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                           ),
                         ),
                         Text(
-                          'Configure your security preferences',
+                          'Keep your vault locked down',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
@@ -1806,7 +2033,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 ),
               ),
             ),
-          _buildAppearanceAction(),
           const SizedBox(width: 4),
         ],
       ),
@@ -1835,7 +2061,20 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 8),
+                    _buildSecurityHeroCard(),
+                    const SizedBox(height: 16),
+                    _buildLockNowCard(),
+                    const SizedBox(height: 28),
 
+                    _sectionHeader(
+                      label: 'LOCKS',
+                      icon: Icons.lock_rounded,
+                      color: LiquidColors.accentBlue,
+                      caption: 'Choose how the app unlocks.',
+                    ),
+                    const SizedBox(height: 12),
+                    // App Lock is the master "show the lock screen" switch —
+                    // always visible, whichever unlock method is in use.
                     LiquidSecurityCard(
                       icon: Icons.lock_outline_rounded,
                       title: 'App Lock',
@@ -1848,9 +2087,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       index: 0,
                       onChanged: (value) => _toggleSetting('appLock', value),
                     ),
-
-                    const SizedBox(height: 16),
-
+                    const SizedBox(height: 14),
                     LiquidSecurityCard(
                       icon: Icons.video_settings_outlined,
                       title: 'Video Lock',
@@ -1860,13 +2097,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       index: 1,
                       onChanged: (value) => _toggleSetting('videoLock', value),
                     ),
-
-                    const SizedBox(height: 16),
-
                     // Fingerprint / generic biometric. Hidden on devices whose
                     // only biometric is face recognition — those get the
                     // dedicated Face Unlock card below instead.
                     if (!(_faceAvailable && !_fingerprintAvailable)) ...[
+                      const SizedBox(height: 14),
                       LiquidSecurityCard(
                         icon: _fingerprintAvailable
                             ? Icons.fingerprint_rounded
@@ -1887,10 +2122,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                             _toggleSetting('biometric', value),
                         statusWidget: _buildBiometricStatus(),
                       ),
-                      const SizedBox(height: 16),
                     ],
-
                     if (_faceAvailable) ...[
+                      const SizedBox(height: 14),
                       LiquidSecurityCard(
                         icon: Icons.face_retouching_natural,
                         title: 'Face Unlock',
@@ -1905,21 +2139,24 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                             _toggleSetting('biometric_face', value),
                         statusWidget: _buildFaceStatus(),
                       ),
-                      const SizedBox(height: 16),
                     ],
+                    const SizedBox(height: 28),
 
+                    _sectionHeader(
+                      label: 'IDENTITY & PIN',
+                      icon: Icons.fingerprint_rounded,
+                      color: LiquidColors.accentPurple,
+                      caption: 'Enroll your face and manage your PIN.',
+                    ),
+                    const SizedBox(height: 12),
                     _buildFaceRecognitionCard(),
-
-                    const SizedBox(height: 24),
-
+                    const SizedBox(height: 14),
                     LiquidPinSection(
                       isChanging: _changingPin,
                       onStartChange: _startPinChange,
                     ),
-
-                    const SizedBox(height: 24),
-
                     if (_changingPin) ...[
+                      const SizedBox(height: 14),
                       LiquidPinInput(
                         verifyOldMode: _verifyingOldPin,
                         confirmMode: _confirmPinMode,
@@ -1932,42 +2169,46 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                         onDelete: _onPinDelete,
                         onCancel: _cancelPinChange,
                       ),
-                      const SizedBox(height: 24),
                     ],
+                    const SizedBox(height: 28),
 
+                    _sectionHeader(
+                      label: 'SESSION & RECOVERY',
+                      icon: Icons.timer_outlined,
+                      color: LiquidColors.success,
+                      caption: 'Auto-lock timing and PIN recovery email.',
+                    ),
+                    const SizedBox(height: 12),
                     _buildSessionCard(),
-
-                    const SizedBox(height: 24),
-
+                    const SizedBox(height: 14),
                     _buildRecoveryCard(),
+                    const SizedBox(height: 28),
 
-                    const SizedBox(height: 24),
-
+                    _sectionHeader(
+                      label: 'PRIVACY & DEFENCE',
+                      icon: Icons.shield_rounded,
+                      color: LiquidColors.warning,
+                      caption: 'Decoy mode and break-in alerts.',
+                    ),
+                    const SizedBox(height: 12),
                     _buildDecoyCard(),
-
-                    const SizedBox(height: 24),
-
+                    const SizedBox(height: 14),
                     _buildIntrusionCard(),
+                    const SizedBox(height: 14),
+                    _buildIntegrityLockCard(),
+                    const SizedBox(height: 28),
 
-                    const SizedBox(height: 24),
-
+                    _sectionHeader(
+                      label: 'IMPORT & DISGUISE',
+                      icon: Icons.tune_rounded,
+                      color: LiquidColors.accentBlue,
+                      caption: 'Originals handling and home-screen disguise.',
+                    ),
+                    const SizedBox(height: 12),
                     _buildImportCard(),
-
-                    const SizedBox(height: 24),
-
+                    const SizedBox(height: 14),
                     _buildDisguiseCard(),
-
-                    const SizedBox(height: 24),
-
-                    _buildSecurityInfoCard(),
-
-                    const SizedBox(height: 24),
-
-                    _buildSecurityTipsCard(),
-
-                    const SizedBox(height: 24),
-
-                    _buildAboutCard(),
+                    const SizedBox(height: 28),
 
                     const SizedBox(height: 40),
                   ],
@@ -2339,65 +2580,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  static IconData _themeModeIcon(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return Icons.light_mode_rounded;
-      case ThemeMode.dark:
-        return Icons.dark_mode_rounded;
-      case ThemeMode.system:
-        return Icons.brightness_auto_rounded;
-    }
-  }
-
-  Widget _buildAppearanceAction() {
-    final current = ThemeController.instance.mode;
-    return PopupMenuButton<ThemeMode>(
-      tooltip: 'Appearance',
-      icon: Icon(_themeModeIcon(current), color: LiquidColors.textPrimary),
-      position: PopupMenuPosition.under,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      onSelected: (mode) {
-        HapticFeedback.selectionClick();
-        ThemeController.instance.setMode(mode);
-      },
-      itemBuilder: (context) => ThemeMode.values.map((mode) {
-        final selected = mode == current;
-        return PopupMenuItem<ThemeMode>(
-          value: mode,
-          child: Row(
-            children: [
-              Icon(
-                _themeModeIcon(mode),
-                size: 20,
-                color: selected
-                    ? LiquidColors.accentBlue
-                    : LiquidColors.textSecondary,
-              ),
-              const SizedBox(width: 12),
-              Text(
-                ThemeController.label(mode),
-                style: TextStyle(
-                  color: selected
-                      ? LiquidColors.accentBlue
-                      : LiquidColors.textPrimary,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-              if (selected) ...[
-                const Spacer(),
-                Icon(
-                  Icons.check_rounded,
-                  size: 18,
-                  color: LiquidColors.accentBlue,
-                ),
-              ],
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
 
   Widget _buildDecoyCard() {
     final accent = _decoyEnabled
@@ -2583,8 +2765,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         ),
         content: Text(
           _biometricAvailable
-              ? 'Your enrolled face data will be deleted from this device. You\'ll need to verify with your ${_getBiometricTypeName().toLowerCase()} to turn it off.'
-              : 'Your enrolled face data will be deleted from this device. You can set it up again any time.',
+              ? 'Your enrolled face data will be deleted from this device. '
+                    'Verify with your ${_getBiometricTypeName().toLowerCase()} '
+                    'or app PIN to turn it off.'
+              : 'Your enrolled face data will be deleted from this device. '
+                    'Enter your app PIN to turn it off.',
           style: TextStyle(color: LiquidColors.textSecondary, height: 1.4),
         ),
         actions: [
@@ -2604,8 +2789,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Text(
-              _biometricAvailable ? 'Verify & turn off' : 'Turn off & delete',
+            child: const Text(
+              'Verify & turn off',
               style: TextStyle(color: Colors.white),
             ),
           ),
@@ -2614,8 +2799,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
     if (ok != true || !mounted) return;
 
+    // Identity gate — biometric first, app PIN as fallback. EITHER one is
+    // enough, so Face Unlock can always be turned off even when biometrics
+    // are unavailable, cancelled or fail.
+    bool verified = false;
     if (_biometricAvailable) {
-      bool verified = false;
       try {
         verified = await _localAuth.authenticate(
           localizedReason: 'Verify your identity to turn off Face Unlock',
@@ -2623,15 +2811,29 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           sensitiveTransaction: true,
           persistAcrossBackgrounding: true,
         );
-      } catch (_) {}
-      if (!mounted) return;
-      if (!verified) {
-        FlushBarHelper.flushBarErrorMessage(
-          'Verification failed — Face Unlock stays on.',
-          context,
-        );
-        return;
+      } on LocalAuthException {
+        // Sensor unavailable / cancelled / lockout — fall through to PIN.
+      } catch (_) {
+        // Defensive: any other failure → PIN fallback.
       }
+    }
+    if (!mounted) return;
+
+    if (!verified) {
+      verified = await PinUnlockDialog.show(
+        context,
+        title: 'Confirm with PIN',
+        subtitle: 'Enter your app PIN to turn off In-App Face Unlock',
+      );
+      if (!mounted) return;
+    }
+
+    if (!verified) {
+      FlushBarHelper.flushBarErrorMessage(
+        'Verification failed — Face Unlock stays on.',
+        context,
+      );
+      return;
     }
 
     await FaceRecognitionService.instance.clearEnrollment();
@@ -2641,11 +2843,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   Widget _buildFaceRecognitionCard() {
-    final accent = _faceRecogEnrolled
-        ? LiquidColors.success
-        : LiquidColors.accentBlue;
+    final enrolled = _faceRecogEnrolled;
+    final accent = enrolled ? LiquidColors.success : LiquidColors.accentBlue;
+    final iconGradient = enrolled
+        ? [LiquidColors.success, LiquidColors.accentBlue]
+        : [LiquidColors.accentBlue, LiquidColors.accentPurple];
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -2655,8 +2860,16 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withValues(alpha: 0.25), width: 1),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: accent.withValues(alpha: 0.28), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.12),
+            blurRadius: 24,
+            spreadRadius: -6,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2664,73 +2877,82 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: _faceRecogEnrolled
-                        ? [LiquidColors.success, LiquidColors.accentBlue]
-                        : [LiquidColors.accentBlue, LiquidColors.accentPurple],
+                    colors: iconGradient,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: iconGradient.first.withValues(alpha: 0.4),
+                      blurRadius: 14,
+                      spreadRadius: -2,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.camera_front_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
+                child: const Icon(
+                  Icons.face_retouching_natural,
+                  color: Colors.white,
+                  size: 28,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
-                child: Text(
-                  'IN-APP FACE UNLOCK',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: LiquidColors.textPrimary,
-                    letterSpacing: 0.3,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'In-App Face Unlock',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: LiquidColors.textPrimary,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Front-camera unlock · on-device',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: LiquidColors.textTertiary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: accent.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  _faceRecogEnrolled ? 'ON' : 'OFF',
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
+              _faceStatusPill(enrolled, accent),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
           Text(
-            _faceRecogEnrolled
+            enrolled
                 ? 'Tap "Scan Face" on the lock screen to unlock with your front camera. Your PIN still works any time.'
-                : 'Unlock with your front camera instead of typing your PIN. Works on any device — uses on-device face matching, nothing leaves your phone.',
+                : 'Unlock with your front camera instead of typing your PIN. Face matching runs entirely on this device.',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.5,
               color: LiquidColors.textSecondary,
-              height: 1.4,
+              height: 1.5,
             ),
           ),
           const SizedBox(height: 14),
+          Row(
+            children: [
+              _faceFeatureChip(Icons.memory_rounded, 'On-device AI'),
+              const SizedBox(width: 8),
+              _faceFeatureChip(Icons.cloud_off_rounded, 'Never uploaded'),
+            ],
+          ),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 46,
-            child: _faceRecogEnrolled
+            height: 50,
+            child: enrolled
                 ? OutlinedButton.icon(
                     onPressed: _disableFaceRecognition,
                     icon: const Icon(Icons.lock_reset_rounded, size: 18),
@@ -2741,39 +2963,20 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                         color: LiquidColors.error.withValues(alpha: 0.5),
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                   )
-                : ElevatedButton.icon(
-                    onPressed: _openFaceEnroll,
-                    icon: const Icon(
-                      Icons.face_retouching_natural,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                    label: const Text(
-                      'Set up Face Unlock',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accent,
-                      foregroundColor: LiquidColors.textPrimary,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
+                : _faceSetupButton(),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(11),
             decoration: BoxDecoration(
-              color: LiquidColors.warning.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
+              color: LiquidColors.warning.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: LiquidColors.warning.withValues(alpha: 0.3),
+                color: LiquidColors.warning.withValues(alpha: 0.25),
               ),
             ),
             child: Row(
@@ -2787,11 +2990,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Face Unlock is a convenience shortcut and is weaker than your PIN — it may be fooled by a photo or a similar-looking person. Your PIN is always required as a fallback.',
+                    'Face Unlock is a convenience shortcut — weaker than your '
+                    'PIN and can be fooled by a photo or look-alike. Your PIN '
+                    'always works as a fallback.',
                     style: TextStyle(
                       fontSize: 11,
                       color: LiquidColors.textSecondary,
-                      height: 1.4,
+                      height: 1.45,
                     ),
                   ),
                 ),
@@ -2799,6 +3004,117 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Status pill for the Face Unlock card — a coloured dot plus a state label.
+  Widget _faceStatusPill(bool enrolled, Color accent) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: accent),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            enrolled ? 'Active' : 'Not set up',
+            style: TextStyle(
+              color: accent,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Small capability chip shown on the Face Unlock card.
+  Widget _faceFeatureChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: LiquidColors.textPrimary.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.07),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: LiquidColors.accentBlue),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: LiquidColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Gradient call-to-action used when Face Unlock is not yet enrolled.
+  Widget _faceSetupButton() {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: LiquidColors.accentBlue.withValues(alpha: 0.35),
+            blurRadius: 14,
+            spreadRadius: -3,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _openFaceEnroll,
+          borderRadius: BorderRadius.circular(14),
+          child: const Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.face_retouching_natural,
+                  size: 19,
+                  color: Colors.white,
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Set up Face Unlock',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -3747,37 +4063,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               Expanded(child: _pinLengthChip(6)),
             ],
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                SessionManager.instance.requestLock();
-              },
-              icon: Icon(
-                Icons.lock_rounded,
-                color: LiquidColors.accentBlue,
-                size: 18,
-              ),
-              label: Text(
-                'Lock Now',
-                style: TextStyle(
-                  color: LiquidColors.accentBlue,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                side: BorderSide(
-                  color: LiquidColors.accentBlue.withValues(alpha: 0.6),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -3862,191 +4147,118 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildAboutCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LiquidColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.info_outline_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'ABOUT & SUPPORT',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: LiquidColors.textPrimary,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _aboutTile(
-            icon: Icons.star_rounded,
-            label: 'Rate SecuroBox',
-            sublabel: 'Leave a review on Google Play',
-            color: LiquidColors.warning,
-            onTap: () async {
-              HapticFeedback.lightImpact();
-              final url = Uri.parse(
-                'https://play.google.com/store/apps/details?id=com.tabsap.video_player',
-              );
-              if (await canLaunchUrl(url)) {
-                await launchUrl(url, mode: LaunchMode.externalApplication);
-              }
-            },
-          ),
-          const SizedBox(height: 8),
-          _aboutTile(
-            icon: Icons.mail_outline_rounded,
-            label: 'Send Feedback',
-            sublabel: 'Tell us what you think',
-            color: LiquidColors.accentBlue,
-            onTap: () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SendFeedbackScreen()),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _aboutTile(
-            icon: Icons.privacy_tip_outlined,
-            label: 'Privacy Policy',
-            sublabel: 'How we handle your data',
-            color: LiquidColors.success,
-            onTap: () {
-              HapticFeedback.lightImpact();
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-          FutureBuilder<PackageInfo>(
-            future: PackageInfo.fromPlatform(),
-            builder: (context, snap) {
-              final v = snap.hasData
-                  ? '${snap.data!.version} (${snap.data!.buildNumber})'
-                  : '...';
-              return Center(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onLongPress: () {
-                    HapticFeedback.heavyImpact();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const DecoySetupScreen(),
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 6,
-                    ),
-                    child: Text(
-                      'SecuroBox v$v',
-                      style: TextStyle(
-                        color: LiquidColors.textTertiary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _aboutTile({
-    required IconData icon,
-    required String label,
-    required String sublabel,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
+  Widget _buildLockNowCard() {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          SessionManager.instance.requestLock();
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                LiquidColors.accentBlue,
+                LiquidColors.accentPurple,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: LiquidColors.accentBlue.withValues(alpha: 0.45),
+                blurRadius: 22,
+                spreadRadius: -2,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
           child: Row(
             children: [
               Container(
-                width: 38,
-                height: 38,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.white.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(13),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.lock_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
                     Text(
-                      label,
+                      'Lock Now',
                       style: TextStyle(
-                        color: LiquidColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
-                      sublabel,
+                      'Instantly lock the app and require unlock.',
                       style: TextStyle(
-                        color: LiquidColors.textTertiary,
+                        color: Colors.white70,
                         fontSize: 12,
+                        height: 1.35,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: LiquidColors.textTertiary,
-                size: 20,
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.22),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'TAP',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -4055,29 +4267,77 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildSecurityInfoCard() {
+  Widget _buildSecurityHeroCard() {
+    // Six binary protections the user can toggle. The hero gives an at-a-
+    // glance "how covered am I right now?" plus a friendly nudge when gaps
+    // exist — much more meaningful than scrolling through 12 cards to count.
+    // Each protection carries the action that sets it up, so its
+    // "Suggested next steps" chip can take the user straight there.
+    final protections = <_Protection>[
+      _Protection('App Lock', _appLockEnabled,
+          () => _toggleSetting('appLock', true)),
+      _Protection('Biometric Unlock', _biometricEnabled,
+          () => _toggleSetting('biometric', true)),
+      // "Face Unlock" is satisfied by either the OS face biometric or the
+      // in-app face recognition — setting up either route counts.
+      _Protection('Face Unlock', _faceUnlockEnabled || _faceRecogEnrolled,
+          _openFaceEnroll),
+      _Protection('PIN Recovery', _recoveryEnabled, _openRecoverySetup),
+      _Protection('Intrusion Detection', _intrusionEnabled,
+          () => _toggleIntrusion(true)),
+      _Protection('Decoy Mode', _decoyEnabled, _openDecoySetup),
+    ];
+    final active = protections.where((p) => p.on).length;
+    final total = protections.length;
+    final ratio = total == 0 ? 0.0 : active / total;
+    final allGood = active == total;
+    final isCritical = active == 0;
+    final percent = (ratio * 100).round();
+
+    final accent = isCritical
+        ? LiquidColors.error
+        : allGood
+            ? LiquidColors.success
+            : LiquidColors.accentBlue;
+    final accentSoft = isCritical
+        ? LiquidColors.error.withValues(alpha: 0.85)
+        : allGood
+            ? LiquidColors.success.withValues(alpha: 0.85)
+            : LiquidColors.accentPurple;
+
+    final headline = isCritical
+        ? 'Your vault is unprotected'
+        : allGood
+            ? 'You’re fully protected'
+            : 'You’re mostly protected';
+    final subhead = isCritical
+        ? 'Turn on at least one lock below to keep files safe.'
+        : allGood
+            ? 'Every protection is active. Nice work.'
+            : '${total - active} more protection${total - active == 1 ? '' : 's'} available below.';
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
+            LiquidColors.backgroundLight.withValues(alpha: 0.72),
+            LiquidColors.backgroundMid.withValues(alpha: 0.55),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: .2),
+          color: accent.withValues(alpha: 0.28),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: LiquidColors.accentBlue.withValues(alpha: .1),
-            blurRadius: 15,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
+            color: accent.withValues(alpha: 0.14),
+            blurRadius: 26,
+            spreadRadius: -6,
+            offset: const Offset(0, 14),
           ),
         ],
       ),
@@ -4085,223 +4345,298 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LiquidColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.security_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
+              _SecurityScoreRing(
+                ratio: ratio,
+                percent: percent,
+                accent: accent,
+                accentSoft: accentSoft,
               ),
-              const SizedBox(width: 12),
-              Text(
-                'SECURITY INFORMATION',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: LiquidColors.textPrimary,
-                  letterSpacing: 0.3,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      headline,
+                      style: TextStyle(
+                        color: LiquidColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subhead,
+                      style: TextStyle(
+                        color: LiquidColors.textSecondary,
+                        fontSize: 12.5,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '$active of $total active',
+                        style: TextStyle(
+                          color: accent,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          _buildSecurityFeature(
-            'AES-256-CTR encryption for every file at rest',
-          ),
-          const SizedBox(height: 12),
-          _buildSecurityFeature(
-            'PIN hashed with PBKDF2-HMAC-SHA256 (100k rounds)',
-          ),
-          const SizedBox(height: 12),
-          _buildSecurityFeature(
-            'Hash and master key in OS Keychain / Keystore',
-          ),
-          const SizedBox(height: 12),
-          _buildSecurityFeature(
-            'Random UUID filenames on disk — originals never exposed',
-          ),
-          const SizedBox(height: 12),
-          _buildSecurityFeature('Cloud backup disabled — files stay on device'),
-          const SizedBox(height: 12),
-          _buildSecurityFeature(
-            'Biometric authentication via OS BiometricPrompt',
-          ),
-          const SizedBox(height: 12),
-          _buildSecurityFeature('Escalating cooldown after wrong PIN attempts'),
-          const SizedBox(height: 12),
-          _buildSecurityFeature('No analytics, no trackers, no servers'),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  LiquidColors.accentBlue.withValues(alpha: .1),
-                  LiquidColors.accentBlue.withValues(alpha: .05),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: LiquidColors.accentBlue.withValues(alpha: .3),
+          if (!allGood && !isCritical) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Suggested next steps',
+              style: TextStyle(
+                color: LiquidColors.textTertiary,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.0,
               ),
             ),
-            child: Row(
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
               children: [
-                Icon(
-                  Icons.lock_clock_rounded,
-                  color: LiquidColors.accentBlue,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'All security features work 100% offline',
-                    style: TextStyle(
-                      color: LiquidColors.accentBlue,
-                      fontSize: 12,
+                for (final p in protections.where((p) => !p.on))
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: p.action,
+                      borderRadius: BorderRadius.circular(999),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              LiquidColors.accentBlue.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: LiquidColors.accentBlue
+                                .withValues(alpha: 0.30),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_rounded,
+                              size: 13,
+                              color: LiquidColors.accentBlue,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              p.label,
+                              style: TextStyle(
+                                color: LiquidColors.accentBlue,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 14,
+                              color: LiquidColors.accentBlue
+                                  .withValues(alpha: 0.7),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecurityFeature(String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              colors: [
-                LiquidColors.success,
-                LiquidColors.success.withValues(alpha: .5),
-              ],
-              center: Alignment.center,
-              radius: 0.8,
-            ),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Icon(Icons.check, color: Colors.white, size: 12),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: LiquidColors.textSecondary, fontSize: 13),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSecurityTipsCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.warning.withValues(alpha: .2),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: LiquidColors.warning.withValues(alpha: .1),
-            blurRadius: 15,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
-          ),
         ],
       ),
+    );
+  }
+
+  Widget _sectionHeader({
+    required String label,
+    required IconData icon,
+    required Color color,
+    String? caption,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(
-                Icons.lightbulb_outline_rounded,
-                color: LiquidColors.warning,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 8),
               Text(
-                'SECURITY TIPS',
+                label,
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: LiquidColors.textPrimary,
-                  letterSpacing: 0.3,
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _buildSecurityTip(
-            'Avoid using simple PINs like 1234, 0000, or repeating digits',
-          ),
-          const SizedBox(height: 12),
-          _buildSecurityTip(
-            'Enable biometric authentication for quick and secure access',
-          ),
-          const SizedBox(height: 12),
-          _buildSecurityTip(
-            'Video lock adds extra security to sensitive videos',
-          ),
-          const SizedBox(height: 12),
-          _buildSecurityTip('Change your PIN periodically for better security'),
-          const SizedBox(height: 12),
-          _buildSecurityTip(
-            'App lock prevents unauthorized access to your videos',
-          ),
+          if (caption != null) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 22),
+              child: Text(
+                caption,
+                style: TextStyle(
+                  color: LiquidColors.textTertiary,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSecurityTip(String text) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          Icons.chevron_right_rounded,
-          color: LiquidColors.accentBlue,
-          size: 20,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: LiquidColors.textSecondary, fontSize: 13),
-          ),
-        ),
-      ],
+}
+
+class _Protection {
+  final String label;
+  final bool on;
+  final VoidCallback? action;
+  const _Protection(this.label, this.on, [this.action]);
+}
+
+class _SecurityScoreRing extends StatelessWidget {
+  final double ratio;
+  final int percent;
+  final Color accent;
+  final Color accentSoft;
+
+  const _SecurityScoreRing({
+    required this.ratio,
+    required this.percent,
+    required this.accent,
+    required this.accentSoft,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const double size = 80;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: ratio),
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, _) {
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              // Soft accent glow behind the ring.
+              Container(
+                width: size - 14,
+                height: size - 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: accent.withValues(alpha: 0.22),
+                      blurRadius: 18,
+                      spreadRadius: -4,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: size,
+                height: size,
+                child: CircularProgressIndicator(
+                  value: 1,
+                  strokeWidth: 7,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    LiquidColors.textPrimary.withValues(alpha: 0.07),
+                  ),
+                ),
+              ),
+              ShaderMask(
+                shaderCallback: (rect) => LinearGradient(
+                  colors: [accent, accentSoft],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(rect),
+                child: SizedBox(
+                  width: size,
+                  height: size,
+                  child: CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 7,
+                    strokeCap: StrokeCap.round,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Colors.white,
+                    ),
+                    backgroundColor: Colors.transparent,
+                  ),
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${(value * 100).round()}',
+                    style: TextStyle(
+                      color: LiquidColors.textPrimary,
+                      fontSize: 23,
+                      fontWeight: FontWeight.w900,
+                      height: 1.0,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'SCORE',
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

@@ -20,7 +20,8 @@ class SessionManager {
     60: 'After 1 minute',
     300: 'After 5 minutes',
     900: 'After 15 minutes',
-    -1: 'Never',
+    
+
   };
 
   int _autoLockSeconds = 60;
