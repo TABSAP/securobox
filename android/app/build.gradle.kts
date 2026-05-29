@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.tabsap.video_player"
+    namespace = "app.securobox.vault"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.tabsap.video_player"
+        applicationId = "app.securobox.vault"
         minSdk = flutter.minSdkVersion
         targetSdk = 35
         versionCode = flutter.versionCode

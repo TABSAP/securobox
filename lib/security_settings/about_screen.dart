@@ -315,7 +315,7 @@ class AboutScreen extends StatelessWidget {
         onTap: () async {
           HapticFeedback.lightImpact();
           final url = Uri.parse(
-            'https://play.google.com/store/apps/details?id=com.tabsap.video_player',
+            'https://play.google.com/store/apps/details?id=app.securobox.vault',
           );
           if (await canLaunchUrl(url)) {
             await launchUrl(url, mode: LaunchMode.externalApplication);
