@@ -17,9 +17,7 @@ void main() async {
   if (!kIsWeb && Platform.isAndroid) {
     try {
       FlutterScreenshotBlocker.enableScreenshotBlocking();
-    } catch (e) {
-      debugPrint('$e');
-    }
+    } on Object catch (_) { /* ignored */ }
   }
 
   await ThemeController.instance.init();

@@ -96,7 +96,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             updatedMediaList.add(mediaData);
           }
         } catch (e) {
-          debugPrint('$e');
           updatedMediaList.add(mediaData);
         }
       }
@@ -115,9 +114,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           );
         }
       }
-    } catch (e) {
-      debugPrint('$e');
-    }
+    } on Object catch (_) { /* ignored */ }
   }
 
   Future<void> _loadDeletedVideos() async {
@@ -138,9 +135,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             if (video.isDeleted && !video.isHidden) {
               _deletedVideos.add(video);
             }
-          } catch (e) {
-            debugPrint('$e');
-          }
+          } on Object catch (_) { /* ignored */ }
         }
 
         _deletedVideos.sort((a, b) {
@@ -191,7 +186,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             updatedMediaList.add(mediaData);
           }
         } catch (e) {
-          debugPrint('$e');
           updatedMediaList.add(mediaData);
         }
       }
@@ -353,7 +347,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             updatedMediaList.add(mediaData);
           }
         } catch (e) {
-          debugPrint('$e');
           updatedMediaList.add(mediaData);
         }
       }
@@ -399,7 +392,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           }
         } catch (e) {
           if (kDebugMode) {
-            print('$e');
           }
           updatedMediaList.add(mediaData);
         }
