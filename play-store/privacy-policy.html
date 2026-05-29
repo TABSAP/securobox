@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — SecuroBox</title>
+<meta name="description" content="SecuroBox is a 100% offline media vault. We do not collect, store, transmit, sell, or share any personal data.">
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #18181b;
+    --muted: #52525b;
+    --accent: #4f46e5;
+    --border: #e4e4e7;
+    --code-bg: #f4f4f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0a0f;
+      --fg: #f4f4f5;
+      --muted: #a1a1aa;
+      --accent: #818cf8;
+      --border: #27272a;
+      --code-bg: #18181b;
+    }
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 48px 24px 96px;
+  }
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 32px;
+    line-height: 1.2;
+    margin: 0 0 8px;
+    letter-spacing: -0.5px;
+  }
+  h2 {
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 40px 0 12px;
+    letter-spacing: -0.3px;
+  }
+  p, ul, table { margin: 0 0 16px; }
+  ul { padding-left: 22px; }
+  li + li { margin-top: 4px; }
+  a { color: var(--accent); }
+  strong { color: var(--fg); }
+  .meta {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 32px;
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  th {
+    background: var(--code-bg);
+    font-weight: 600;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 13.5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  footer {
+    margin-top: 64px;
+    color: var(--muted);
+    font-size: 13.5px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Privacy Policy — SecuroBox</h1>
+  <p class="meta"><strong>Effective date:</strong> 2026-05-29 &nbsp;·&nbsp; <strong>Contact:</strong> <a href="mailto:hello@farhatullah.com">hello@farhatullah.com</a></p>
+
+  <h2>Summary</h2>
+  <p>SecuroBox is a 100% offline application. We do not collect, store, transmit, sell, or share any personal data. This privacy policy exists because the Google Play Store requires every app to publish one, even when the app collects nothing.</p>
+
+  <h2>What data the app handles</h2>
+  <p>The app handles only the files <strong>you choose to import</strong> into the in-app vault. These files are AES-256-CTR encrypted on your device and stored in the app's private sandbox. They never leave your device.</p>
+  <p>Specifically, the app does <strong>not</strong>:</p>
+  <ul>
+    <li>send any data to any server we control or to any third party</li>
+    <li>include any analytics SDK (no Google Analytics, Firebase, Mixpanel, etc.)</li>
+    <li>include any advertising SDK (no AdMob, no IronSource, etc.)</li>
+    <li>include any crash reporting SDK that uploads off-device</li>
+    <li>create any account or require any sign-up</li>
+    <li>request your location, contacts, calendar, SMS, or phone data</li>
+  </ul>
+
+  <h2>Permissions we request and why</h2>
+  <table>
+    <thead>
+      <tr><th>Permission</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Internet</td>
+        <td>Optional — only used when you paste a URL and ask the app to download a file into the vault (HTTPS only).</td>
+      </tr>
+      <tr>
+        <td>Photos / Videos / Audio (<code>READ_MEDIA_*</code>)</td>
+        <td>To let you import existing media from your device into the vault.</td>
+      </tr>
+      <tr>
+        <td>Storage (Android 12 and below)</td>
+        <td>Same as above, on older Android versions.</td>
+      </tr>
+      <tr>
+        <td>Biometric / Fingerprint</td>
+        <td>To let you unlock the vault with fingerprint or face, processed locally by the OS — never seen by the app.</td>
+      </tr>
+      <tr>
+        <td>Camera</td>
+        <td>Optional and opt-in — used only if you enable Break-in Detection (silent photo capture on wrong PIN) or Face Unlock. Photos and face embeddings are encrypted and stored only inside the vault, never transmitted.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>The app does <strong>not</strong> request: microphone, location, contacts, SMS, phone, calendar, or notifications.</p>
+
+  <h2>Where your data lives</h2>
+  <ul>
+    <li><strong>Files you import</strong>: AES-256-CTR encrypted with a per-device master key, stored in the app's private application documents directory. Filenames on disk are random UUIDs.</li>
+    <li><strong>PIN</strong>: hashed with PBKDF2-HMAC-SHA256 (100,000 iterations) using a 16-byte random salt. The hash and salt are stored in OS-backed secure storage — Android EncryptedSharedPreferences (Keystore-backed) and iOS Keychain. The PIN itself is never persisted.</li>
+    <li><strong>Master encryption key</strong>: 32 random bytes generated on first launch, stored in the same OS-backed secure storage.</li>
+    <li><strong>Break-in / Face Unlock data</strong>: encrypted with the same master key and stored under <code>vault/intrusions/</code> in the app's private sandbox.</li>
+  </ul>
+  <p>When you uninstall the app, the operating system automatically deletes all of its private storage, removing every file you imported and every key.</p>
+
+  <h2>Face Unlock and ML Kit</h2>
+  <p>If you choose to enable Face Unlock, SecuroBox uses Google ML Kit's on-device face detection model to compute a numeric face embedding (not a photo). The embedding is hashed and stored in OS-backed secure storage. No image, embedding, or any other face data is ever transmitted off your device.</p>
+
+  <h2>Children's privacy</h2>
+  <p>The app is not directed at children under 13. It does not knowingly collect any data from anyone, regardless of age.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If we ever change this policy, we will update the "Effective date" at the top and post the new version at the same public URL.</p>
+
+  <h2>Contact</h2>
+  <p>Questions or concerns? Email <a href="mailto:hello@farhatullah.com"><strong>hello@farhatullah.com</strong></a>.</p>
+
+  <footer>SecuroBox · Your private, offline vault</footer>
+</main>
+</body>
+</html>

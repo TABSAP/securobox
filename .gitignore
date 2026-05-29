@@ -50,3 +50,6 @@ app.*.map.json
 /android/upload-keystore.jks
 *.jks
 *.keystore
+
+# Local AI/IDE assistant settings — never commit
+

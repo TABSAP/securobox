@@ -1,6 +1,6 @@
 # Privacy Policy — SecuroBox
 
-**Effective date:** 2026-04-30
+**Effective date:** 2026-05-29
 **Contact:** hello@farhatullah.com
 
 ## Summary
@@ -9,7 +9,7 @@ SecuroBox is a 100% offline application. We do not collect, store, transmit, sel
 
 ## What data the app handles
 
-The app handles only the files **you choose to import** into the in-app vault. These files are copied to the app's private storage on your device and never leave it.
+The app handles only the files **you choose to import** into the in-app vault. These files are AES-256-CTR encrypted on your device and stored in the app's private sandbox. They never leave your device.
 
 Specifically, the app does **not**:
 
@@ -18,27 +18,32 @@ Specifically, the app does **not**:
 - include any advertising SDK (no AdMob, no IronSource, etc.)
 - include any crash reporting SDK that uploads off-device
 - create any account or require any sign-up
-- request your location, contacts, calendar, or any non-media data
+- request your location, contacts, calendar, SMS, or phone data
 
 ## Permissions we request and why
 
 | Permission | Purpose |
 |---|---|
-| Internet | Optional — only used when you paste a URL and ask the app to download a file |
-| Photos / Videos / Audio (READ_MEDIA_*) | To let the system file picker import media from your device |
-| Read external storage (Android 12 and below only) | Same as above, on older Android versions |
-| Biometric / Fingerprint | To let you unlock the app with face or fingerprint, processed locally by the OS |
+| Internet | Optional — only used when you paste a URL and ask the app to download a file into the vault (HTTPS only) |
+| Photos / Videos / Audio (READ_MEDIA_*) | To let you import existing media from your device into the vault |
+| Storage (Android 12 and below) | Same as above, on older Android versions |
+| Biometric / Fingerprint | To let you unlock the vault with fingerprint or face, processed locally by the OS — never seen by the app |
+| Camera | Optional and opt-in — used only if you enable Break-in Detection (silent photo capture on wrong PIN) or Face Unlock. Photos and face embeddings are encrypted and stored only inside the vault, never transmitted |
 
-The app does **not** request: camera, microphone, location, contacts, SMS, phone, calendar, or notifications.
+The app does **not** request: microphone, location, contacts, SMS, phone, calendar, or notifications.
 
 ## Where your data lives
 
-Your imported files are stored in:
+- **Files you import**: AES-256-CTR encrypted with a per-device master key, stored in the app's private application documents directory. Filenames on disk are random UUIDs.
+- **PIN**: hashed with PBKDF2-HMAC-SHA256 (100,000 iterations) using a 16-byte random salt. The hash and salt are stored in OS-backed secure storage — Android EncryptedSharedPreferences (Keystore-backed) and iOS Keychain. The PIN itself is never persisted.
+- **Master encryption key**: 32 random bytes generated on first launch, stored in the same OS-backed secure storage.
+- **Break-in / Face Unlock data**: encrypted with the same master key and stored under `vault/intrusions/` in the app's private sandbox.
 
-- Android: the app's private `Application Documents Directory`, which is sandboxed by Android and inaccessible to other apps
-- The app PIN is stored in `SharedPreferences` and additionally backed up to the Android Keystore (hardware-backed on most devices)
+When you uninstall the app, the operating system automatically deletes all of its private storage, removing every file you imported and every key.
 
-When you uninstall the app, Android automatically deletes all of its private storage, removing every file you imported.
+## Face Unlock and ML Kit
+
+If you choose to enable Face Unlock, SecuroBox uses Google ML Kit's on-device face detection model to compute a numeric face embedding (not a photo). The embedding is hashed and stored in OS-backed secure storage. No image, embedding, or any other face data is ever transmitted off your device.
 
 ## Children's privacy
 
