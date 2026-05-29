@@ -1,31 +1,60 @@
 # Content Rating (IARC) — exact answers
 
-Path: **Policy → App content → Content ratings → Start questionnaire**
+Path: **Policy and programs → App content → Content ratings → Start questionnaire**
 
-Choose category: **Reference, News or Educational** (not "Apps"). The Reference flow is the closest match.
+## Screen 1 — Category
 
-Walk through the standard sections answering as below:
+The current Play Console flow offers only **three** top-level categories (Google retired
+the old "Reference / News / Educational" sub-list). Pick the third:
 
-| Section | Answer |
+| Field | Answer |
 |---|---|
 | Email address | info@tabsap.com |
-| App category | Reference, News or Educational |
-| **Violence** — does the app contain any violent imagery? | No |
-| **Sexuality** — does it contain sexual content, nudity, or innuendo? | No |
-| **Profanity** — strong language? | No |
-| **Controlled substances** — drugs, alcohol, tobacco references? | No |
-| **Gambling** — real-money gambling or simulated gambling? | No |
-| **User interaction** — does the app let users interact with each other (chat, multiplayer, comments)? | **No** (the app is single-user, offline) |
-| **Sharing of user location** | No |
-| **Personal information sharing** | No |
-| **Digital purchases** | No |
-| **Mature web content** (browser, embedded webview to arbitrary sites) | No |
-| **User-generated content** | **No** — even though users can import their own files, the content is *not shared with other users* |
+| Category | **All Other App Types** |
+| Terms | ☑ Agree to the IARC Terms of Use |
 
-Expected output rating:
-- **IARC**: 3+ (PEGI), Everyone (ESRB), 0+ (USK)
-- **Google Play**: Rated for everyone
+> SecuroBox is a utility / media vault, so it falls under **All Other App Types**
+> (not Game, not Social or Communication).
 
-> ⚠️ Honesty note: the app *can* play any video the user imports, including content they themselves recorded. The IARC questionnaire is about content the **app distributes**, not what users put on their own device. So "No user-generated content" and "No mature content" are correct for this form.
+## Screen 2 — Questionnaire
 
-If you ever add a feature where users **share** files with each other, you'll need to re-rate as User-Generated Content and add a content moderation system.
+For SecuroBox every answer is **No**:
+
+| Section | Question | Answer |
+|---|---|---|
+| Violence | Violent imagery / references to violence? | No |
+| Sexuality | Sexual content, nudity, or suggestive material? | No |
+| Language | Profanity or crude humor? | No |
+| Controlled substances | Drugs, alcohol, tobacco references? | No |
+| Miscellaneous — Gambling | Real-money or simulated gambling? | No |
+| Miscellaneous — User location | Shares the user's physical location with other users? | No |
+| Miscellaneous — User interaction | Users can interact / communicate / exchange content? | **No** (single-user, offline) |
+| Miscellaneous — Digital purchases | Can users buy digital goods? | No |
+| Miscellaneous — Browser / search | Is the app a web browser or search engine? | **No** (see note) |
+
+### ⚠️ "Is this a web browser or search engine?"
+
+SecuroBox has a "paste a URL to download a file into the vault" feature. This is **not**
+a browser — no page navigation, no rendering of arbitrary web pages, no search. **No is
+correct and honest.** A browser is Chrome/Firefox-style free surfing.
+
+### Note on user-generated / mature content
+
+There is **no** "user-generated content" or "mature content" toggle in the *All Other
+App Types* questionnaire. Those concepts live in the separate **Data Safety** form and the
+**Target audience and content** checklist item — not here. Even though users can import
+their own files, that content is never shared with other users, so it does not change this
+rating.
+
+## Screen 3 — Summary (expected output)
+
+- **Google Play**: Rated for Everyone
+- **IARC**: PEGI 3, ESRB Everyone, USK 0+, etc.
+
+Click **Submit** to lock it in; the checklist item turns green.
+
+---
+
+> If you ever add a feature where users **share** files with each other, you'll need to
+> re-rate (answer **Yes** to user interaction) and add a content-moderation / reporting
+> system, per Google policy.
