@@ -21,8 +21,8 @@ Open an issue on GitHub describing:
 ```bash
 # Prerequisites: Flutter 3.10+, Xcode 15+ (for iOS), Android Studio (for Android)
 
-git clone https://github.com/<your-fork>/secure-player-app.git
-cd secure-player-app
+git clone https://github.com/<your-fork>/securobox.git
+cd securobox
 flutter pub get
 flutter run -d iphone           # iOS simulator
 flutter run -d emulator-5554    # Android emulator
