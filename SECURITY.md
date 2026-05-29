@@ -4,7 +4,7 @@ SecuroBox is a privacy-first offline media vault. We take vulnerability reports 
 
 ## Reporting a vulnerability
 
-**Please email security reports to:** `hello@farhatullah.com` (PGP key on request)
+**Please email security reports to:** `info@tabsap.com` (PGP key on request)
 
 Do **not** open public GitHub issues for security problems.
 

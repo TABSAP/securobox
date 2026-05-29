@@ -112,7 +112,7 @@ lib/
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go to `hello@farhatullah.com`, not GitHub issues — see [SECURITY.md](SECURITY.md) for details.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Security reports go to `info@tabsap.com`, not GitHub issues — see [SECURITY.md](SECURITY.md) for details.
 
 ## License
 
@@ -120,4 +120,4 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## Contact
 
-Built by Farhatullah — `hello@farhatullah.com`
+Built by TABSAP — `info@tabsap.com`

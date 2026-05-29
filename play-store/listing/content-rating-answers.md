@@ -8,7 +8,7 @@ Walk through the standard sections answering as below:
 
 | Section | Answer |
 |---|---|
-| Email address | hello@farhatullah.com |
+| Email address | info@tabsap.com |
 | App category | Reference, News or Educational |
 | **Violence** — does the app contain any violent imagery? | No |
 | **Sexuality** — does it contain sexual content, nudity, or innuendo? | No |

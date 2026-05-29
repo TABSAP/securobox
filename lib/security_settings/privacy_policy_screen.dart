@@ -7,7 +7,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
 
   static const _lastUpdated = 'November 2025';
-  static const _supportEmail = 'hello@farhatullah.com';
+  static const _supportEmail = 'info@tabsap.com';
 
   @override
   Widget build(BuildContext context) {

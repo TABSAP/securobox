@@ -1,7 +1,7 @@
 # Privacy Policy — SecuroBox
 
 **Effective date:** 2026-05-29
-**Contact:** hello@farhatullah.com
+**Contact:** info@tabsap.com
 
 ## Summary
 
@@ -55,4 +55,4 @@ If we ever change this policy, we will update the "Effective date" at the top an
 
 ## Contact
 
-Questions or concerns? Email **hello@farhatullah.com**.
+Questions or concerns? Email **info@tabsap.com**.

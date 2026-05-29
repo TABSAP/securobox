@@ -4,7 +4,7 @@ Thank you for your interest in contributing.
 
 ## Reporting security issues
 
-**Do NOT open a public GitHub issue for security vulnerabilities.** Email `hello@farhatullah.com` instead. See [SECURITY.md](SECURITY.md) for the full disclosure policy.
+**Do NOT open a public GitHub issue for security vulnerabilities.** Email `info@tabsap.com` instead. See [SECURITY.md](SECURITY.md) for the full disclosure policy.
 
 ## Reporting bugs and feature requests
 
@@ -68,7 +68,7 @@ By submitting a contribution, you agree that your contribution is licensed under
 ## Communication
 
 - Bug reports / feature requests → GitHub issues
-- Security reports → `hello@farhatullah.com`
+- Security reports → `info@tabsap.com`
 - General questions → GitHub Discussions (when enabled) or the same email
 
 Thanks for helping make SecuroBox more secure for everyone.

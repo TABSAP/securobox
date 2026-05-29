@@ -16,7 +16,7 @@ class SendFeedbackScreen extends StatefulWidget {
 }
 
 class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
-  static const _supportEmail = 'hello@farhatullah.com';
+  static const _supportEmail = 'info@tabsap.com';
   static const _maxAttachmentBytes = 25 * 1024 * 1024;
   static const _maxAttachments = 8;
 
