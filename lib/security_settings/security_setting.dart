@@ -8,6 +8,7 @@ import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
 import 'package:video_player_app/security_settings/recovery_setup_screen.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
+import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/face_recognition_service.dart';
 import 'package:video_player_app/utils/import_settings.dart';
@@ -2056,7 +2057,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             child: SlideTransition(
               position: _slideAnimation,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.fromLTRB(
+                  context.contentInset(phone: 16),
+                  16,
+                  context.contentInset(phone: 16),
+                  16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

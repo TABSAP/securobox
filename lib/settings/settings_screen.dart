@@ -7,6 +7,7 @@ import 'package:video_player_app/security_settings/about_screen.dart';
 import 'package:video_player_app/security_settings/security_setting.dart';
 import 'package:video_player_app/security_settings/support_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -136,7 +137,12 @@ class _SettingsScreenState extends State<SettingsScreen>
             position: _slide,
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+              padding: EdgeInsets.fromLTRB(
+                context.contentInset(phone: 16),
+                12,
+                context.contentInset(phone: 16),
+                32,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

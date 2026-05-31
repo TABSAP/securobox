@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:video_player_app/utils/flush_bar_helper.dart';
+import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/vault_context.dart';
@@ -695,7 +696,12 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
             const SizedBox(height: 14),
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(18, 4, 18, 24),
+                padding: EdgeInsets.fromLTRB(
+                  context.contentInset(maxContent: 620, phone: 18),
+                  4,
+                  context.contentInset(maxContent: 620, phone: 18),
+                  24,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -960,8 +966,8 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: all.length + 1,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: context.responsive(phone: 2, tablet: 3),
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
         childAspectRatio: 2.6,

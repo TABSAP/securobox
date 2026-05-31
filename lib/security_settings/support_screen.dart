@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/security_settings/privacy_policy_screen.dart';
 import 'package:video_player_app/security_settings/send_feedback_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 
 class SupportScreen extends StatelessWidget {
@@ -30,7 +31,12 @@ class SupportScreen extends StatelessWidget {
         ),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          padding: EdgeInsets.fromLTRB(
+            context.contentInset(phone: 20),
+            12,
+            context.contentInset(phone: 20),
+            32,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

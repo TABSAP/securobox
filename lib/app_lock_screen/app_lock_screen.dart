@@ -762,8 +762,10 @@ class _AppLockScreenState extends State<AppLockScreen>
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(24),
               child: Container(
-                width: size.width > 420 ? 420 : double.infinity,
-                padding: const EdgeInsets.all(28),
+                width: size.width >= 600
+                    ? 500
+                    : (size.width > 420 ? 420 : double.infinity),
+                padding: EdgeInsets.all(size.width >= 600 ? 36 : 28),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [

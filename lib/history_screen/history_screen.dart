@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/vault_context.dart';
+import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -1247,7 +1248,9 @@ class _HistoryScreenState extends State<HistoryScreen>
       onRefresh: _refreshDownloads,
       child: ListView.builder(
         controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.contentInset(phone: 16),
+        ),
         itemCount: _downloads.length,
         itemBuilder: (context, index) {
           final download = _downloads[index];

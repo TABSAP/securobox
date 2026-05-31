@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
+import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/views/screens/secure_camera/secure_camera_screen.dart';
@@ -1380,7 +1381,12 @@ class HomeScreenState extends State<HomeScreen>
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
         ),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(
+          context.contentInset(phone: 16),
+          16,
+          context.contentInset(phone: 16),
+          16,
+        ),
         itemCount: _filteredMedia.length,
         itemBuilder: (context, index) {
           final media = _filteredMedia[index];
