@@ -62,9 +62,13 @@ class SessionManager {
 
   Future<void> unlock() async {
     shouldLock.value = false;
-    await resetFailedAttempts();
-    await resetFailedBiometricAttempts();
-    await markActive();
+    // Independent prefs writes — run them concurrently so unlocking navigates in
+    // one I/O round-trip instead of three serial ones.
+    await Future.wait([
+      resetFailedAttempts(),
+      resetFailedBiometricAttempts(),
+      markActive(),
+    ]);
   }
 
   Future<int> recordFailedAttempt() async {

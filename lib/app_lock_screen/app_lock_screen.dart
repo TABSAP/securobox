@@ -131,10 +131,10 @@ class _AppLockScreenState extends State<AppLockScreen>
         mounted &&
         !NetworkGuard.instance.blockUnlock) {
       if (_biometricEnabled && !_bioLocked) {
-        // Biometric / Face ID is triggered first on open; otherwise the
-        // PIN keypad is already the resting stage. A short settle lets the
-        // lock card paint its first frame before the OS prompt overlays it.
-        Future.delayed(const Duration(milliseconds: 150), () {
+        // Biometric / Face ID is triggered first on open. Fire it as soon as the
+        // lock card paints its first frame — no fixed delay, so the prompt is
+        // instant while still avoiding a mid-build trigger.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && !_showPin && !_bioLocked) _useBiometric();
         });
       }

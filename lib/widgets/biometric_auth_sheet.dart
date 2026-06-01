@@ -140,10 +140,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
   Future<void> _init() async {
     await _detectBiometrics();
-    // Small settle so the page's push transition finishes before the OS prompt
-    // overlays it (calling mid-transition makes Android cancel the prompt).
-    // Kept tight so the prompt feels near-instant.
-    await Future<void>.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     if (!_canAuthenticate) {
       _toFailed(
@@ -152,7 +148,12 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       );
       return;
     }
-    _authenticate();
+    // Trigger the OS prompt the instant the first frame is on screen — no fixed
+    // delay. Waiting for the frame (instead of a timer) keeps it from firing
+    // mid-build, which Android would cancel, while staying effectively instant.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _authenticate();
+    });
   }
 
   Future<void> _detectBiometrics() async {
@@ -346,13 +347,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     setState(() => _phase = _AuthPhase.success);
     _success.forward(from: 0);
     HapticFeedback.heavyImpact();
-    Future<void>.delayed(
-      const Duration(milliseconds: 160),
-      () => HapticFeedback.lightImpact(),
-    );
-    // Let the success burst register, then return promptly — the user has
-    // already verified, so lingering here just reads as lag.
-    Future<void>.delayed(const Duration(milliseconds: 420), () {
+    // Pop almost immediately — the user has verified, so unlocking should feel
+    // instant. A tiny beat lets the success tick register without reading as lag.
+    Future<void>.delayed(const Duration(milliseconds: 120), () {
       if (mounted) Navigator.of(context).pop(BiometricAuthResult.authenticated);
     });
   }

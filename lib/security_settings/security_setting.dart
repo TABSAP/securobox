@@ -158,8 +158,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final intrusionCount = await intrusionCountF;
       final deleteOriginals = await deleteOriginalsF;
       final recoveryEnabled = await recoveryEnabledF;
-      final recoveryEmail =
-          recoveryEnabled ? await RecoveryService.instance.getEmail() : null;
+      final recoveryEmail = recoveryEnabled
+          ? await RecoveryService.instance.getEmail()
+          : null;
       final decoyEnabled = await decoyEnabledF;
       final faceRecogEnrolled = await faceRecogEnrolledF;
       // Cached — no native PackageManager call on every settings change.
@@ -1585,10 +1586,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 height: 40,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      LiquidColors.accentBlue,
-                      LiquidColors.primaryMid,
-                    ],
+                    colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -1663,9 +1661,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 child: Row(
                   children: [
                     Icon(
-                      online
-                          ? Icons.public_rounded
-                          : Icons.public_off_rounded,
+                      online ? Icons.public_rounded : Icons.public_off_rounded,
                       size: 16,
                       color: color,
                     ),
@@ -2204,9 +2200,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     const SizedBox(height: 8),
                     _buildSecurityHeroCard(),
                     const SizedBox(height: 16),
-                    _buildLockNowCard(),
-                    const SizedBox(height: 28),
-
                     _sectionHeader(
                       label: 'LOCKS',
                       icon: Icons.lock_rounded,
@@ -2330,7 +2323,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       label: 'SESSION & RECOVERY',
                       icon: Icons.timer_outlined,
                       color: LiquidColors.success,
-                      caption: 'Auto-lock timing and PIN recovery email.',
+                      caption: 'Auto-lock timing and add Email',
                     ),
                     const SizedBox(height: 12),
                     _buildSessionCard(),
@@ -2733,7 +2726,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       ),
     );
   }
-
 
   Widget _buildDecoyCard() {
     final accent = _decoyEnabled
@@ -3941,7 +3933,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'PIN RECOVERY',
+                  'ADD EMAIL',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -4331,10 +4323,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           Text(
             'Pick how many digits your new PIN will have',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: LiquidColors.textSecondary,
-              fontSize: 12,
-            ),
+            style: TextStyle(color: LiquidColors.textSecondary, fontSize: 12),
           ),
           const SizedBox(height: 24),
           Row(
@@ -4424,126 +4413,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildLockNowCard() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.mediumImpact();
-          SessionManager.instance.requestLock();
-        },
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                LiquidColors.accentBlue,
-                LiquidColors.accentPurple,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.45),
-                blurRadius: 22,
-                spreadRadius: -2,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(13),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    width: 1,
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.lock_rounded,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text(
-                      'Lock Now',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      'Instantly lock the app and require unlock.',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        height: 1.35,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.22),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    width: 1,
-                  ),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'TAP',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      color: Colors.white,
-                      size: 14,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSecurityHeroCard() {
     // Six binary protections the user can toggle. The hero gives an at-a-
     // glance "how covered am I right now?" plus a friendly nudge when gaps
@@ -4551,17 +4420,29 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     // Each protection carries the action that sets it up, so its
     // "Suggested next steps" chip can take the user straight there.
     final protections = <_Protection>[
-      _Protection('App Lock', _appLockEnabled,
-          () => _toggleSetting('appLock', true)),
-      _Protection('Biometric Unlock', _biometricEnabled,
-          () => _toggleSetting('biometric', true)),
+      _Protection(
+        'App Lock',
+        _appLockEnabled,
+        () => _toggleSetting('appLock', true),
+      ),
+      _Protection(
+        'Biometric Unlock',
+        _biometricEnabled,
+        () => _toggleSetting('biometric', true),
+      ),
       // "Face Unlock" is satisfied by either the OS face biometric or the
       // in-app face recognition — setting up either route counts.
-      _Protection('Face Unlock', _faceUnlockEnabled || _faceRecogEnrolled,
-          _openFaceEnroll),
+      _Protection(
+        'Face Unlock',
+        _faceUnlockEnabled || _faceRecogEnrolled,
+        _openFaceEnroll,
+      ),
       _Protection('PIN Recovery', _recoveryEnabled, _openRecoverySetup),
-      _Protection('Intrusion Detection', _intrusionEnabled,
-          () => _toggleIntrusion(true)),
+      _Protection(
+        'Intrusion Detection',
+        _intrusionEnabled,
+        () => _toggleIntrusion(true),
+      ),
       _Protection('Decoy Mode', _decoyEnabled, _openDecoySetup),
     ];
     final active = protections.where((p) => p.on).length;
@@ -4574,24 +4455,24 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     final accent = isCritical
         ? LiquidColors.error
         : allGood
-            ? LiquidColors.success
-            : LiquidColors.accentBlue;
+        ? LiquidColors.success
+        : LiquidColors.accentBlue;
     final accentSoft = isCritical
         ? LiquidColors.error.withValues(alpha: 0.85)
         : allGood
-            ? LiquidColors.success.withValues(alpha: 0.85)
-            : LiquidColors.accentPurple;
+        ? LiquidColors.success.withValues(alpha: 0.85)
+        : LiquidColors.accentPurple;
 
     final headline = isCritical
         ? 'Your vault is unprotected'
         : allGood
-            ? 'You’re fully protected'
-            : 'You’re mostly protected';
+        ? 'You’re fully protected'
+        : 'You’re mostly protected';
     final subhead = isCritical
         ? 'Turn on at least one lock below to keep files safe.'
         : allGood
-            ? 'Every protection is active. Nice work.'
-            : '${total - active} more protection${total - active == 1 ? '' : 's'} available below.';
+        ? 'Every protection is active. Nice work.'
+        : '${total - active} more protection${total - active == 1 ? '' : 's'} available below.';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
@@ -4605,10 +4486,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: accent.withValues(alpha: 0.28),
-          width: 1,
-        ),
+        border: Border.all(color: accent.withValues(alpha: 0.28), width: 1),
         boxShadow: [
           BoxShadow(
             color: accent.withValues(alpha: 0.14),
@@ -4711,12 +4589,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color:
-                              LiquidColors.accentBlue.withValues(alpha: 0.10),
+                          color: LiquidColors.accentBlue.withValues(
+                            alpha: 0.10,
+                          ),
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
-                            color: LiquidColors.accentBlue
-                                .withValues(alpha: 0.30),
+                            color: LiquidColors.accentBlue.withValues(
+                              alpha: 0.30,
+                            ),
                           ),
                         ),
                         child: Row(
@@ -4741,8 +4621,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                             Icon(
                               Icons.chevron_right_rounded,
                               size: 14,
-                              color: LiquidColors.accentBlue
-                                  .withValues(alpha: 0.7),
+                              color: LiquidColors.accentBlue.withValues(
+                                alpha: 0.7,
+                              ),
                             ),
                           ],
                         ),
@@ -4802,7 +4683,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       ),
     );
   }
-
 }
 
 class _Protection {
