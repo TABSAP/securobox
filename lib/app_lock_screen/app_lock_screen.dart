@@ -13,6 +13,7 @@ import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/face_recognition_service.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
+import 'package:video_player_app/utils/pbkdf2.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/vault_context.dart';
@@ -56,6 +57,9 @@ class _AppLockScreenState extends State<AppLockScreen>
   @override
   void initState() {
     super.initState();
+    // Warm the PBKDF2 worker isolate while the user is still looking at the
+    // keypad, so verifying the PIN is instant the moment the last digit lands.
+    prewarmPbkdf2();
     _loadPreferences();
     _startCooldownTicker();
 
@@ -95,12 +99,19 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 
   Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    final pinLen = await PinCrypto.instance.getPinLength();
-    final faceEnrolled = await FaceRecognitionService.instance.isEnrolled();
-    final bioCooldown = await SessionManager.instance
-        .getBiometricCooldownRemaining();
-    final bioFails = await SessionManager.instance.getFailedBiometricAttempts();
+    // These reads are independent — start them together and await as a batch so
+    // the lock screen settles in one I/O round-trip instead of five serial ones.
+    final prefsF = SharedPreferences.getInstance();
+    final pinLenF = PinCrypto.instance.getPinLength();
+    final faceEnrolledF = FaceRecognitionService.instance.isEnrolled();
+    final bioCooldownF = SessionManager.instance.getBiometricCooldownRemaining();
+    final bioFailsF = SessionManager.instance.getFailedBiometricAttempts();
+
+    final prefs = await prefsF;
+    final pinLen = await pinLenF;
+    final faceEnrolled = await faceEnrolledF;
+    final bioCooldown = await bioCooldownF;
+    final bioFails = await bioFailsF;
     if (!mounted) return;
     final bioEnabled =
         (prefs.getBool('biometric') ?? false) ||
@@ -121,8 +132,9 @@ class _AppLockScreenState extends State<AppLockScreen>
         !NetworkGuard.instance.blockUnlock) {
       if (_biometricEnabled && !_bioLocked) {
         // Biometric / Face ID is triggered first on open; otherwise the
-        // PIN keypad is already the resting stage.
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // PIN keypad is already the resting stage. A short settle lets the
+        // lock card paint its first frame before the OS prompt overlays it.
+        Future.delayed(const Duration(milliseconds: 150), () {
           if (mounted && !_showPin && !_bioLocked) _useBiometric();
         });
       }

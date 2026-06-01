@@ -146,7 +146,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       });
       return;
     }
-    Future.delayed(const Duration(milliseconds: 200), () {
+    // Brief beat so the final dot visibly fills, then advance — kept short so
+    // moving to the confirm step feels instant.
+    Future.delayed(const Duration(milliseconds: 90), () {
       if (mounted) {
         setState(() => _step = _Step.confirmPin);
         _animateForward();

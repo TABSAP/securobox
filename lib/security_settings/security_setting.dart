@@ -48,7 +48,21 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   final List<String> _newPin = [];
   bool _confirmPinMode = false;
   final List<String> _confirmPin = [];
+  // `_pinLength` is the CURRENT PIN's length (used to verify the old PIN).
+  // `_newPinLength` is the length the new PIN is being set to — only persisted
+  // once the new PIN is actually saved, so a cancelled change never desyncs the
+  // stored hash from the recorded length.
   int _pinLength = PinCrypto.defaultPinLength;
+  int _newPinLength = PinCrypto.defaultPinLength;
+  // True while the in-flow "pick a new length" step is on screen (shown after
+  // the current PIN is verified, before the new PIN is entered).
+  bool _choosingLength = false;
+  // True when the active change flow is a *length* change (so it inserts the
+  // length-selection step); false for a plain same-length PIN change.
+  bool _lengthSelectionFlow = false;
+  // Anchors the in-flow PIN UI so it can be scrolled into view when a change
+  // flow starts (the trigger and the keypad are otherwise far apart).
+  final GlobalKey _pinFlowKey = GlobalKey();
 
   final LocalAuthentication _localAuth = LocalAuthentication();
   bool _biometricAvailable = false;
@@ -64,8 +78,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   @override
   void initState() {
     super.initState();
+    // Seed from the session cache so the PIN-length UI renders the correct
+    // number of fields on the first frame — staying consistent even if the
+    // widget was just rebuilt after a disguise (app icon / name) switch. The
+    // async _loadSecuritySettings() below confirms it from disk.
+    _pinLength = PinCrypto.instance.cachedPinLength;
+    _newPinLength = _pinLength;
     _initAnimations();
-    _loadSecuritySettings();
+    _loadSecuritySettings(initial: true);
     _checkBiometricCapability();
   }
 
@@ -93,34 +113,57 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     _animationController.forward();
   }
 
-  Future<void> _loadSecuritySettings() async {
-    setState(() => _isLoading = true);
+  /// Loads the current state of every security toggle.
+  ///
+  /// Reloads (after a setting changes) must be cheap and jank-free, so they:
+  ///  • skip the one-time legacy-biometric migration (a platform call),
+  ///  • read the disguise from its in-memory cache instead of a native
+  ///    PackageManager round-trip, and
+  ///  • don't flash the app-bar spinner.
+  /// Only the [initial] load (from initState) does the migration, syncs the
+  /// disguise from the OS, and shows the loading indicator.
+  Future<void> _loadSecuritySettings({bool initial = false}) async {
+    if (initial) setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Migrate the legacy single 'biometric' flag to the Face Unlock flag on
-      // devices whose only biometric is face recognition (e.g. Face ID iPhones).
-      try {
-        final avail = await _localAuth.getAvailableBiometrics();
-        if ((prefs.getBool('biometric') ?? false) &&
-            avail.contains(BiometricType.face) &&
-            !avail.contains(BiometricType.fingerprint)) {
-          await prefs.setBool('biometric_face', true);
-          await prefs.setBool('biometric', false);
-        }
-      } catch (_) {}
-      final pinLen = await PinCrypto.instance.getPinLength();
-      final intrusionEnabled = await IntrusionService.instance.isEnabled();
-      final intrusionCount = await IntrusionService.instance.count();
-      final deleteOriginals = await ImportSettings.instance
-          .deleteOriginalsEnabled();
-      final currentDisguise = await DisguiseService.instance.getCurrent();
-      final recoveryEnabled = await RecoveryService.instance.isEnabled();
-      final recoveryEmail = recoveryEnabled
-          ? await RecoveryService.instance.getEmail()
-          : null;
-      final decoyEnabled = await DecoyService.instance.hasFakePin();
-      final faceRecogEnrolled = await FaceRecognitionService.instance
-          .isEnrolled();
+      if (initial) {
+        // Migrate the legacy single 'biometric' flag to the Face Unlock flag on
+        // devices whose only biometric is face recognition (e.g. Face ID
+        // iPhones). One-time — no need to repeat on every reload.
+        try {
+          final avail = await _localAuth.getAvailableBiometrics();
+          if ((prefs.getBool('biometric') ?? false) &&
+              avail.contains(BiometricType.face) &&
+              !avail.contains(BiometricType.fingerprint)) {
+            await prefs.setBool('biometric_face', true);
+            await prefs.setBool('biometric', false);
+          }
+        } catch (_) {}
+        // Sync the cached disguise key from the OS once; reloads use the cache.
+        await DisguiseService.instance.load();
+      }
+
+      // Independent reads — kick them off together and await as a batch instead
+      // of serially, so a reload is one I/O round-trip rather than seven.
+      final pinLenF = PinCrypto.instance.getPinLength();
+      final intrusionEnabledF = IntrusionService.instance.isEnabled();
+      final intrusionCountF = IntrusionService.instance.count();
+      final deleteOriginalsF = ImportSettings.instance.deleteOriginalsEnabled();
+      final recoveryEnabledF = RecoveryService.instance.isEnabled();
+      final decoyEnabledF = DecoyService.instance.hasFakePin();
+      final faceRecogEnrolledF = FaceRecognitionService.instance.isEnrolled();
+
+      final pinLen = await pinLenF;
+      final intrusionEnabled = await intrusionEnabledF;
+      final intrusionCount = await intrusionCountF;
+      final deleteOriginals = await deleteOriginalsF;
+      final recoveryEnabled = await recoveryEnabledF;
+      final recoveryEmail =
+          recoveryEnabled ? await RecoveryService.instance.getEmail() : null;
+      final decoyEnabled = await decoyEnabledF;
+      final faceRecogEnrolled = await faceRecogEnrolledF;
+      // Cached — no native PackageManager call on every settings change.
+      final currentDisguise = DisguiseService.instance.currentKey;
       if (!mounted) return;
       setState(() {
         _appLockEnabled = prefs.getBool('appLock') ?? false;
@@ -128,6 +171,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _biometricEnabled = prefs.getBool('biometric') ?? false;
         _faceUnlockEnabled = prefs.getBool('biometric_face') ?? false;
         _pinLength = pinLen;
+        if (!_changingPin) _newPinLength = pinLen;
         _intrusionEnabled = intrusionEnabled;
         _offlineIntegrityLock = NetworkGuard.instance.enabled;
         _intrusionCount = intrusionCount;
@@ -144,7 +188,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         context,
       );
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (initial && mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -294,11 +338,28 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       }
     }
 
-    // For enabling other settings (no verification needed)
+    // For enabling other settings (no verification needed). Update just the
+    // affected flag instead of reloading every security setting — flipping one
+    // toggle shouldn't re-read biometrics, secure storage and the disguise.
     try {
       await _saveSetting(setting, value);
-      await _loadSecuritySettings();
       if (!mounted) return;
+      setState(() {
+        switch (setting) {
+          case 'appLock':
+            _appLockEnabled = value;
+            break;
+          case 'videoLock':
+            _videoLockEnabled = value;
+            break;
+          case 'biometric':
+            _biometricEnabled = value;
+            break;
+          case 'biometric_face':
+            _faceUnlockEnabled = value;
+            break;
+        }
+      });
       FlushBarHelper.flushBarSuccessMessage(
         value ? 'Security enabled' : 'Security disabled',
         context,
@@ -1666,16 +1727,71 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
+  /// Scrolls the in-flow PIN UI into view after the next frame, so the user
+  /// always sees the verification keypad / length picker the moment it appears.
+  void _ensurePinFlowVisible() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _pinFlowKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+          alignment: 0.1,
+        );
+      }
+    });
+  }
+
+  /// Plain change-PIN flow: verify the current PIN, then set a new PIN of the
+  /// SAME length. Used by the "Change PIN" button.
   void _startPinChange() {
     setState(() {
       _changingPin = true;
       _verifyingOldPin = true;
+      _choosingLength = false;
+      _lengthSelectionFlow = false;
       _confirmPinMode = false;
+      _newPinLength = _pinLength;
       _oldPin.clear();
       _newPin.clear();
       _confirmPin.clear();
       _pinError = null;
     });
+    _ensurePinFlowVisible();
+  }
+
+  /// Change-PIN-length flow: verify the current PIN first, then show the
+  /// length picker, then set a new PIN of the chosen length. The recorded
+  /// length is only persisted once the new PIN is saved, so cancelling at any
+  /// point leaves the existing PIN (and its length) untouched.
+  void _startPinLengthChange() {
+    setState(() {
+      _changingPin = true;
+      _verifyingOldPin = true;
+      _choosingLength = false;
+      _lengthSelectionFlow = true;
+      _confirmPinMode = false;
+      _newPinLength = _pinLength;
+      _oldPin.clear();
+      _newPin.clear();
+      _confirmPin.clear();
+      _pinError = null;
+    });
+    _ensurePinFlowVisible();
+  }
+
+  /// Picks the new PIN length, then advances to new-PIN entry.
+  void _selectNewPinLength(int digits) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _newPinLength = digits;
+      _choosingLength = false;
+      _newPin.clear();
+      _confirmPin.clear();
+      _pinError = null;
+    });
+    _ensurePinFlowVisible();
   }
 
   void _onPinNumberPressed(String number) {
@@ -1683,14 +1799,16 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     setState(() {
       _pinError = null;
       if (_verifyingOldPin) {
+        // Old PIN is verified at the CURRENT length.
         if (_oldPin.length < _pinLength) _oldPin.add(number);
         if (_oldPin.length == _pinLength) _validateOldPin();
       } else if (!_confirmPinMode) {
-        if (_newPin.length < _pinLength) _newPin.add(number);
-        if (_newPin.length == _pinLength) _validateFirstPin();
+        // New + confirm use the TARGET length.
+        if (_newPin.length < _newPinLength) _newPin.add(number);
+        if (_newPin.length == _newPinLength) _validateFirstPin();
       } else {
-        if (_confirmPin.length < _pinLength) _confirmPin.add(number);
-        if (_confirmPin.length == _pinLength) _validateAndSavePin();
+        if (_confirmPin.length < _newPinLength) _confirmPin.add(number);
+        if (_confirmPin.length == _newPinLength) _validateAndSavePin();
       }
     });
   }
@@ -1710,7 +1828,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     setState(() {
       _verifyingOldPin = false;
       _pinError = null;
+      // In a length-change flow the next step is picking the new length;
+      // otherwise go straight to entering the new (same-length) PIN.
+      _choosingLength = _lengthSelectionFlow;
     });
+    _ensurePinFlowVisible();
   }
 
   void _validateFirstPin() {
@@ -1786,11 +1908,17 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     try {
       await PinCrypto.instance.setPin(newPin);
 
+      final lengthChanged = _pinLength != _newPinLength;
       if (mounted) {
         setState(() {
           _changingPin = false;
           _verifyingOldPin = false;
           _confirmPinMode = false;
+          _choosingLength = false;
+          _lengthSelectionFlow = false;
+          // setPin() persisted the new length; reflect it in the live UI so the
+          // PIN-length selector and any rebuilds show the new value.
+          _pinLength = _newPinLength;
           _oldPin.clear();
           _newPin.clear();
           _confirmPin.clear();
@@ -1798,7 +1926,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       }
       if (!mounted) return;
       FlushBarHelper.flushBarSuccessMessage(
-        'PIN changed successfully',
+        lengthChanged
+            ? 'PIN updated to $_newPinLength digits'
+            : 'PIN changed successfully',
         context,
       );
 
@@ -1845,6 +1975,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       _changingPin = false;
       _verifyingOldPin = false;
       _confirmPinMode = false;
+      _choosingLength = false;
+      _lengthSelectionFlow = false;
+      // Drop the pending target length — nothing was persisted, so the current
+      // PIN (and its length) is untouched.
+      _newPinLength = _pinLength;
       _oldPin.clear();
       _newPin.clear();
       _confirmPin.clear();
@@ -2161,19 +2296,32 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       isChanging: _changingPin,
                       onStartChange: _startPinChange,
                     ),
+                    const SizedBox(height: 14),
+                    // PIN-length control sits right next to "Change PIN" so its
+                    // verify → pick-length → new-PIN flow appears directly below.
+                    _buildPinLengthControl(),
                     if (_changingPin) ...[
                       const SizedBox(height: 14),
-                      LiquidPinInput(
-                        verifyOldMode: _verifyingOldPin,
-                        confirmMode: _confirmPinMode,
-                        oldPin: _oldPin,
-                        newPin: _newPin,
-                        confirmPin: _confirmPin,
-                        totalLength: _pinLength,
-                        error: _pinError,
-                        onNumberPressed: _onPinNumberPressed,
-                        onDelete: _onPinDelete,
-                        onCancel: _cancelPinChange,
+                      KeyedSubtree(
+                        key: _pinFlowKey,
+                        child: _choosingLength
+                            ? _buildPinLengthSelector()
+                            : LiquidPinInput(
+                                verifyOldMode: _verifyingOldPin,
+                                confirmMode: _confirmPinMode,
+                                oldPin: _oldPin,
+                                newPin: _newPin,
+                                confirmPin: _confirmPin,
+                                // Old-PIN stage uses the current length; the
+                                // new/confirm stages use the target length.
+                                totalLength: _verifyingOldPin
+                                    ? _pinLength
+                                    : _newPinLength,
+                                error: _pinError,
+                                onNumberPressed: _onPinNumberPressed,
+                                onDelete: _onPinDelete,
+                                onCancel: _cancelPinChange,
+                              ),
                       ),
                     ],
                     const SizedBox(height: 28),
@@ -4052,102 +4200,225 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               },
             ),
           ),
-          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  /// Entry point for changing the PIN length: shows the current length and a
+  /// "Change" button that kicks off verify → pick length → set new PIN.
+  Widget _buildPinLengthControl() {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'PIN length',
+                style: TextStyle(
+                  color: LiquidColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$_pinLength digits',
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onTap: _changingPin ? null : _onChangePinLengthTapped,
+          child: Opacity(
+            opacity: _changingPin ? 0.5 : 1.0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+              decoration: BoxDecoration(
+                color: LiquidColors.accentBlue.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: LiquidColors.accentBlue.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 16,
+                    color: LiquidColors.accentBlue,
+                  ),
+                  const SizedBox(width: 7),
+                  Text(
+                    'Change',
+                    style: TextStyle(
+                      color: LiquidColors.accentBlue,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _onChangePinLengthTapped() async {
+    HapticFeedback.selectionClick();
+    final hasPin = await PinCrypto.instance.hasPin();
+    if (!mounted) return;
+    if (!hasPin) {
+      // No PIN to verify against — send the user to set one first.
+      FlushBarHelper.flushBarWarningMessage(
+        'Set a PIN first, then you can change its length.',
+        context,
+      );
+      _startPinChange();
+      return;
+    }
+    _startPinLengthChange();
+  }
+
+  /// In-flow length picker shown after the current PIN is verified. Styled to
+  /// match [LiquidPinInput] so the flow feels like one continuous card.
+  Widget _buildPinLengthSelector() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: 0.9),
+            LiquidColors.backgroundMid.withValues(alpha: 0.95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: LiquidColors.accentBlue.withValues(alpha: 0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: LiquidColors.accentBlue.withValues(alpha: 0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
           Text(
-            'PIN length',
+            'CHOOSE PIN LENGTH',
             style: TextStyle(
-              color: LiquidColors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+              color: LiquidColors.textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
             ),
           ),
           const SizedBox(height: 8),
+          Text(
+            'Pick how many digits your new PIN will have',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: LiquidColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: _pinLengthChip(4)),
-              const SizedBox(width: 10),
-              Expanded(child: _pinLengthChip(6)),
+              for (final len in PinCrypto.supportedPinLengths) ...[
+                if (len != PinCrypto.supportedPinLengths.first)
+                  const SizedBox(width: 14),
+                Expanded(child: _lengthOptionTile(len)),
+              ],
             ],
+          ),
+          const SizedBox(height: 18),
+          TextButton(
+            onPressed: _cancelPinChange,
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: LiquidColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _pinLengthChip(int digits) {
-    final selected = _pinLength == digits;
+  Widget _lengthOptionTile(int digits) {
+    final isCurrent = digits == _pinLength;
     return GestureDetector(
-      onTap: () async {
-        if (selected) return;
-        HapticFeedback.selectionClick();
-        final hasPin = await PinCrypto.instance.hasPin();
-        if (!mounted) return;
-        if (hasPin) {
-          final ok = await showDialog<bool>(
-            context: context,
-            builder: (_) => AlertDialog(
-              backgroundColor: LiquidColors.backgroundLight,
-              title: Text(
-                'Change PIN length?',
-                style: TextStyle(color: LiquidColors.textPrimary),
-              ),
-              content: Text(
-                'You will need to set a new $digits-digit PIN now. Continue?',
-                style: TextStyle(color: LiquidColors.textSecondary),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: LiquidColors.textSecondary),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text(
-                    'Continue',
-                    style: TextStyle(color: LiquidColors.accentBlue),
-                  ),
-                ),
-              ],
-            ),
-          );
-          if (ok != true) return;
-        }
-        await PinCrypto.instance.setPreferredPinLength(digits);
-        if (!mounted) return;
-        setState(() => _pinLength = digits);
-        if (hasPin) {
-          _startPinChange();
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+      onTap: () => _selectNewPinLength(digits),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: selected
-              ? LiquidColors.accentBlue.withValues(alpha: 0.18)
-              : LiquidColors.backgroundDeep,
-          borderRadius: BorderRadius.circular(12),
+          gradient: LinearGradient(
+            colors: [
+              LiquidColors.accentBlue.withValues(alpha: 0.14),
+              LiquidColors.accentPurple.withValues(alpha: 0.06),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected
-                ? LiquidColors.accentBlue
-                : LiquidColors.textPrimary.withValues(alpha: 0.08),
-            width: selected ? 2 : 1,
+            color: LiquidColors.accentBlue.withValues(alpha: 0.4),
           ),
         ),
-        child: Center(
-          child: Text(
-            '$digits digits',
-            style: TextStyle(
-              color: selected
-                  ? LiquidColors.textPrimary
-                  : LiquidColors.textSecondary,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 14,
+        child: Column(
+          children: [
+            // Visual preview of the dot count.
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                digits,
+                (_) => Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: LiquidColors.accentBlue,
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            Text(
+              '$digits digits',
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              isCurrent ? 'Current' : 'Tap to use',
+              style: TextStyle(
+                color: LiquidColors.textTertiary,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

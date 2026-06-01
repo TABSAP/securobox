@@ -11,13 +11,15 @@ import 'package:video_player_app/utils/session_manager.dart';
 /// Result of a [BiometricAuthSheet] flow.
 enum BiometricAuthResult { authenticated, usePin, cancelled }
 
-/// Easypaisa-style full-screen biometric verification page: solid surface with
-/// a top brand bar, a centered scan badge, a clean disc with a subtle pulsing
-/// ring and a scan sweep, a success burst and an error shake. Auto-prioritises
-/// Face ID when the device exposes it.
+/// Full-screen biometric verification page, restyled to SecuroBox's own design
+/// language: a theme-aware canvas, a single hero "scan orb" with breathing,
+/// scan-sweep, success-burst and error-shake states, clean typography and a
+/// consistent bottom action stack. Auto-prioritises Face ID when the device
+/// exposes it.
 ///
-/// Class name kept as [BiometricAuthSheet] to preserve every caller; under the
-/// hood it now pushes a full-screen page instead of a modal bottom sheet.
+/// The class name and public surface ([BiometricAuthSheet.show] + every
+/// constructor argument) are preserved so existing callers don't change; under
+/// the hood it pushes a full-screen page.
 class BiometricAuthSheet extends StatefulWidget {
   final String title;
   final String subtitle;
@@ -65,13 +67,6 @@ class BiometricAuthSheet extends StatefulWidget {
 }
 
 enum _AuthPhase { idle, scanning, success, failed }
-
-// Easypaisa-style brand palette.
-const Color _kBrand = Color(0xFF00B14F);
-const Color _kBrandDeep = Color(0xFF008A3D);
-const Color _kBrandBright = Color(0xFF2BD976);
-const Color _kError = Color(0xFFE5484D);
-const Color _kErrorBright = Color(0xFFFF6B6B);
 
 class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     with TickerProviderStateMixin {
@@ -145,7 +140,10 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
   Future<void> _init() async {
     await _detectBiometrics();
-    await Future<void>.delayed(const Duration(milliseconds: 720));
+    // Small settle so the page's push transition finishes before the OS prompt
+    // overlays it (calling mid-transition makes Android cancel the prompt).
+    // Kept tight so the prompt feels near-instant.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
     if (!_canAuthenticate) {
       _toFailed(
@@ -352,7 +350,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       const Duration(milliseconds: 160),
       () => HapticFeedback.lightImpact(),
     );
-    Future<void>.delayed(const Duration(milliseconds: 760), () {
+    // Let the success burst register, then return promptly — the user has
+    // already verified, so lingering here just reads as lag.
+    Future<void>.delayed(const Duration(milliseconds: 420), () {
       if (mounted) Navigator.of(context).pop(BiometricAuthResult.authenticated);
     });
   }
@@ -399,11 +399,43 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     }
   }
 
+  // ── phase-driven palette ───────────────────────────────────────────────────
+
+  /// The single accent that drives the orb, glow and chips for the current
+  /// phase: blue while idle/scanning, green on success, red on failure.
+  Color get _accent {
+    switch (_phase) {
+      case _AuthPhase.success:
+        return LiquidColors.success;
+      case _AuthPhase.failed:
+        return LiquidColors.error;
+      case _AuthPhase.idle:
+      case _AuthPhase.scanning:
+        return LiquidColors.accentBlue;
+    }
+  }
+
+  List<Color> get _discGradient {
+    switch (_phase) {
+      case _AuthPhase.success:
+        return [LiquidColors.success, LiquidColors.accentBlue];
+      case _AuthPhase.failed:
+        return [const Color(0xFFFF6B6B), LiquidColors.error];
+      case _AuthPhase.idle:
+      case _AuthPhase.scanning:
+        return [LiquidColors.accentBlue, LiquidColors.accentPurple];
+    }
+  }
+
   // ── build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = LiquidColors.isDark;
+    final size = MediaQuery.of(context).size;
+    // Responsive hero size — scales with the smaller screen edge, clamped so it
+    // stays comfortable on both phones and tablets.
+    final double disc = (size.shortestSide * 0.36).clamp(124.0, 168.0).toDouble();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
@@ -414,80 +446,124 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
           _close(BiometricAuthResult.cancelled);
         },
         child: Scaffold(
-          backgroundColor: LiquidColors.surface,
-          body: SafeArea(
-            child: Column(
-              children: [
-                _topBar(),
-                _brandStripe(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    child: FadeTransition(
-                      opacity: CurvedAnimation(
-                        parent: _entry,
-                        curve: Curves.easeOut,
-                      ),
-                      child: SlideTransition(
-                        position:
-                            Tween<Offset>(
-                              begin: const Offset(0, 0.04),
-                              end: Offset.zero,
-                            ).animate(
-                              CurvedAnimation(
-                                parent: _entry,
-                                curve: Curves.easeOutCubic,
-                              ),
-                            ),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 28, 24, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              _brandBadge(),
-                              const SizedBox(height: 28),
-                              _titleText(),
-                              const SizedBox(height: 12),
-                              _subtitleText(),
-                              const SizedBox(height: 36),
-                              _orb(),
-                              const SizedBox(height: 24),
-                              SizedBox(
-                                height: 36,
-                                child: Center(child: _scanHint()),
-                              ),
-                            ],
-                          ),
+          backgroundColor: LiquidColors.backgroundDeep,
+          body: Stack(
+            children: [
+              // Ambient accent glow behind the hero — soft, follows the phase.
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Align(
+                    alignment: const Alignment(0, -0.35),
+                    child: Container(
+                      width: disc * 2.7,
+                      height: disc * 2.7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            _accent.withValues(alpha: 0.18),
+                            _accent.withValues(alpha: 0.0),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 4, 24, 18),
-                  child: _stateArea(),
+              ),
+              SafeArea(
+                child: Column(
+                  children: [
+                    _topBar(),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 28,
+                                ),
+                                child: FadeTransition(
+                                  opacity: CurvedAnimation(
+                                    parent: _entry,
+                                    curve: Curves.easeOut,
+                                  ),
+                                  child: SlideTransition(
+                                    position:
+                                        Tween<Offset>(
+                                          begin: const Offset(0, 0.05),
+                                          end: Offset.zero,
+                                        ).animate(
+                                          CurvedAnimation(
+                                            parent: _entry,
+                                            curve: Curves.easeOutCubic,
+                                          ),
+                                        ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        const SizedBox(height: 12),
+                                        _securityBadge(),
+                                        const SizedBox(height: 40),
+                                        _orb(disc),
+                                        const SizedBox(height: 36),
+                                        _titleText(),
+                                        const SizedBox(height: 12),
+                                        _subtitleText(),
+                                        const SizedBox(height: 20),
+                                        SizedBox(
+                                          height: 34,
+                                          child: Center(child: _statusChip()),
+                                        ),
+                                        const SizedBox(height: 12),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
+                      child: _actions(),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
+  // ── top bar ────────────────────────────────────────────────────────────────
+
   Widget _topBar() {
-    return SizedBox(
-      height: 56,
-      child: Row(
-        children: [
-          const SizedBox(width: 4),
-          _Pressable(
-            onTap: () => _close(BiometricAuthResult.cancelled),
-            borderRadius: 24,
-            child: SizedBox(
-              width: 44,
-              height: 44,
-              child: Center(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+      child: SizedBox(
+        height: 52,
+        child: Row(
+          children: [
+            _Pressable(
+              onTap: () => _close(BiometricAuthResult.cancelled),
+              borderRadius: 24,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: LiquidColors.surfaceMuted,
+                ),
                 child: Icon(
                   Icons.arrow_back_rounded,
                   color: LiquidColors.textPrimary,
@@ -495,91 +571,75 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                 ),
               ),
             ),
-          ),
-          const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 26,
-                height: 26,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [_kBrandBright, _kBrandDeep],
+            const Spacer(),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        LiquidColors.accentBlue,
+                        LiquidColors.accentPurple,
+                      ],
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.lock_rounded,
+                    color: Colors.white,
+                    size: 13,
                   ),
                 ),
-                child: const Icon(
-                  Icons.lock_rounded,
-                  color: Colors.white,
-                  size: 14,
+                const SizedBox(width: 8),
+                Text(
+                  'SecuroBox',
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'SecuroBox',
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-
-  Widget _brandStripe() {
-    return Container(
-      height: 3,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_kBrandDeep, _kBrand, _kBrandBright],
+              ],
+            ),
+            const Spacer(),
+            // Mirror the back button's width so the brand stays centered.
+            const SizedBox(width: 44),
+          ],
         ),
       ),
     );
   }
 
-  Widget _brandBadge() {
+  Widget _securityBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _kBrand.withValues(alpha: 0.10),
+        color: LiquidColors.accentBlue.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: _kBrand.withValues(alpha: 0.25), width: 1),
+        border: Border.all(
+          color: LiquidColors.accentBlue.withValues(alpha: 0.25),
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 18,
-            height: 18,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [_kBrandBright, _kBrandDeep],
-              ),
-            ),
-            child: const Icon(
-              Icons.shield_rounded,
-              size: 11,
-              color: Colors.white,
-            ),
+          Icon(
+            Icons.shield_rounded,
+            size: 13,
+            color: LiquidColors.accentBlue,
           ),
           const SizedBox(width: 7),
-          const Text(
+          Text(
             'SECURE VERIFICATION',
             style: TextStyle(
-              color: _kBrandDeep,
+              color: LiquidColors.accentBlue,
               fontSize: 10.5,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.0,
@@ -592,169 +652,167 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
   // ── orb ──────────────────────────────────────────────────────────────────
 
-  Widget _orb() {
-    const disc = 128.0;
-    const reserved = 184.0;
+  Widget _orb(double disc) {
+    final reserved = disc + 64;
 
     return RepaintBoundary(
       child: SizedBox(
-      width: reserved,
-      height: reserved,
-      child: AnimatedBuilder(
-        animation: Listenable.merge([_pulse, _ping, _success, _shake]),
-        builder: (context, _) {
-          final isFailed = _phase == _AuthPhase.failed;
-          final isIdle = _phase == _AuthPhase.idle;
-          final isScanning = _phase == _AuthPhase.scanning;
-          final isSuccess = _phase == _AuthPhase.success;
+        width: reserved,
+        height: reserved,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_pulse, _ping, _success, _shake]),
+          builder: (context, _) {
+            final isFailed = _phase == _AuthPhase.failed;
+            final isIdle = _phase == _AuthPhase.idle;
+            final isScanning = _phase == _AuthPhase.scanning;
+            final isSuccess = _phase == _AuthPhase.success;
 
-          final c = isFailed ? _kError : _kBrand;
-          final cBright = isFailed ? _kErrorBright : _kBrandBright;
-          final breathing = isIdle ? _pulse.value : 0.0;
-          final successT = Curves.elasticOut.transform(
-            isSuccess ? _success.value : 0.0,
-          );
-          final shakeDx = isFailed
-              ? math.sin(_shake.value * math.pi * 4) * 10 * (1 - _shake.value)
-              : 0.0;
-          final pingActive = isIdle || isScanning;
-          final pingT = _ping.value;
-          final burstT = successT.clamp(0.0, 1.0);
+            final c = _accent;
+            final breathing = isIdle ? _pulse.value : 0.0;
+            final successT = Curves.elasticOut.transform(
+              isSuccess ? _success.value : 0.0,
+            );
+            final shakeDx = isFailed
+                ? math.sin(_shake.value * math.pi * 4) * 10 * (1 - _shake.value)
+                : 0.0;
+            final pingActive = isIdle || isScanning;
+            final pingT = _ping.value;
+            final burstT = successT.clamp(0.0, 1.0);
 
-          return Transform.translate(
-            offset: Offset(shakeDx, 0),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (pingActive)
-                  Opacity(
-                    opacity: (1 - pingT) * 0.35,
-                    child: Container(
-                      width: disc + 48 * pingT,
-                      height: disc + 48 * pingT,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: c.withValues(alpha: 0.55),
-                          width: 1.4,
+            return Transform.translate(
+              offset: Offset(shakeDx, 0),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (pingActive)
+                    Opacity(
+                      opacity: (1 - pingT) * 0.35,
+                      child: Container(
+                        width: disc + 52 * pingT,
+                        height: disc + 52 * pingT,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: c.withValues(alpha: 0.55),
+                            width: 1.4,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                if (isSuccess && burstT < 1)
-                  Opacity(
-                    opacity: (1 - burstT) * 0.7,
-                    child: Container(
-                      width: disc + 66 * burstT,
-                      height: disc + 66 * burstT,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: cBright.withValues(alpha: 0.7),
-                          width: 2.5,
+                  if (isSuccess && burstT < 1)
+                    Opacity(
+                      opacity: (1 - burstT) * 0.7,
+                      child: Container(
+                        width: disc + 70 * burstT,
+                        height: disc + 70 * burstT,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: c.withValues(alpha: 0.7),
+                            width: 2.5,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                Container(
-                  width: disc + 20,
-                  height: disc + 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: c.withValues(alpha: 0.06 + 0.04 * breathing),
-                  ),
-                ),
-                Transform.scale(
-                  scale: isSuccess
-                      ? (0.82 + 0.18 * burstT)
-                      : (1.0 + 0.025 * breathing),
-                  child: Container(
-                    width: disc,
-                    height: disc,
+                  // Soft halo.
+                  Container(
+                    width: disc + 24,
+                    height: disc + 24,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isFailed
-                            ? [_kErrorBright, _kError]
-                            : [_kBrandBright, _kBrandDeep],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: c.withValues(alpha: 0.32),
-                          blurRadius: 24,
-                          spreadRadius: -2,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
+                      color: c.withValues(alpha: 0.06 + 0.04 * breathing),
                     ),
-                    child: ClipOval(
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  center: const Alignment(-0.45, -0.5),
-                                  radius: 0.85,
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.22),
-                                    Colors.white.withValues(alpha: 0.0),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (isScanning)
-                            AnimatedBuilder(
-                              animation: _sweep,
-                              builder: (context, _) {
-                                final t = _sweep.value;
-                                final p = t < 0.5 ? t * 2 : (1 - t) * 2;
-                                final y = (p - 0.5) * disc * 0.88;
-                                return Transform.translate(
-                                  offset: Offset(0, y),
-                                  child: Container(
-                                    width: disc,
-                                    height: 3,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.white.withValues(alpha: 0.0),
-                                          Colors.white.withValues(alpha: 0.92),
-                                          Colors.white.withValues(alpha: 0.0),
-                                        ],
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.6,
-                                          ),
-                                          blurRadius: 8,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          Icon(
-                            _iconForPhase(),
-                            color: Colors.white,
-                            size: disc * 0.44,
+                  ),
+                  // Main disc.
+                  Transform.scale(
+                    scale: isSuccess
+                        ? (0.82 + 0.18 * burstT)
+                        : (1.0 + 0.025 * breathing),
+                    child: Container(
+                      width: disc,
+                      height: disc,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: _discGradient,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: c.withValues(alpha: 0.34),
+                            blurRadius: 28,
+                            spreadRadius: -2,
+                            offset: const Offset(0, 14),
                           ),
                         ],
                       ),
+                      child: ClipOval(
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: RadialGradient(
+                                    center: const Alignment(-0.45, -0.5),
+                                    radius: 0.85,
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.22),
+                                      Colors.white.withValues(alpha: 0.0),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (isScanning)
+                              AnimatedBuilder(
+                                animation: _sweep,
+                                builder: (context, _) {
+                                  final t = _sweep.value;
+                                  final p = t < 0.5 ? t * 2 : (1 - t) * 2;
+                                  final y = (p - 0.5) * disc * 0.88;
+                                  return Transform.translate(
+                                    offset: Offset(0, y),
+                                    child: Container(
+                                      width: disc,
+                                      height: 3,
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withValues(alpha: 0.0),
+                                            Colors.white.withValues(alpha: 0.92),
+                                            Colors.white.withValues(alpha: 0.0),
+                                          ],
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.6,
+                                            ),
+                                            blurRadius: 8,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            Icon(
+                              _iconForPhase(),
+                              color: Colors.white,
+                              size: disc * 0.42,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -829,12 +887,12 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         break;
     }
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Text(
         text,
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: isFailed ? _kError : LiquidColors.textSecondary,
+          color: isFailed ? LiquidColors.error : LiquidColors.textSecondary,
           fontSize: 14,
           height: 1.5,
           fontWeight: isFailed ? FontWeight.w600 : FontWeight.w500,
@@ -843,35 +901,39 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     );
   }
 
-  Widget _scanHint() {
+  /// Compact status pill shown under the subtitle: a live "scanning" indicator
+  /// while authenticating, or a quiet "what to do" hint while idle.
+  Widget _statusChip() {
     switch (_phase) {
       case _AuthPhase.scanning:
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: _kBrand.withValues(alpha: 0.10),
+            color: LiquidColors.accentBlue.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: _kBrand.withValues(alpha: 0.25),
+              color: LiquidColors.accentBlue.withValues(alpha: 0.25),
               width: 1,
             ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
-            children: const [
+            children: [
               SizedBox(
                 width: 12,
                 height: 12,
                 child: CircularProgressIndicator(
                   strokeWidth: 1.6,
-                  valueColor: AlwaysStoppedAnimation<Color>(_kBrand),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    LiquidColors.accentBlue,
+                  ),
                 ),
               ),
-              SizedBox(width: 9),
+              const SizedBox(width: 9),
               Text(
                 'SCANNING…',
                 style: TextStyle(
-                  color: _kBrandDeep,
+                  color: LiquidColors.accentBlue,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.8,
@@ -882,16 +944,29 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         );
       case _AuthPhase.idle:
         if (!_bioReady || !_introDone) return const SizedBox.shrink();
-        return Text(
-          _showFaceIcon
-              ? 'Look at the camera to verify'
-              : 'Touch the fingerprint sensor',
-          style: TextStyle(
-            color: LiquidColors.textTertiary,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-          ),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _showFaceIcon
+                  ? Icons.face_retouching_natural
+                  : Icons.fingerprint_rounded,
+              size: 16,
+              color: LiquidColors.textTertiary,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              _showFaceIcon
+                  ? 'Look at the camera to verify'
+                  : 'Touch the fingerprint sensor',
+              style: TextStyle(
+                color: LiquidColors.textTertiary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
         );
       case _AuthPhase.failed:
       case _AuthPhase.success:
@@ -899,9 +974,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     }
   }
 
-  // ── state area ───────────────────────────────────────────────────────────
+  // ── action area ────────────────────────────────────────────────────────────
 
-  Widget _stateArea() {
+  Widget _actions() {
     switch (_phase) {
       case _AuthPhase.success:
         return const SizedBox(height: 4);
@@ -919,7 +994,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
               ),
               const SizedBox(height: 10),
             ],
-            _ghostButton(
+            _secondaryButton(
               icon: Icons.close_rounded,
               label: 'Cancel',
               onTap: () => _close(BiometricAuthResult.cancelled),
@@ -944,7 +1019,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                 ),
                 const SizedBox(height: 10),
               ],
-              _ghostButton(
+              _secondaryButton(
                 icon: Icons.close_rounded,
                 label: 'Cancel',
                 onTap: () => _close(BiometricAuthResult.cancelled),
@@ -957,7 +1032,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
               ),
               const SizedBox(height: 10),
               if (canSwitch) ...[
-                _ghostButton(
+                _secondaryButton(
                   icon: _showFaceIcon
                       ? Icons.fingerprint_rounded
                       : Icons.face_retouching_natural,
@@ -967,7 +1042,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                 const SizedBox(height: 10),
               ],
               if (widget.allowPinFallback) ...[
-                _ghostButton(
+                _secondaryButton(
                   icon: widget.fallbackIcon,
                   label: widget.fallbackLabel,
                   onTap: () => _close(BiometricAuthResult.usePin),
@@ -977,7 +1052,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
               _textLink(
                 'Cancel',
                 onTap: () => _close(BiometricAuthResult.cancelled),
-                muted: true,
               ),
             ],
           ],
@@ -990,21 +1064,28 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
       decoration: BoxDecoration(
-        color: _kError.withValues(alpha: 0.08),
+        color: LiquidColors.error.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _kError.withValues(alpha: 0.22), width: 1),
+        border: Border.all(
+          color: LiquidColors.error.withValues(alpha: 0.22),
+          width: 1,
+        ),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.lock_clock_rounded, size: 15, color: _kError),
+              Icon(
+                Icons.lock_clock_rounded,
+                size: 15,
+                color: LiquidColors.error,
+              ),
               const SizedBox(width: 6),
               Text(
                 'BIOMETRICS LOCKED',
                 style: TextStyle(
-                  color: _kError,
+                  color: LiquidColors.error,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.0,
@@ -1015,13 +1096,13 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
           const SizedBox(height: 10),
           Text(
             _formatCountdown(left),
-            style: const TextStyle(
-              color: _kErrorBright,
+            style: TextStyle(
+              color: LiquidColors.error,
               fontSize: 40,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.5,
               height: 1.0,
-              fontFeatures: [FontFeature.tabularFigures()],
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
           const SizedBox(height: 8),
@@ -1047,24 +1128,24 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   }) {
     return _Pressable(
       onTap: onTap,
-      borderRadius: 14,
+      borderRadius: 16,
       child: Container(
         width: double.infinity,
-        height: 54,
+        height: 56,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [_kBrand, _kBrandDeep],
+            colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
           ),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: _kBrand.withValues(alpha: 0.35),
-              blurRadius: 14,
+              color: LiquidColors.accentBlue.withValues(alpha: 0.35),
+              blurRadius: 16,
               spreadRadius: -2,
-              offset: const Offset(0, 6),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -1088,25 +1169,22 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     );
   }
 
-  Widget _ghostButton({
+  Widget _secondaryButton({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
     return _Pressable(
       onTap: onTap,
-      borderRadius: 14,
+      borderRadius: 16,
       child: Container(
         width: double.infinity,
-        height: 50,
+        height: 52,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: LiquidColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: LiquidColors.textPrimary.withValues(alpha: 0.10),
-            width: 1.2,
-          ),
+          color: LiquidColors.surfaceMuted,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: LiquidColors.cardBorder, width: 1.2),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1127,22 +1205,18 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     );
   }
 
-  Widget _textLink(
-    String label, {
-    required VoidCallback onTap,
-    bool muted = false,
-  }) {
+  Widget _textLink(String label, {required VoidCallback onTap}) {
     return TextButton(
       onPressed: onTap,
       style: TextButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-        minimumSize: const Size(0, 40),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        minimumSize: const Size(0, 44),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: muted ? LiquidColors.textTertiary : _kBrand,
+          color: LiquidColors.textTertiary,
           fontSize: 13.5,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,

@@ -312,7 +312,7 @@ class _FaceScanScreenState extends State<FaceScanScreen>
       const Duration(milliseconds: 160),
       () => HapticFeedback.lightImpact(),
     );
-    Future<void>.delayed(const Duration(milliseconds: 840), () {
+    Future<void>.delayed(const Duration(milliseconds: 480), () {
       if (mounted && Navigator.of(context).canPop()) {
         Navigator.of(context).pop(true);
       }

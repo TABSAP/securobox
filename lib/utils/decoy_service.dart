@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:video_player_app/utils/pbkdf2.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 
 /// Manages the decoy ("fake") PIN and the decoy vault's auto-seeded content.
@@ -42,36 +42,6 @@ class DecoyService {
     );
   }
 
-  Uint8List _pbkdf2(
-      Uint8List password, Uint8List salt, int iterations, int dkLen) {
-    final hmac = Hmac(sha256, password);
-    const blockSize = 32;
-    final blocks = (dkLen / blockSize).ceil();
-    final result = Uint8List(dkLen);
-    int offset = 0;
-    for (int i = 1; i <= blocks; i++) {
-      final block = Uint8List(salt.length + 4)
-        ..setRange(0, salt.length, salt)
-        ..[salt.length] = (i >> 24) & 0xff
-        ..[salt.length + 1] = (i >> 16) & 0xff
-        ..[salt.length + 2] = (i >> 8) & 0xff
-        ..[salt.length + 3] = i & 0xff;
-      var u = Uint8List.fromList(hmac.convert(block).bytes);
-      final t = Uint8List.fromList(u);
-      for (int j = 1; j < iterations; j++) {
-        u = Uint8List.fromList(hmac.convert(u).bytes);
-        for (int k = 0; k < blockSize; k++) {
-          t[k] ^= u[k];
-        }
-      }
-      final remaining = dkLen - offset;
-      final copy = remaining < blockSize ? remaining : blockSize;
-      result.setRange(offset, offset + copy, t);
-      offset += copy;
-    }
-    return result;
-  }
-
   bool _constantTimeEqual(Uint8List a, Uint8List b) {
     if (a.length != b.length) return false;
     int diff = 0;
@@ -91,7 +61,7 @@ class DecoyService {
 
   Future<void> setupFakePin(String pin) async {
     final salt = _randomBytes(_saltLengthBytes);
-    final hash = _pbkdf2(
+    final hash = await pbkdf2(
       Uint8List.fromList(utf8.encode(pin)),
       salt,
       _iterations,
@@ -107,7 +77,7 @@ class DecoyService {
     final saltStr = await _secure.read(key: _kFakeSalt);
     final hashStr = await _secure.read(key: _kFakeHash);
     if (saltStr == null || hashStr == null) return false;
-    final candidate = _pbkdf2(
+    final candidate = await pbkdf2(
       Uint8List.fromList(utf8.encode(pin)),
       base64Decode(saltStr),
       _iterations,

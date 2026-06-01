@@ -217,13 +217,33 @@ class HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Identity gate for any action on a locked item. Tries biometric / Face ID
-  /// via the OS prompt first; if that's unavailable, cancelled or fails, falls
-  /// back to the app PIN. Returns true only when the user verified.
+  /// Identity gate for any action on a locked item. Honours the user's global
+  /// security toggles: the biometric prompt is only raised when Biometric or
+  /// Face Unlock is enabled, and the PIN prompt is only shown when App Lock is
+  /// enabled. If both are turned off the item opens without an extra prompt —
+  /// a disabled factor is never asked for. Returns true only when the user
+  /// verified (or no factor is enabled).
   Future<bool> _unlockProtectedItem({required String reason}) async {
-    if (await _mediaService.authenticateUser(reason: reason)) return true;
+    final prefs = await SharedPreferences.getInstance();
+    final biometricEnabled = (prefs.getBool('biometric') ?? false) ||
+        (prefs.getBool('biometric_face') ?? false);
+    final appLockEnabled = prefs.getBool('appLock') ?? false;
+
+    // Neither lock factor is enabled — don't ask for anything.
+    if (!biometricEnabled && !appLockEnabled) return true;
+
+    // Biometric / Face ID first, but only when the user has it switched on.
+    if (biometricEnabled &&
+        await _mediaService.authenticateUser(reason: reason)) {
+      return true;
+    }
     if (!mounted) return false;
-    return _verifyWithAppPin();
+
+    // App PIN fallback, only when App Lock is enabled.
+    if (appLockEnabled) return _verifyWithAppPin();
+
+    // Biometric was the only enabled factor and it didn't pass.
+    return false;
   }
 
   /// Verifies the vault's PIN through the unlock dialog.

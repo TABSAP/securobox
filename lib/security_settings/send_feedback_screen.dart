@@ -562,7 +562,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               ),
               child: Icon(
                 Icons.mark_email_read_outlined,
-                color: LiquidColors.textPrimary,
+                color: Colors.white,
                 size: 44,
               ),
             ),
@@ -609,7 +609,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   ),
                   child: const Text(
                     'Got it',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,color: Colors.white),
                   ),
                 ),
               ),

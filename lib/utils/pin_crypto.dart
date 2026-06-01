@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
-import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:video_player_app/utils/pbkdf2.dart';
 
 class PinCrypto {
   PinCrypto._();
@@ -18,6 +18,18 @@ class PinCrypto {
   static const defaultPinLength = 4;
   static const supportedPinLengths = [4, 6];
 
+  /// Session cache of the configured PIN length.
+  ///
+  /// Held on the singleton so it survives widget / activity recreation — e.g.
+  /// when the user switches the disguise (app icon / name), Android may rebuild
+  /// the Flutter view, but the Dart process (and this singleton) live on. UI can
+  /// read [cachedPinLength] synchronously to render the correct number of PIN
+  /// fields on the very first frame, so the PIN-length UI stays consistent for
+  /// the whole session instead of briefly flashing the 4-digit default while an
+  /// async [getPinLength] read completes.
+  int _cachedPinLength = defaultPinLength;
+  int get cachedPinLength => _cachedPinLength;
+
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(),
     iOptions: IOSOptions(
@@ -30,39 +42,9 @@ class PinCrypto {
     return Uint8List.fromList(List<int>.generate(length, (_) => r.nextInt(256)));
   }
 
-  Uint8List _pbkdf2(Uint8List password, Uint8List salt, int iterations, int dkLen) {
-    final hmac = Hmac(sha256, password);
-    final blockSize = 32;
-    final blocks = (dkLen / blockSize).ceil();
-    final result = Uint8List(dkLen);
-    int offset = 0;
-    for (int i = 1; i <= blocks; i++) {
-      final block = Uint8List(salt.length + 4)
-        ..setRange(0, salt.length, salt)
-        ..[salt.length] = (i >> 24) & 0xff
-        ..[salt.length + 1] = (i >> 16) & 0xff
-        ..[salt.length + 2] = (i >> 8) & 0xff
-        ..[salt.length + 3] = i & 0xff;
-
-      var u = Uint8List.fromList(hmac.convert(block).bytes);
-      final t = Uint8List.fromList(u);
-      for (int j = 1; j < iterations; j++) {
-        u = Uint8List.fromList(hmac.convert(u).bytes);
-        for (int k = 0; k < blockSize; k++) {
-          t[k] ^= u[k];
-        }
-      }
-      final remaining = dkLen - offset;
-      final copy = remaining < blockSize ? remaining : blockSize;
-      result.setRange(offset, offset + copy, t);
-      offset += copy;
-    }
-    return result;
-  }
-
   Future<void> setPin(String pin) async {
     final salt = _randomBytes(_kSaltLengthBytes);
-    final hash = _pbkdf2(
+    final hash = await pbkdf2(
       Uint8List.fromList(utf8.encode(pin)),
       salt,
       _kIterations,
@@ -72,19 +54,23 @@ class PinCrypto {
     await _secure.write(key: _kHashKey, value: base64Encode(hash));
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kPinLengthKey, pin.length);
+    _cachedPinLength = pin.length;
     await prefs.remove('appPin');
     await prefs.remove('secure_pin');
   }
 
   Future<int> getPinLength() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kPinLengthKey) ?? defaultPinLength;
+    final len = prefs.getInt(_kPinLengthKey) ?? defaultPinLength;
+    _cachedPinLength = len;
+    return len;
   }
 
   Future<void> setPreferredPinLength(int length) async {
     if (!supportedPinLengths.contains(length)) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kPinLengthKey, length);
+    _cachedPinLength = length;
   }
 
   Future<bool> verifyPin(String pin) async {
@@ -97,7 +83,7 @@ class PinCrypto {
 
     final salt = base64Decode(saltStr);
     final stored = base64Decode(hashStr);
-    final candidate = _pbkdf2(
+    final candidate = await pbkdf2(
       Uint8List.fromList(utf8.encode(pin)),
       salt,
       _kIterations,
@@ -132,6 +118,7 @@ class PinCrypto {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('appPin');
     await prefs.remove('secure_pin');
+    _cachedPinLength = defaultPinLength;
   }
 
   bool _constantTimeEqual(Uint8List a, Uint8List b) {

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenshot_blocker/flutter_screenshot_blocker.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
+import 'package:video_player_app/utils/pbkdf2.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
@@ -29,6 +30,10 @@ void main() async {
   await NetworkGuard.instance.init();
 
   unawaited(DisguiseService.instance.load());
+
+  // Spawn the PBKDF2 worker isolate up front so the very first PIN create /
+  // confirm / unlock hashes instantly instead of paying isolate-spawn latency.
+  prewarmPbkdf2();
 
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
 

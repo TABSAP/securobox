@@ -776,7 +776,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   ),
                 const SizedBox(width: 10),
                 Text(
-                  _resetting ? 'Resetting PIN…' : 'Verify & Reset PIN',
+                  _resetting ? 'Resetting PIN…' : 'Verify Recovery code',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,

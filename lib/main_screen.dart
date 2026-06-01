@@ -145,7 +145,9 @@ class _MainScreenState extends State<MainScreen>
     if (!lockEnabled) return;
 
     _isShowingLockScreen = true;
-    await VaultCrypto.instance.wipeTempCache();
+    // Wipe decrypted temp files in the background — the lock screen already
+    // covers all content, so blocking its appearance on file I/O only adds lag.
+    unawaited(VaultCrypto.instance.wipeTempCache());
     if (!mounted) {
       _isShowingLockScreen = false;
       return;
