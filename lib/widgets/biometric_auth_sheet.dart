@@ -27,6 +27,11 @@ class BiometricAuthSheet extends StatefulWidget {
   final bool allowPinFallback;
   final String fallbackLabel;
   final IconData fallbackIcon;
+  /// Invoked exactly once with the flow's result. The host route (created in
+  /// [show]) removes the sheet itself, so the State never calls Navigator.pop
+  /// directly — a plain pop would remove whatever is on top (e.g. a transient
+  /// Flushbar overlay) instead of this sheet, crashing the navigator.
+  final void Function(BiometricAuthResult result)? onResult;
 
   const BiometricAuthSheet({
     super.key,
@@ -36,6 +41,7 @@ class BiometricAuthSheet extends StatefulWidget {
     this.allowPinFallback = true,
     this.fallbackLabel = 'Use PIN instead',
     this.fallbackIcon = Icons.dialpad_rounded,
+    this.onResult,
   });
 
   static Future<BiometricAuthResult?> show(
@@ -47,19 +53,35 @@ class BiometricAuthSheet extends StatefulWidget {
     String fallbackLabel = 'Use PIN instead',
     IconData fallbackIcon = Icons.dialpad_rounded,
   }) {
-    return Navigator.of(context).push<BiometricAuthResult>(
-      MaterialPageRoute<BiometricAuthResult>(
-        fullscreenDialog: true,
-        builder: (_) => BiometricAuthSheet(
-          title: title,
-          subtitle: subtitle,
-          localizedReason: localizedReason,
-          allowPinFallback: allowPinFallback,
-          fallbackLabel: fallbackLabel,
-          fallbackIcon: fallbackIcon,
-        ),
+    final navigator = Navigator.of(context);
+    final completer = Completer<BiometricAuthResult?>();
+    late final MaterialPageRoute<BiometricAuthResult> route;
+    route = MaterialPageRoute<BiometricAuthResult>(
+      fullscreenDialog: true,
+      builder: (_) => BiometricAuthSheet(
+        title: title,
+        subtitle: subtitle,
+        localizedReason: localizedReason,
+        allowPinFallback: allowPinFallback,
+        fallbackLabel: fallbackLabel,
+        fallbackIcon: fallbackIcon,
+        onResult: (result) {
+          if (!completer.isCompleted) completer.complete(result);
+          if (!route.isActive) return;
+          // Remove THIS route specifically. If the sheet is on top, pop it for
+          // the exit animation; if something transient (e.g. a Flushbar) sits
+          // above it, surgically remove just our route so we never pop — and
+          // crash on — the wrong one.
+          if (route.isCurrent) {
+            navigator.pop();
+          } else {
+            navigator.removeRoute(route);
+          }
+        },
       ),
     );
+    navigator.push(route);
+    return completer.future;
   }
 
   @override
@@ -85,6 +107,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   bool _retriedWarmup = false;
   String _errorMessage = '';
   bool _running = false;
+  // Ensures the result is delivered (and the sheet removed) only once.
+  bool _resolved = false;
   // While non-null, biometrics are on the 3-strike 60s cooldown and the page
   // shows a live countdown instead of a "Try Again" button.
   Duration? _cooldownLeft;
@@ -158,11 +182,17 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
   Future<void> _detectBiometrics() async {
     try {
-      final supported = await _auth.isDeviceSupported();
-      final canCheck = await _auth.canCheckBiometrics;
+      // Fire all three platform queries together rather than serially — on the
+      // first-ever use the local_auth channel is cold, and three back-to-back
+      // round-trips are the main first-time delay before the prompt appears.
+      final supportedF = _auth.isDeviceSupported();
+      final canCheckF = _auth.canCheckBiometrics;
+      final listF = _auth.getAvailableBiometrics();
+      final supported = await supportedF;
+      final canCheck = await canCheckF;
       List<BiometricType> list = const <BiometricType>[];
       try {
-        list = await _auth.getAvailableBiometrics();
+        list = await listF;
       } catch (_) {}
       if (!mounted) return;
       setState(() {
@@ -218,6 +248,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       ..reset()
       ..repeat();
     HapticFeedback.lightImpact();
+    // The OS biometric prompt backgrounds/defocuses the app; mark it trusted so
+    // resume doesn't auto-lock on top of the prompt and freeze the flow.
+    SessionManager.instance.beginTrustedInteraction();
     try {
       final ok = await _auth.authenticate(
         localizedReason:
@@ -265,6 +298,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       _toFailed('Something went wrong. Tap "Try Again" to retry.');
     } finally {
       _running = false;
+      SessionManager.instance.endTrustedInteraction();
     }
   }
 
@@ -347,10 +381,10 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     setState(() => _phase = _AuthPhase.success);
     _success.forward(from: 0);
     HapticFeedback.heavyImpact();
-    // Pop almost immediately — the user has verified, so unlocking should feel
-    // instant. A tiny beat lets the success tick register without reading as lag.
+    // Resolve almost immediately — the user has verified, so unlocking should
+    // feel instant. A tiny beat lets the success tick register without lag.
     Future<void>.delayed(const Duration(milliseconds: 120), () {
-      if (mounted) Navigator.of(context).pop(BiometricAuthResult.authenticated);
+      if (mounted) _close(BiometricAuthResult.authenticated);
     });
   }
 
@@ -391,9 +425,10 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   }
 
   void _close(BiometricAuthResult result) {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop(result);
-    }
+    if (_resolved) return;
+    _resolved = true;
+    // Hand the result back to [show], which removes this sheet's own route.
+    widget.onResult?.call(result);
   }
 
   // ── phase-driven palette ───────────────────────────────────────────────────

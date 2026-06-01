@@ -7,6 +7,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/app_models.dart';
+import '../utils/session_manager.dart';
 import '../utils/vault_context.dart';
 
 class MediaService {
@@ -198,6 +199,9 @@ class MediaService {
   }
 
   Future<bool> authenticateUser({String reason = 'Authenticate to access locked media'}) async {
+    // The OS biometric prompt backgrounds/defocuses the app; flag it as a
+    // trusted round-trip so resume doesn't auto-lock on top of it and freeze.
+    SessionManager.instance.beginTrustedInteraction();
     try {
       final bool canCheck = await _localAuth.canCheckBiometrics;
       final bool supported = await _localAuth.isDeviceSupported();
@@ -212,6 +216,8 @@ class MediaService {
       );
     } catch (e) {
       return false;
+    } finally {
+      SessionManager.instance.endTrustedInteraction();
     }
   }
 

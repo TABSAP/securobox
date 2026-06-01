@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenshot_blocker/flutter_screenshot_blocker.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pbkdf2.dart';
@@ -34,6 +35,10 @@ void main() async {
   // Spawn the PBKDF2 worker isolate up front so the very first PIN create /
   // confirm / unlock hashes instantly instead of paying isolate-spawn latency.
   prewarmPbkdf2();
+
+  // Warm the local_auth platform channel so the first-ever biometric prompt
+  // isn't slowed by a cold channel + capability query.
+  unawaited(LocalAuthentication().isDeviceSupported());
 
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
 

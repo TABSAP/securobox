@@ -3,12 +3,15 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_importer.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 
 /// Bottom sheet that drives the "add to vault" flow from the Library tab.
@@ -53,8 +56,10 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
   final List<String> _customCategories = [];
   bool _loadingCustoms = true;
   bool _importing = false;
-  int _importDone = 0;
-  int _importTotal = 0;
+  // Per-file progress as (done, total). Held in a notifier so progress updates
+  // rebuild only the small banner — not the whole sheet (grid, cards, painters)
+  // — which is what caused the UI to stutter during a multi-file import.
+  final ValueNotifier<(int, int)> _progress = ValueNotifier((0, 0));
 
   String get _customKey => VaultContext.instance.customCategoriesKey;
 
@@ -62,6 +67,12 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
   void initState() {
     super.initState();
     _loadCustomCategories();
+  }
+
+  @override
+  void dispose() {
+    _progress.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCustomCategories() async {
@@ -102,7 +113,11 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
 
   Future<void> _smartImport() async {
     HapticFeedback.lightImpact();
-    await _pickAndImport(category: null, type: FileType.any);
+    await _pickAndImport(
+      category: null,
+      type: FileType.any,
+      useStreamFallback: true,
+    );
   }
 
   Future<void> _importInto(String category) async {
@@ -130,42 +145,58 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
   Future<void> _pickAndImport({
     required String? category,
     required FileType type,
+    bool useStreamFallback = false,
   }) async {
+    // Picking files — and the OS gallery-delete confirmation later in the import
+    // — send the app to the background. Mark this as a trusted round-trip so the
+    // auto-lock doesn't fire on resume and strand the picker/import behind the
+    // lock screen (which made biometric/PIN get stuck).
+    SessionManager.instance.beginTrustedInteraction();
     try {
       final result = await FilePicker.platform.pickFiles(
         type: type,
         allowMultiple: true,
         withData: false,
-        withReadStream: false,
+        // Smart import (FileType.any) can return content-URI files that have no
+        // direct path; a read stream lets us materialise those so they still
+        // import instead of being silently skipped ("nothing imported").
+        withReadStream: useStreamFallback,
       );
       if (result == null || result.files.isEmpty) return;
 
       final items = <PickedMedia>[];
       for (final pf in result.files) {
         final path = pf.path;
-        if (path != null) {
-          items.add(PickedMedia(File(path), identifier: pf.identifier));
+        File? file;
+        if (path != null && await File(path).exists()) {
+          file = File(path);
+        } else if (useStreamFallback) {
+          file = await _materializePick(pf);
+        }
+        if (file != null) {
+          items.add(PickedMedia(file, identifier: pf.identifier));
         }
       }
-      if (items.isEmpty) return;
+      if (items.isEmpty) {
+        if (!mounted) return;
+        FlushBarHelper.flushBarErrorMessage(
+          'Couldn\'t read the selected files. Try again, or pick them from '
+          'on-device storage.',
+          context,
+        );
+        return;
+      }
 
       if (!mounted) return;
-      setState(() {
-        _importing = true;
-        _importDone = 0;
-        _importTotal = items.length;
-      });
+      _progress.value = (0, items.length);
+      setState(() => _importing = true);
 
       final import = await MediaImporter.instance.importFiles(
         items: items,
         category: category,
-        onProgress: (done, total) {
-          if (!mounted) return;
-          setState(() {
-            _importDone = done;
-            _importTotal = total;
-          });
-        },
+        // Update the notifier only — rebuilds just the progress banner, not the
+        // whole sheet, so the import doesn't stutter the UI.
+        onProgress: (done, total) => _progress.value = (done, total),
       );
 
       if (!mounted) return;
@@ -206,6 +237,28 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       if (!mounted) return;
       setState(() => _importing = false);
       FlushBarHelper.flushBarErrorMessage('Import failed: $e', context);
+    } finally {
+      SessionManager.instance.endTrustedInteraction();
+    }
+  }
+
+  /// Writes a picked file that has no direct path (e.g. a SAF / content-URI
+  /// item from Smart Import) to a temp file so it can be encrypted like any
+  /// other import. Returns null if the pick can't be read.
+  Future<File?> _materializePick(PlatformFile pf) async {
+    final stream = pf.readStream;
+    if (stream == null) return null;
+    try {
+      final dir = await getTemporaryDirectory();
+      final stamp = DateTime.now().microsecondsSinceEpoch;
+      final name = pf.name.isNotEmpty ? pf.name : 'pick_$stamp';
+      final tmp = File(p.join(dir.path, 'pick_${stamp}_$name'));
+      final sink = tmp.openWrite();
+      await sink.addStream(stream);
+      await sink.close();
+      return tmp;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -795,55 +848,63 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
   }
 
   Widget _importingBanner() {
-    final progress = _importTotal == 0 ? 0.0 : _importDone / _importTotal;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      decoration: BoxDecoration(
-        color: LiquidColors.accentBlue.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return ValueListenableBuilder<(int, int)>(
+      valueListenable: _progress,
+      builder: (context, value, _) {
+        final done = value.$1;
+        final total = value.$2;
+        final progress = total == 0 ? 0.0 : done / total;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 18),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          decoration: BoxDecoration(
+            color: LiquidColors.accentBlue.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: LiquidColors.accentBlue.withValues(alpha: 0.25),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: LiquidColors.accentBlue,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'Encrypting $_importDone of $_importTotal…',
-                  style: TextStyle(
-                    color: LiquidColors.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+              Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: LiquidColors.accentBlue,
+                    ),
                   ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Encrypting $done of $total…',
+                      style: TextStyle(
+                        color: LiquidColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  minHeight: 5,
+                  value: progress,
+                  backgroundColor:
+                      LiquidColors.textPrimary.withValues(alpha: 0.06),
+                  valueColor: AlwaysStoppedAnimation(LiquidColors.accentBlue),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              minHeight: 5,
-              value: progress,
-              backgroundColor: LiquidColors.textPrimary.withValues(alpha: 0.06),
-              valueColor: AlwaysStoppedAnimation(LiquidColors.accentBlue),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

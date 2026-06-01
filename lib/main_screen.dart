@@ -67,7 +67,11 @@ class _MainScreenState extends State<MainScreen>
   void _startInactivityTimer() {
     _inactivityTimer?.cancel();
     _inactivityTimer = Timer.periodic(const Duration(seconds: 15), (_) async {
-      if (!mounted || _isShowingLockScreen) return;
+      if (!mounted ||
+          _isShowingLockScreen ||
+          SessionManager.instance.inTrustedInteraction) {
+        return;
+      }
       if (await SessionManager.instance.hasInactivityElapsed()) {
         _showLockScreen();
       }
@@ -111,6 +115,14 @@ class _MainScreenState extends State<MainScreen>
 
   Future<void> _onResumed() async {
     if (_isShowingLockScreen) return;
+
+    // We backgrounded for an in-app picker / OS biometric prompt, not because
+    // the user left — treat it as a trusted round-trip and don't auto-lock.
+    if (SessionManager.instance.inTrustedInteraction) {
+      _wasPaused = false;
+      SessionManager.instance.markActive();
+      return;
+    }
 
     final prefs = await SharedPreferences.getInstance();
     final lockEnabled = (prefs.getBool('appLock') ?? false) ||

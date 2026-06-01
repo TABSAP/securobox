@@ -48,20 +48,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   final List<String> _newPin = [];
   bool _confirmPinMode = false;
   final List<String> _confirmPin = [];
-  // `_pinLength` is the CURRENT PIN's length (used to verify the old PIN).
-  // `_newPinLength` is the length the new PIN is being set to — only persisted
-  // once the new PIN is actually saved, so a cancelled change never desyncs the
-  // stored hash from the recorded length.
+  
   int _pinLength = PinCrypto.defaultPinLength;
   int _newPinLength = PinCrypto.defaultPinLength;
-  // True while the in-flow "pick a new length" step is on screen (shown after
-  // the current PIN is verified, before the new PIN is entered).
+
   bool _choosingLength = false;
-  // True when the active change flow is a *length* change (so it inserts the
-  // length-selection step); false for a plain same-length PIN change.
+
   bool _lengthSelectionFlow = false;
-  // Anchors the in-flow PIN UI so it can be scrolled into view when a change
-  // flow starts (the trigger and the keypad are otherwise far apart).
+
   final GlobalKey _pinFlowKey = GlobalKey();
 
   final LocalAuthentication _localAuth = LocalAuthentication();
@@ -78,10 +72,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   @override
   void initState() {
     super.initState();
-    // Seed from the session cache so the PIN-length UI renders the correct
-    // number of fields on the first frame — staying consistent even if the
-    // widget was just rebuilt after a disguise (app icon / name) switch. The
-    // async _loadSecuritySettings() below confirms it from disk.
+ 
     _pinLength = PinCrypto.instance.cachedPinLength;
     _newPinLength = _pinLength;
     _initAnimations();
@@ -113,23 +104,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     _animationController.forward();
   }
 
-  /// Loads the current state of every security toggle.
-  ///
-  /// Reloads (after a setting changes) must be cheap and jank-free, so they:
-  ///  • skip the one-time legacy-biometric migration (a platform call),
-  ///  • read the disguise from its in-memory cache instead of a native
-  ///    PackageManager round-trip, and
-  ///  • don't flash the app-bar spinner.
-  /// Only the [initial] load (from initState) does the migration, syncs the
-  /// disguise from the OS, and shows the loading indicator.
   Future<void> _loadSecuritySettings({bool initial = false}) async {
     if (initial) setState(() => _isLoading = true);
     try {
       final prefs = await SharedPreferences.getInstance();
       if (initial) {
-        // Migrate the legacy single 'biometric' flag to the Face Unlock flag on
-        // devices whose only biometric is face recognition (e.g. Face ID
-        // iPhones). One-time — no need to repeat on every reload.
+       
         try {
           final avail = await _localAuth.getAvailableBiometrics();
           if ((prefs.getBool('biometric') ?? false) &&
@@ -139,12 +119,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             await prefs.setBool('biometric', false);
           }
         } catch (_) {}
-        // Sync the cached disguise key from the OS once; reloads use the cache.
+      
         await DisguiseService.instance.load();
       }
 
-      // Independent reads — kick them off together and await as a batch instead
-      // of serially, so a reload is one I/O round-trip rather than seven.
+
       final pinLenF = PinCrypto.instance.getPinLength();
       final intrusionEnabledF = IntrusionService.instance.isEnabled();
       final intrusionCountF = IntrusionService.instance.count();
@@ -195,9 +174,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   Future<void> _checkBiometricCapability() async {
     try {
-      // canCheckBiometrics / isDeviceSupported are the reliable signals;
-      // getAvailableBiometrics() comes back empty on many Android devices even
-      // when a fingerprint / face is actually enrolled — don't gate on it.
+   
       final bool canCheck = await _localAuth.canCheckBiometrics;
       final bool supported = await _localAuth.isDeviceSupported();
       List<BiometricType> availableBiometrics = const <BiometricType>[];
@@ -214,8 +191,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             _biometricEnabled = false;
             _saveSetting('biometric', false);
           }
-          // Only force-disable Face Unlock if the OS explicitly says no face is
-          // enrolled (it listed other biometrics but not face).
+      
           if (availableBiometrics.isNotEmpty &&
               !availableBiometrics.contains(BiometricType.face) &&
               _faceUnlockEnabled) {
@@ -239,16 +215,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool get _fingerprintAvailable =>
       _availableBiometrics.contains(BiometricType.fingerprint);
 
-  /// Names of the three protections that share the "at least one must stay
-  /// enabled" invariant.
+
   static const Set<String> _lockSettings = {
     'appLock',
     'biometric',
     'biometric_face',
   };
 
-  /// Returns true if disabling [setting] right now would leave the user with
-  /// no lock layers — used to refuse the toggle and keep the vault protected.
   bool _wouldDisableAllLocks(String setting) {
     if (!_lockSettings.contains(setting)) return false;
     final remaining = <String, bool>{
@@ -274,9 +247,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   Future<void> _toggleSetting(String setting, bool value) async {
-    // Enforce: at least one of App Lock / Biometric / Face Unlock must stay
-    // enabled. Block the toggle BEFORE biometric verification so the user
-    // doesn't authenticate just to be told the request is refused.
+
     if (!value && _wouldDisableAllLocks(setting)) {
       HapticFeedback.heavyImpact();
       FlushBarHelper.flushBarWarningMessage(
@@ -287,43 +258,31 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       return;
     }
 
-    // Handle biometric enable
+
     if (setting == 'biometric' && value) {
       await _testAndEnableBiometric();
       return;
     }
-
-    // 🔒 Handle biometric disable - require fingerprint/face verification
     if (setting == 'biometric' && !value) {
       await _verifyBiometricBeforeDisable('biometric');
       return;
     }
-
-    // Handle face-unlock enable
     if (setting == 'biometric_face' && value) {
       await _testAndEnableBiometric(prefKey: 'biometric_face');
       return;
     }
-
-    // 🔒 Handle face-unlock disable - require biometric verification
     if (setting == 'biometric_face' && !value) {
       await _verifyBiometricBeforeDisable('biometric_face');
       return;
     }
-
-    // 🔒 Handle app lock disable - require fingerprint/face verification
     if (setting == 'appLock' && !value) {
       await _verifyBiometricBeforeDisable('appLock');
       return;
     }
-
-    // 🔒 Handle video lock disable - require fingerprint/face verification
     if (setting == 'videoLock' && !value) {
       await _verifyBiometricBeforeDisable('videoLock');
       return;
     }
-
-    // Handle app lock enable
     if (setting == 'appLock' && value) {
       final hasPin = await PinCrypto.instance.hasPin();
       if (!hasPin) {
@@ -338,10 +297,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         return;
       }
     }
-
-    // For enabling other settings (no verification needed). Update just the
-    // affected flag instead of reloading every security setting — flipping one
-    // toggle shouldn't re-read biometrics, secure storage and the disguise.
     try {
       await _saveSetting(setting, value);
       if (!mounted) return;
@@ -370,10 +325,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       FlushBarHelper.flushBarErrorMessage('Failed to update setting', context);
     }
   }
-
-  // ============ ADD THIS NEW METHOD ============
-
-  /// Requires biometric/fingerprint verification before disabling security features
   Future<void> _verifyBiometricBeforeDisable(String setting) async {
     // Get setting name for display
     final settingName = setting == 'appLock'
@@ -399,8 +350,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         : setting == 'videoLock'
         ? [LiquidColors.success, LiquidColors.accentBlue]
         : [LiquidColors.accentPurple, LiquidColors.accentPink];
-
-    // Show confirmation dialog first
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -574,6 +523,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     setState(() => _isLoading = true);
     bool verified = false;
     if (_biometricAvailable) {
+      SessionManager.instance.beginTrustedInteraction();
       try {
         verified = await _localAuth.authenticate(
           localizedReason: 'Verify your identity to disable $settingName',
@@ -585,6 +535,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         // Sensor unavailable / user cancelled / lockout — fall through to PIN.
       } catch (_) {
         // Defensive: any other failure → PIN fallback.
+      } finally {
+        SessionManager.instance.endTrustedInteraction();
       }
     }
     if (!mounted) return;
@@ -719,13 +671,20 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
-  Future<bool> _authenticateOnce(String reason) {
-    return _localAuth.authenticate(
-      localizedReason: reason,
-      biometricOnly: true,
-      sensitiveTransaction: true,
-      persistAcrossBackgrounding: true,
-    );
+  Future<bool> _authenticateOnce(String reason) async {
+    // OS biometric prompt round-trips through the background — flag it trusted
+    // so resume doesn't auto-lock on top of it.
+    SessionManager.instance.beginTrustedInteraction();
+    try {
+      return await _localAuth.authenticate(
+        localizedReason: reason,
+        biometricOnly: true,
+        sensitiveTransaction: true,
+        persistAcrossBackgrounding: true,
+      );
+    } finally {
+      SessionManager.instance.endTrustedInteraction();
+    }
   }
 
   bool _isTransientAuthCode(LocalAuthExceptionCode code) =>
@@ -2950,6 +2909,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     // are unavailable, cancelled or fail.
     bool verified = false;
     if (_biometricAvailable) {
+      SessionManager.instance.beginTrustedInteraction();
       try {
         verified = await _localAuth.authenticate(
           localizedReason: 'Verify your identity to turn off Face Unlock',
@@ -2961,6 +2921,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         // Sensor unavailable / cancelled / lockout — fall through to PIN.
       } catch (_) {
         // Defensive: any other failure → PIN fallback.
+      } finally {
+        SessionManager.instance.endTrustedInteraction();
       }
     }
     if (!mounted) return;
@@ -4196,9 +4158,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       ),
     );
   }
-
-  /// Entry point for changing the PIN length: shows the current length and a
-  /// "Change" button that kicks off verify → pick length → set new PIN.
   Widget _buildPinLengthControl() {
     return Row(
       children: [
@@ -4270,7 +4229,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     final hasPin = await PinCrypto.instance.hasPin();
     if (!mounted) return;
     if (!hasPin) {
-      // No PIN to verify against — send the user to set one first.
       FlushBarHelper.flushBarWarningMessage(
         'Set a PIN first, then you can change its length.',
         context,
@@ -4280,9 +4238,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
     _startPinLengthChange();
   }
-
-  /// In-flow length picker shown after the current PIN is verified. Styled to
-  /// match [LiquidPinInput] so the flow feels like one continuous card.
   Widget _buildPinLengthSelector() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -4373,7 +4328,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         ),
         child: Column(
           children: [
-            // Visual preview of the dot count.
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
@@ -4414,11 +4368,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   Widget _buildSecurityHeroCard() {
-    // Six binary protections the user can toggle. The hero gives an at-a-
-    // glance "how covered am I right now?" plus a friendly nudge when gaps
-    // exist — much more meaningful than scrolling through 12 cards to count.
-    // Each protection carries the action that sets it up, so its
-    // "Suggested next steps" chip can take the user straight there.
     final protections = <_Protection>[
       _Protection(
         'App Lock',
@@ -4430,8 +4379,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _biometricEnabled,
         () => _toggleSetting('biometric', true),
       ),
-      // "Face Unlock" is satisfied by either the OS face biometric or the
-      // in-app face recognition — setting up either route counts.
+    
       _Protection(
         'Face Unlock',
         _faceUnlockEnabled || _faceRecogEnrolled,

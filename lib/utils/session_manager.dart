@@ -30,6 +30,18 @@ class SessionManager {
   final ValueNotifier<bool> shouldLock = ValueNotifier<bool>(false);
   final ValueNotifier<bool> showPrivacyShield = ValueNotifier<bool>(false);
 
+  // Tracks in-app operations that legitimately background the app — the OS file
+  // picker, gallery picker, or a system biometric prompt. While one is active,
+  // the app must NOT auto-lock on resume (otherwise picking a file or verifying
+  // biometrics pushes the lock screen on top mid-flow and gets stuck). A depth
+  // counter handles overlapping/nested interactions safely.
+  int _trustedDepth = 0;
+  bool get inTrustedInteraction => _trustedDepth > 0;
+  void beginTrustedInteraction() => _trustedDepth++;
+  void endTrustedInteraction() {
+    if (_trustedDepth > 0) _trustedDepth--;
+  }
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _autoLockSeconds = prefs.getInt(_kAutoLockSeconds) ?? 60;
