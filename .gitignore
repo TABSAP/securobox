@@ -54,3 +54,6 @@ app.*.map.json
 # Local AI/IDE assistant settings — never commit
 
 
+
+# Generated PDFs (regenerate with docs/md-to-pdf.sh)
+docs/pdf/
