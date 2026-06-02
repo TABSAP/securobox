@@ -249,25 +249,13 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   Widget _buildActions(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _iconButton(
-          icon: _locked ? Icons.lock_open_rounded : Icons.lock_rounded,
-          color: _locked ? LiquidColors.warning : LiquidColors.textSecondary,
-          onTap: widget.onLockTap,
-          tooltip: _locked ? 'Unlock' : 'Lock',
-        ),
-        const SizedBox(height: 8),
-        _iconButton(
-          icon: Icons.more_vert_rounded,
-          color: _locked
-              ? LiquidColors.textTertiary
-              : LiquidColors.textSecondary,
-          onTap: _locked ? null : () => _showActionMenu(context),
-          tooltip: 'More',
-        ),
-      ],
+    // Per-item lock removed: the whole vault is already gated by the app lock
+    // and AES encryption, so a second per-file lock was redundant.
+    return _iconButton(
+      icon: Icons.more_vert_rounded,
+      color: LiquidColors.textSecondary,
+      onTap: () => _showActionMenu(context),
+      tooltip: 'More',
     );
   }
 

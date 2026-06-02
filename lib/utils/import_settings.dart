@@ -14,9 +14,11 @@ class ImportSettings {
 
   Future<bool> deleteOriginalsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    // Off by default: an import never triggers Android's "Allow … to delete?"
-    // system prompt unless the user explicitly opts in from Settings.
-    return prefs.getBool(_kDeleteOriginalsKey) ?? false;
+    // On by default: importing a file moves it into the vault (Secure Folder
+    // style) — the encrypted copy is kept and the gallery original is removed.
+    // Android still shows its own "Allow … to remove?" confirmation; the user
+    // can turn this off in Settings to keep originals in the gallery.
+    return prefs.getBool(_kDeleteOriginalsKey) ?? true;
   }
 
   Future<void> setDeleteOriginalsEnabled(bool value) async {
