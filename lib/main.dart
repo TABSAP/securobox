@@ -36,9 +36,20 @@ void main() async {
   // confirm / unlock hashes instantly instead of paying isolate-spawn latency.
   prewarmPbkdf2();
 
-  // Warm the local_auth platform channel so the first-ever biometric prompt
-  // isn't slowed by a cold channel + capability query.
-  unawaited(LocalAuthentication().isDeviceSupported());
+  // Warm the local_auth platform channel AND the capability queries the lock /
+  // onboarding screens run before they show the prompt (isDeviceSupported,
+  // canCheckBiometrics, getAvailableBiometrics) so the first-ever biometric
+  // prompt isn't slowed by cold lookups. The OS still pays a one-time cost to
+  // spin up the biometric hardware on the very first prompt — that part is
+  // unavoidable from app code.
+  unawaited(() async {
+    try {
+      final auth = LocalAuthentication();
+      await auth.isDeviceSupported();
+      await auth.canCheckBiometrics;
+      await auth.getAvailableBiometrics();
+    } catch (_) {}
+  }());
 
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
 

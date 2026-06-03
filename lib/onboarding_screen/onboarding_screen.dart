@@ -36,6 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   int _pinLength = 4;
   String? _error;
   bool _biometricAvailable = false;
+  bool _enablingBiometric = false;
 
   late AnimationController _ctrl;
   late Animation<double> _fade;
@@ -227,6 +228,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _enableBiometric() async {
+    if (_enablingBiometric) return;
+    setState(() => _enablingBiometric = true);
     try {
       final ok = await _localAuth.authenticate(
         localizedReason: 'Enable biometric unlock for SecuroBox',
@@ -827,20 +830,29 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _enableBiometric,
+              onPressed: _enablingBiometric ? null : _enableBiometric,
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 backgroundColor: LiquidColors.accentPurple,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: Text('Enable Biometric',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+              child: _enablingBiometric
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text('Enable Biometric',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             ),
           ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: _skipBiometric,
+            onPressed: _enablingBiometric ? null : _skipBiometric,
             child: Text('Maybe later', style: TextStyle(color: LiquidColors.textSecondary, fontSize: 14)),
           ),
           const SizedBox(height: 16),
