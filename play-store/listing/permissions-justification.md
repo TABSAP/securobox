@@ -12,4 +12,8 @@ READ_EXTERNAL_STORAGE (maxSdkVersion 32) — Legacy storage permission only decl
 WRITE_EXTERNAL_STORAGE (maxSdkVersion 29) — Legacy storage permission only declared for Android 9 and earlier.
 
 USE_BIOMETRIC / USE_FINGERPRINT — Used solely to unlock the app when the user opts into biometric app lock. Authentication is performed locally by the OS BiometricPrompt API; the biometric data never leaves the device and is never seen by the app.
+
+CAMERA — Used for the in-app Secure Capture camera (the user takes photos or records videos that are encrypted directly into the private vault) and, only when the user enables them, optional break-in detection (a silent photo on a wrong PIN) and Face Unlock. All captures stay on-device inside the encrypted vault and are never transmitted.
+
+RECORD_AUDIO — Records audio only while the user films a video with the in-app Secure Capture camera. The audio is stored inside the encrypted vault and is never transmitted. (This permission is merged into the app by the CameraX library.)
 ```

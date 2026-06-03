@@ -30,12 +30,11 @@ This form is mandatory and Google checks it against your code. Answer accurately
 
 ## Privacy Policy URL
 
-You **must** provide a public URL. The text is in `play-store/privacy-policy.md`. Suggested hosts (free):
+You **must** provide a public URL. It is already hosted via GitHub Pages:
 
-- **GitHub Pages**: create a repo `secure-player-privacy`, add `index.md` with the policy, enable Pages → URL is `https://farhatullah777.github.io/secure-player-privacy/`
-- **Notion**: paste into a public Notion page, share publicly → URL is the share link
-- **Google Sites**: free, no setup
-- Your own domain if you have one
+**`https://tabsap.github.io/securobox/play-store/privacy-policy.html`**
+
+(Source: `play-store/privacy-policy.html`, served from the repo's GitHub Pages. Edit that file and push to update the live policy.)
 
 Test the URL in an incognito window before pasting it into Play Console.
 
@@ -50,3 +49,5 @@ Test the URL in an incognito window before pasting it into Play Console.
 | `READ_EXTERNAL_STORAGE` (max SDK 32) | File picker on Android 12 and below | "Legacy storage permission, only declared for Android 12 and earlier — replaced by READ_MEDIA_* on 13+" |
 | `WRITE_EXTERNAL_STORAGE` (max SDK 29) | File picker on Android 9 and below | "Legacy storage permission, only declared for Android 9 and earlier" |
 | `USE_BIOMETRIC` / `USE_FINGERPRINT` | App lock | "User-initiated biometric authentication for the in-app vault — never sent off-device" |
+| `CAMERA` | Secure Capture, break-in, Face Unlock | "Used for the in-app Secure Capture camera (photos/videos saved directly into the encrypted vault) and, when the user enables them, break-in detection and Face Unlock. Captures stay on-device in the vault and are never transmitted" |
+| `RECORD_AUDIO` | Audio for in-app video capture | "Records audio only while the user films a video with the in-app Secure Capture camera. Audio is stored inside the encrypted vault and never transmitted. (Merged in by the CameraX library.)" |

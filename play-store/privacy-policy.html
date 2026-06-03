@@ -98,7 +98,8 @@
   <p>SecuroBox is a 100% offline application. We do not collect, store, transmit, sell, or share any personal data. This privacy policy exists because the Google Play Store requires every app to publish one, even when the app collects nothing.</p>
 
   <h2>What data the app handles</h2>
-  <p>The app handles only the files <strong>you choose to import</strong> into the in-app vault. These files are AES-256-CTR encrypted on your device and stored in the app's private sandbox. They never leave your device.</p>
+  <p>The app handles only the files <strong>you choose to import</strong> into the in-app vault, plus any photos or videos you capture with the in-app Secure Capture camera. These files are AES-256-CTR encrypted on your device and stored in the app's private sandbox. They never leave your device.</p>
+  <p>When you import a photo or video, by default the app <strong>moves</strong> it into the vault: the file is encrypted into the vault and its original is removed from your device gallery (your device shows a confirmation before anything is removed). You can turn this off in Settings to keep the gallery copy, and you can move a file back out at any time with <strong>Save to gallery</strong>.</p>
   <p>Specifically, the app does <strong>not</strong>:</p>
   <ul>
     <li>send any data to any server we control or to any third party</li>
@@ -133,23 +134,29 @@
       </tr>
       <tr>
         <td>Camera</td>
-        <td>Optional and opt-in — used only if you enable Break-in Detection (silent photo capture on wrong PIN) or Face Unlock. Photos and face embeddings are encrypted and stored only inside the vault, never transmitted.</td>
+        <td>Used by the in-app Secure Capture camera (take photos or record videos directly into your vault) and, only if you turn them on, Break-in Detection (a silent photo on a wrong PIN) and Face Unlock. Every capture is encrypted into the vault and never transmitted.</td>
+      </tr>
+      <tr>
+        <td>Microphone</td>
+        <td>Optional — only to record sound while you film a video with the in-app Secure Capture camera. The audio stays inside the encrypted vault and is never transmitted.</td>
       </tr>
     </tbody>
   </table>
-  <p>The app does <strong>not</strong> request: microphone, location, contacts, SMS, phone, calendar, or notifications.</p>
+  <p>The app does <strong>not</strong> request: location, contacts, SMS, phone, calendar, or notifications.</p>
 
   <h2>Where your data lives</h2>
   <ul>
     <li><strong>Files you import</strong>: AES-256-CTR encrypted with a per-device master key, stored in the app's private application documents directory. Filenames on disk are random UUIDs.</li>
     <li><strong>PIN</strong>: hashed with PBKDF2-HMAC-SHA256 (100,000 iterations) using a 16-byte random salt. The hash and salt are stored in OS-backed secure storage — Android EncryptedSharedPreferences (Keystore-backed) and iOS Keychain. The PIN itself is never persisted.</li>
     <li><strong>Master encryption key</strong>: 32 random bytes generated on first launch, stored in the same OS-backed secure storage.</li>
-    <li><strong>Break-in / Face Unlock data</strong>: encrypted with the same master key and stored under <code>vault/intrusions/</code> in the app's private sandbox.</li>
+    <li><strong>Break-in photos</strong>: encrypted with the same master key and stored under <code>vault/intrusions/</code> in the app's private sandbox.</li>
+    <li><strong>Face Unlock data</strong>: a numeric geometric face signature (not a photo), stored in OS-backed secure storage. No face image is kept.</li>
+    <li><strong>Recovery email (optional)</strong>: if you turn on PIN recovery, the email address you enter and a salted PBKDF2 hash of your one-time recovery code are stored in OS-backed secure storage. They are never transmitted — there is no server.</li>
   </ul>
   <p>When you uninstall the app, the operating system automatically deletes all of its private storage, removing every file you imported and every key.</p>
 
   <h2>Face Unlock and ML Kit</h2>
-  <p>If you choose to enable Face Unlock, SecuroBox uses Google ML Kit's on-device face detection model to compute a numeric face embedding (not a photo). The embedding is hashed and stored in OS-backed secure storage. No image, embedding, or any other face data is ever transmitted off your device.</p>
+  <p>If you choose to enable Face Unlock, SecuroBox uses Google ML Kit's on-device face detection model to compute a numeric geometric face signature (not a photo). That signature is stored in OS-backed secure storage (Android Keystore-backed storage / iOS Keychain). No image or any other face data is ever transmitted off your device.</p>
 
   <h2>Children's privacy</h2>
   <p>The app is not directed at children under 13. It does not knowingly collect any data from anyone, regardless of age.</p>

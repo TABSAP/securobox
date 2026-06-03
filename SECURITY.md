@@ -45,13 +45,18 @@ Out of scope:
 | App Switcher / multitasking snapshot leakage | Native UIView privacy shield on iOS attached during `applicationWillResignActive`; Flutter overlay on inactive/paused/hidden lifecycle states; `FLAG_SECURE` (via `flutter_screenshot_blocker`) on Android |
 | Timing attack on PIN compare | Constant-time XOR-OR comparison of hash bytes |
 | Remote exfiltration while the device is online | **Offline Integrity Lock** (opt-in, off by default). Continuously monitors the device's network interfaces; the instant any Wi-Fi / mobile / ethernet / VPN path is detected, the in-memory encryption session is revoked, the decrypted temp cache is wiped, and the vault locks. While enabled, no credential opens the vault until the device is fully offline (Airplane Mode). All local — no server, no reachability probe |
+| Intruder guessing the PIN | After repeated wrong PINs (the 3rd attempt, then every escalation point — 6th, 9th, …) a silent front-camera photo is captured and encrypted into the vault under `vault/intrusions/`. It is never written to the device gallery and never transmitted |
+| Coerced / forced unlock (duress) | Optional **decoy PIN** opens a completely separate, isolated fake vault with its own master key and storage; entering it silently records a duress event. The real vault remains hidden and inaccessible |
+| Plaintext left by the in-app camera | Photos/videos from **Secure Capture** are encrypted straight into the vault. A capture still awaiting Save/Discard is wiped if the app is backgrounded, so no unencrypted capture lingers in the cache |
+| Face Unlock weaknesses | Face Unlock is optional and stores a numeric **geometric face signature** (not an image) in OS-backed secure storage. It is explicitly weaker than the PIN (a look-alike or photo may fool it), so the PIN always works as a fallback and Face Unlock is disabled during the wrong-PIN cooldown |
+| Keystore read error wiping secrets | Secure storage uses `resetOnError: false`, so a transient Keystore failure surfaces as an error instead of silently erasing the PIN hash and master key |
 
 ## Threat model — what we do NOT promise
 
 - We do not protect against an adversary with **persistent root / jailbreak access** — they can read process memory, install hooks, and bypass any in-app crypto. iOS file-protection class helps only until first unlock after boot.
 - We do not protect against **OS-level keylogger malware**.
 - We do not protect against **shoulder-surfing** beyond enabling biometric.
-- We do not have **forgot-PIN recovery**. By design. Lose your PIN → lose your vault. There is no email reset, no security questions, no master key escrow.
+- **PIN recovery is optional and off by default.** If you never set it up, there is no recovery — lose your PIN, lose your vault (no security questions, no master-key escrow). If you opt in, you provide a recovery email and a one-time recovery code (shown once); we store the email plus a *salted PBKDF2-HMAC-SHA256 (100k)* hash of the code in OS-backed secure storage — never on any server. Supplying the matching email + code lets you set a new PIN. Enabling recovery is a deliberate convenience trade-off: it adds an alternate credential to the vault, so only turn it on if you accept that.
 - We are **not** a chat / messaging app — there are no end-to-end transport guarantees beyond HTTPS for the optional URL download feature.
 - The **Offline Integrity Lock** narrows the window in which decrypted content is reachable, but it is *not* a substitute for the root/jailbreak caveat above. It keys off the OS-reported network interface state (`connectivity_plus`), not true internet reachability, and it does not regenerate the at-rest AES master key — re-authentication re-derives a fresh *in-memory* session from the existing key (rotating the at-rest key would orphan every already-encrypted file).
 

@@ -9,7 +9,9 @@ SecuroBox is a 100% offline application. We do not collect, store, transmit, sel
 
 ## What data the app handles
 
-The app handles only the files **you choose to import** into the in-app vault. These files are AES-256-CTR encrypted on your device and stored in the app's private sandbox. They never leave your device.
+The app handles only the files **you choose to import** into the in-app vault, plus any photos or videos you capture with the in-app Secure Capture camera. These files are AES-256-CTR encrypted on your device and stored in the app's private sandbox. They never leave your device.
+
+When you import a photo or video, by default the app **moves** it into the vault: the file is encrypted into the vault and its original is removed from your device gallery (your device shows a confirmation before anything is removed). You can turn this off in Settings to keep the gallery copy, and you can move a file back out at any time with **Save to gallery**.
 
 Specifically, the app does **not**:
 
@@ -28,22 +30,25 @@ Specifically, the app does **not**:
 | Photos / Videos / Audio (READ_MEDIA_*) | To let you import existing media from your device into the vault |
 | Storage (Android 12 and below) | Same as above, on older Android versions |
 | Biometric / Fingerprint | To let you unlock the vault with fingerprint or face, processed locally by the OS — never seen by the app |
-| Camera | Optional and opt-in — used only if you enable Break-in Detection (silent photo capture on wrong PIN) or Face Unlock. Photos and face embeddings are encrypted and stored only inside the vault, never transmitted |
+| Camera | Used by the in-app Secure Capture camera (take photos or record videos directly into your vault) and, only if you turn them on, Break-in Detection (a silent photo on a wrong PIN) and Face Unlock. Every capture is encrypted into the vault and never transmitted |
+| Microphone | Optional — only to record sound while you film a video with the in-app Secure Capture camera. The audio stays inside the encrypted vault and is never transmitted |
 
-The app does **not** request: microphone, location, contacts, SMS, phone, calendar, or notifications.
+The app does **not** request: location, contacts, SMS, phone, calendar, or notifications.
 
 ## Where your data lives
 
 - **Files you import**: AES-256-CTR encrypted with a per-device master key, stored in the app's private application documents directory. Filenames on disk are random UUIDs.
 - **PIN**: hashed with PBKDF2-HMAC-SHA256 (100,000 iterations) using a 16-byte random salt. The hash and salt are stored in OS-backed secure storage — Android EncryptedSharedPreferences (Keystore-backed) and iOS Keychain. The PIN itself is never persisted.
 - **Master encryption key**: 32 random bytes generated on first launch, stored in the same OS-backed secure storage.
-- **Break-in / Face Unlock data**: encrypted with the same master key and stored under `vault/intrusions/` in the app's private sandbox.
+- **Break-in photos**: encrypted with the same master key and stored under `vault/intrusions/` in the app's private sandbox.
+- **Face Unlock data**: a numeric geometric face signature (not a photo), stored in OS-backed secure storage. No face image is kept.
+- **Recovery email (optional)**: if you turn on PIN recovery, the email address you enter and a salted PBKDF2 hash of your one-time recovery code are stored in OS-backed secure storage. They are never transmitted — there is no server.
 
 When you uninstall the app, the operating system automatically deletes all of its private storage, removing every file you imported and every key.
 
 ## Face Unlock and ML Kit
 
-If you choose to enable Face Unlock, SecuroBox uses Google ML Kit's on-device face detection model to compute a numeric face embedding (not a photo). The embedding is hashed and stored in OS-backed secure storage. No image, embedding, or any other face data is ever transmitted off your device.
+If you choose to enable Face Unlock, SecuroBox uses Google ML Kit's on-device face detection model to compute a numeric geometric face signature (not a photo). That signature is stored in OS-backed secure storage (Android Keystore-backed storage / iOS Keychain). No image or any other face data is ever transmitted off your device.
 
 ## Children's privacy
 
