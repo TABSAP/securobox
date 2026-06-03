@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SessionManager {
@@ -13,6 +14,24 @@ class SessionManager {
   static const _kBioCooldownUntil = 'bioCooldownUntil';
   static const bioCooldownThreshold = 3;
   static const _bioCooldownSeconds = 60;
+
+  // Lockout state (attempt counts + cooldown deadlines) lives in OS-backed
+  // secure storage, not SharedPreferences, so clearing the app's data cannot
+  // reset the wrong-PIN/biometric escalation. Because the COUNT persists, even
+  // moving the device clock forward to expire a deadline can't drop the
+  // escalation level — the next wrong attempt re-triggers it. resetOnError:false
+  // so a transient Keystore error never silently clears the lockout.
+  static const _secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(resetOnError: false),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+  );
+
+  Future<int> _secureInt(String key) async {
+    final v = await _secure.read(key: key);
+    return v == null ? 0 : (int.tryParse(v) ?? 0);
+  }
 
   static const Map<int, String> autoLockOptions = {
     0: 'Immediately',
@@ -84,9 +103,8 @@ class SessionManager {
   }
 
   Future<int> recordFailedAttempt() async {
-    final prefs = await SharedPreferences.getInstance();
-    final n = (prefs.getInt(_kFailedAttempts) ?? 0) + 1;
-    await prefs.setInt(_kFailedAttempts, n);
+    final n = (await _secureInt(_kFailedAttempts)) + 1;
+    await _secure.write(key: _kFailedAttempts, value: '$n');
 
     int cooldownSeconds = 0;
     if (n >= 12) {
@@ -103,66 +121,59 @@ class SessionManager {
       final until = DateTime.now()
           .add(Duration(seconds: cooldownSeconds))
           .millisecondsSinceEpoch;
-      await prefs.setInt(_kCooldownUntil, until);
+      await _secure.write(key: _kCooldownUntil, value: '$until');
     }
     return n;
   }
 
   Future<void> resetFailedAttempts() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kFailedAttempts);
-    await prefs.remove(_kCooldownUntil);
+    await _secure.delete(key: _kFailedAttempts);
+    await _secure.delete(key: _kCooldownUntil);
   }
 
-  Future<int> getFailedAttempts() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kFailedAttempts) ?? 0;
-  }
+  Future<int> getFailedAttempts() async => _secureInt(_kFailedAttempts);
 
   Future<Duration?> getCooldownRemaining() async {
-    final prefs = await SharedPreferences.getInstance();
-    final until = prefs.getInt(_kCooldownUntil);
+    final v = await _secure.read(key: _kCooldownUntil);
+    if (v == null) return null;
+    final until = int.tryParse(v);
     if (until == null) return null;
     final remainingMs = until - DateTime.now().millisecondsSinceEpoch;
     if (remainingMs <= 0) {
-      await prefs.remove(_kCooldownUntil);
+      await _secure.delete(key: _kCooldownUntil);
       return null;
     }
     return Duration(milliseconds: remainingMs);
   }
 
   Future<int> recordFailedBiometricAttempt() async {
-    final prefs = await SharedPreferences.getInstance();
-    final n = (prefs.getInt(_kFailedBio) ?? 0) + 1;
-    await prefs.setInt(_kFailedBio, n);
+    final n = (await _secureInt(_kFailedBio)) + 1;
+    await _secure.write(key: _kFailedBio, value: '$n');
     if (n >= bioCooldownThreshold) {
       final until = DateTime.now()
           .add(const Duration(seconds: _bioCooldownSeconds))
           .millisecondsSinceEpoch;
-      await prefs.setInt(_kBioCooldownUntil, until);
+      await _secure.write(key: _kBioCooldownUntil, value: '$until');
     }
     return n;
   }
 
-  Future<int> getFailedBiometricAttempts() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_kFailedBio) ?? 0;
-  }
+  Future<int> getFailedBiometricAttempts() async => _secureInt(_kFailedBio);
 
   Future<void> resetFailedBiometricAttempts() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kFailedBio);
-    await prefs.remove(_kBioCooldownUntil);
+    await _secure.delete(key: _kFailedBio);
+    await _secure.delete(key: _kBioCooldownUntil);
   }
 
   Future<Duration?> getBiometricCooldownRemaining() async {
-    final prefs = await SharedPreferences.getInstance();
-    final until = prefs.getInt(_kBioCooldownUntil);
+    final v = await _secure.read(key: _kBioCooldownUntil);
+    if (v == null) return null;
+    final until = int.tryParse(v);
     if (until == null) return null;
     final remainingMs = until - DateTime.now().millisecondsSinceEpoch;
     if (remainingMs <= 0) {
-      await prefs.remove(_kBioCooldownUntil);
-      await prefs.remove(_kFailedBio);
+      await _secure.delete(key: _kBioCooldownUntil);
+      await _secure.delete(key: _kFailedBio);
       return null;
     }
     return Duration(milliseconds: remainingMs);

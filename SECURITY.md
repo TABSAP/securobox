@@ -36,7 +36,7 @@ Out of scope:
 | Threat | Defense |
 |---|---|
 | Casual access — someone picks up your unlocked phone | Auto-lock on background, configurable inactivity timeout, PIN + biometric |
-| Brute-force PIN from the lock screen | Escalating cooldown (3→30s, 6→1m, 9→5m, 12→15m), persistent across app kill |
+| Brute-force PIN from the lock screen | Escalating cooldown (3→30s, 6→1m, 9→5m, 12→15m). The attempt count and cooldown deadline are kept in OS-backed secure storage, so they survive an app kill **and clearing the app's data**; because the count persists, moving the device clock forward to expire a deadline cannot drop the escalation level |
 | File access via ADB / Files / iTunes | Files stored only in private app sandbox; iTunes/Finder file sharing disabled on iOS; sandbox-only on Android |
 | Cloud backup leaking data | `allowBackup=false` + `dataExtractionRules` exclude all domains on Android; iOS automatic backup excluded for vault contents via file protection class |
 | Network MITM | HTTPS-only enforced at OS level (`usesCleartextTraffic=false` + network security config on Android, ATS default on iOS) |
