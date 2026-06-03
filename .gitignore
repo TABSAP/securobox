@@ -55,5 +55,5 @@ app.*.map.json
 
 
 
-# Generated PDFs (regenerate with docs/md-to-pdf.sh)
-docs/pdf/
+# Internal team docs (QA plan, bug tracker, submission guide) — local only
+docs/
