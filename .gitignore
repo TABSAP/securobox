@@ -51,9 +51,5 @@ app.*.map.json
 *.jks
 *.keystore
 
-# Local AI/IDE assistant settings — never commit
-
-
-
-# Internal team docs (QA plan, bug tracker, submission guide) — local only
+# Internal team docs — local only
 docs/
