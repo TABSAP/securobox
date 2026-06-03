@@ -79,6 +79,17 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
       // Backgrounding tears down the camera — any in-progress recording is
       // lost, so reset the recording UI to a clean state.
       _recordTimer?.cancel();
+      // A capture awaiting review is plaintext in the cache — wipe it so an
+      // interrupted/abandoned review never leaves an unencrypted file behind.
+      if (_reviewPath != null) {
+        _wipeReviewFile(_reviewPath);
+        if (mounted) {
+          setState(() {
+            _reviewPath = null;
+            _reviewIsVideo = false;
+          });
+        }
+      }
       if (c != null) {
         if (mounted) {
           setState(() {

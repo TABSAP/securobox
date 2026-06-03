@@ -7,7 +7,6 @@ class AnimatedMediaCard extends StatefulWidget {
   final VideoItem media;
   final VoidCallback? onTap;
   final VoidCallback? onCategoryTap;
-  final VoidCallback? onLockTap;
   final VoidCallback? onDownloadTap;
   final VoidCallback? onDeleteTap;
   final VoidCallback? onRenameTap;
@@ -20,7 +19,6 @@ class AnimatedMediaCard extends StatefulWidget {
     required this.media,
     this.onTap,
     this.onCategoryTap,
-    this.onLockTap,
     this.onDownloadTap,
     this.onDeleteTap,
     this.onCategorySelected,
@@ -65,7 +63,9 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   VideoItem get _m => widget.media;
-  bool get _locked => _m.isLocked;
+  // Per-item lock retired: every item renders unlocked. The whole vault is
+  // already gated by the app lock + AES encryption.
+  bool get _locked => false;
   Color get _accent =>
       _locked ? LiquidColors.warning : LiquidColors.getMediaColor(_m.type);
 

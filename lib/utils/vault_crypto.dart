@@ -30,7 +30,7 @@ class VaultCrypto {
   static const _allTempDirNames = ['sp_decrypted', 'sp_decrypted_decoy'];
 
   static const _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(),
+    aOptions: AndroidOptions(resetOnError: false),
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),

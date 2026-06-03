@@ -31,7 +31,7 @@ class PinCrypto {
   int get cachedPinLength => _cachedPinLength;
 
   static const _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(),
+    aOptions: AndroidOptions(resetOnError: false),
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),

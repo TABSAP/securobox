@@ -642,8 +642,12 @@ class HomeScreenState extends State<HomeScreen>
               FlushBarHelper.flushBarErrorMessage('Download failed', context);
             }
           } finally {
+            // Delete only this export's decrypted temp file — not the whole
+            // cache, which would yank a file out from under an open player.
             if (decryptedToTemp) {
-              await VaultCrypto.instance.wipeTempCache();
+              try {
+                await File(savePath).delete();
+              } catch (_) {}
             }
           }
         },
@@ -664,27 +668,6 @@ class HomeScreenState extends State<HomeScreen>
     } catch (e) {
       if (!mounted) return;
       FlushBarHelper.flushBarErrorMessage('Refresh failed', context);
-    }
-  }
-
-  Future<void> _toggleMediaLock(VideoItem media) async {
-    if (media.isLocked) {
-      final authenticated = await _unlockProtectedItem(
-        reason: 'Authenticate to unlock media',
-      );
-      if (!authenticated) {
-        if (!mounted) return;
-        FlushBarHelper.flushBarErrorMessage(
-          'Verify with biometrics, Face ID or PIN to unlock',
-          context,
-        );
-        return;
-      }
-    }
-
-    final success = await _mediaService.toggleMediaLock(media);
-    if (success && mounted) {
-      await _loadMedia();
     }
   }
 
@@ -1417,7 +1400,6 @@ class HomeScreenState extends State<HomeScreen>
             onTap: () => _openMedia(media),
             onCategorySelected: (category) =>
                 _updateMediaCategory(media, category),
-            onLockTap: () => _toggleMediaLock(media),
             onDownloadTap: () => _showDownloadConfirmation(media),
             onDeleteTap: () => _deleteMedia(media),
             onRenameTap: () => _renameMedia(media),

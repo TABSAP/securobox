@@ -27,7 +27,7 @@ class FaceRecognitionService {
   static const _kLegacyKeys = ['face_template_v2', 'face_template_v1'];
 
   static const _secure = FlutterSecureStorage(
-    aOptions: AndroidOptions(),
+    aOptions: AndroidOptions(resetOnError: false),
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,
     ),

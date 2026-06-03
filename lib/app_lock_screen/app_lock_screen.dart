@@ -366,12 +366,13 @@ class _AppLockScreenState extends State<AppLockScreen>
       return;
     }
 
-    // 3. Wrong → cooldown. Capture a break-in photo only on the 3rd failed
-    //    attempt — the first two misses are usually the owner mistyping, so
-    //    capturing earlier would just photograph them.
+    // 3. Wrong → cooldown. Capture a break-in photo from the 3rd failed attempt
+    //    onward, then again at each further escalation point (3, 6, 9, …) so a
+    //    persistent intruder is photographed repeatedly. The first two misses
+    //    are skipped — usually the owner mistyping.
     HapticFeedback.heavyImpact();
     final failedAttempts = await SessionManager.instance.recordFailedAttempt();
-    if (failedAttempts == 3) {
+    if (failedAttempts >= 3 && failedAttempts % 3 == 0) {
       unawaited(IntrusionService.instance.captureSilently());
     }
     if (!mounted) return;
