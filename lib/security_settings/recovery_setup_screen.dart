@@ -24,7 +24,11 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
   final _formKey = GlobalKey<FormState>();
   _Stage _stage = _Stage.collectEmail;
   String _code = '';
-  bool _emailSent = false;
+  // True once the user has opened the email composer for the code at least once.
+  bool _emailOpened = false;
+  // True once the user has saved the code somehow — copied it or opened email.
+  // Finishing only requires that the code was saved, not specifically emailed.
+  bool _codeSaved = false;
   bool _saving = false;
   String? _saveError;
 
@@ -93,16 +97,28 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
     try {
       if (await canLaunchUrl(uri) && await launchUrl(uri)) {
         if (!mounted) return;
-        setState(() => _emailSent = true);
+        // We have no server, so this just opens the user's email app with the
+        // code pre-filled — they still have to tap Send there. Make that clear.
+        FlushBarHelper.flushBarInfoMessage(
+          'Your email app opened with the code filled in — tap Send there to keep a copy.',
+          context,
+        );
+        setState(() {
+          _emailOpened = true;
+          _codeSaved = true;
+        });
       } else {
         if (!mounted) return;
         await Clipboard.setData(ClipboardData(text: _code));
         if (!mounted) return;
         FlushBarHelper.flushBarInfoMessage(
-          'No email app found — code copied to clipboard. Email it to yourself manually.',
+          'No email app found — code copied to clipboard. Save it somewhere safe.',
           context,
         );
-        setState(() => _emailSent = true);
+        setState(() {
+          _emailOpened = true;
+          _codeSaved = true;
+        });
       }
     } catch (e) {
       if (!mounted) return;
@@ -126,7 +142,11 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
     HapticFeedback.lightImpact();
     await Clipboard.setData(ClipboardData(text: _code));
     if (!mounted) return;
-    FlushBarHelper.flushBarSuccessMessage('Recovery code copied', context);
+    setState(() => _codeSaved = true);
+    FlushBarHelper.flushBarSuccessMessage(
+      'Recovery code copied — paste it somewhere safe',
+      context,
+    );
   }
 
   Future<void> _finish() async {
@@ -428,7 +448,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           icon: Icons.vpn_key_rounded,
           title: 'Your recovery code',
           subtitle:
-              'Email this to yourself now. Without this code you cannot recover your data.',
+              'Save this code somewhere safe. Without it you cannot recover from a forgotten PIN.',
         ),
         const SizedBox(height: 22),
         _buildCodeCard(),
@@ -467,7 +487,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 onPressed: _openEmailClient,
                 icon: const Icon(Icons.mail_outline_rounded, size: 18,color: Colors.white,),
                 label: Text(
-                  _emailSent ? 'Re-send email' : 'Email it to me',
+                  _emailOpened ? 'Open email again' : 'Email to myself',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -493,7 +513,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           icon: Icons.warning_amber_rounded,
           title: 'Save it before you finish',
           bullets: [
-            'Sending to ${RecoveryService.mask(_emailController.text.trim())}',
+            'We have no servers, so we can\'t send this for you — copy the code, or tap "Email to myself" to open your email app with it filled in, then send it to yourself',
             'If you lose this code you can\'t recover from a forgotten PIN',
             'Without it, the only option will be to wipe the vault',
           ],
@@ -538,7 +558,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           width: double.infinity,
           height: 54,
           child: ElevatedButton(
-            onPressed: (_emailSent && !_saving) ? _finish : null,
+            onPressed: (_codeSaved && !_saving) ? _finish : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: LiquidColors.success,
               disabledBackgroundColor: LiquidColors.success.withValues(
@@ -568,9 +588,9 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 Text(
                   _saving
                       ? 'Saving…'
-                      : _emailSent
-                      ? 'I\'ve saved the email'
-                      : 'Email it first',
+                      : _codeSaved
+                      ? 'I\'ve saved my code'
+                      : 'Save your code first',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
