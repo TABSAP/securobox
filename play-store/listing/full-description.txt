@@ -33,17 +33,27 @@ SecuroBox is a 100% offline private media vault. Keep your videos, audio, photos
 
 ★ Import options
 
-• Pick files from your device storage
+• Capture photos and videos straight into the vault with the in-app Secure Camera
+• Pick existing files from your device storage
+• Move-to-vault: imported photos and videos are removed from your gallery and kept safely in the vault — move them back out anytime
 • Download from a direct URL into your vault
-• Files are copied to a private app folder, isolated from the rest of your phone
+• Files are encrypted into a private app folder, isolated from the rest of your phone
 
 ★ Security model
 
 • PIN with strength check (rejects 1234, 0000, sequential digits, repeats)
 • Optional biometric unlock (fingerprint or face)
+• Optional in-app Face Unlock
 • Auto-lock when the app goes to background
-• Per-video lock for an extra layer of protection
-• PIN backup in Android's hardware-backed Keystore
+• PIN hashed with PBKDF2 in the OS hardware-backed Keystore
+
+★ Advanced protection
+
+• Break-in detection — silently captures a photo of anyone who enters the wrong PIN, saved only inside your vault
+• Disguise mode — hide the app behind a Calculator or other harmless icon (Android)
+• Decoy PIN — open a separate decoy vault under duress while your real vault stays hidden
+• Offline Integrity Lock — optionally seal the vault whenever the device is connected to any network
+• Optional PIN recovery using a one-time code you set up
 
 ★ Privacy promise
 
