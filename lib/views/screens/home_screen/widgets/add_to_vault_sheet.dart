@@ -828,7 +828,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                     if (_importing) _importingBanner(),
                     _smartImportCard(),
                     const SizedBox(height: 18),
-                    _sectionLabel('OR PICK A CATEGORY'),
+                    _sectionLabel('YOUR CUSTOM CATEGORIES'),
                     const SizedBox(height: 10),
                     _categoryGrid(),
                     const SizedBox(height: 14),
@@ -863,7 +863,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
               borderRadius: BorderRadius.circular(13),
             ),
             child: const Icon(
-              Icons.add_rounded,
+              Icons.video_collection_rounded,
               color: Colors.white,
               size: 24,
             ),
@@ -1090,11 +1090,13 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
         ),
       );
     }
-    final all = [..._builtInCategories, ..._customCategories];
+    // Only the user's own custom categories are listed — the built-in
+    // "pick a category" grid is gone; Smart Import auto-sorts everything else.
+    final customs = _customCategories;
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: all.length + 1,
+      itemCount: customs.length + 1,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: context.responsive(phone: 2, tablet: 3),
         crossAxisSpacing: 10,
@@ -1102,23 +1104,19 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
         childAspectRatio: 2.6,
       ),
       itemBuilder: (context, index) {
-        if (index == all.length) {
+        if (index == customs.length) {
           return _AddCategoryTile(
             onTap: _importing ? null : _addCustomCategory,
           );
         }
-        final cat = all[index];
-        final builtIn = _builtInCategories.contains(cat);
-        final color = _colorFor(cat);
+        final cat = customs[index];
         return _CategoryTile(
           label: cat,
           icon: _iconFor(cat),
-          color: color,
-          isCustom: !builtIn,
+          color: _colorFor(cat),
+          isCustom: true,
           onTap: _importing ? null : () => _importInto(cat),
-          onMenu: (!builtIn && !_importing)
-              ? () => _showCategoryMenu(cat)
-              : null,
+          onMenu: _importing ? null : () => _showCategoryMenu(cat),
         );
       },
     );

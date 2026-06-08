@@ -32,6 +32,7 @@ class VideoItem {
   DateTime? deletedDate;
   final bool encrypted;
   bool isHidden;
+  bool isFavorite;
 
   VideoItem({
     required this.id,
@@ -44,6 +45,7 @@ class VideoItem {
     this.deletedDate,
     this.encrypted = false,
     this.isHidden = false,
+    this.isFavorite = false,
   });
 
   VideoItem copyWith({
@@ -57,6 +59,7 @@ class VideoItem {
     DateTime? deletedDate,
     bool? encrypted,
     bool? isHidden,
+    bool? isFavorite,
   }) {
     return VideoItem(
       id: id ?? this.id,
@@ -69,11 +72,12 @@ class VideoItem {
       deletedDate: deletedDate ?? this.deletedDate,
       encrypted: encrypted ?? this.encrypted,
       isHidden: isHidden ?? this.isHidden,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
   String toStorageString() {
-    return '$id|$title|$path|$type|$isLocked|$category|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden';
+    return '$id|$title|$path|$type|$isLocked|$category|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite';
   }
 
   factory VideoItem.fromStorageString(String storageString) {
@@ -103,6 +107,7 @@ class VideoItem {
           : null,
       encrypted: parts.length > 8 ? parts[8] == 'true' : false,
       isHidden: parts.length > 9 ? parts[9] == 'true' : false,
+      isFavorite: parts.length > 10 ? parts[10] == 'true' : false,
     );
   }
 }

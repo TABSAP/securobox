@@ -1,13 +1,11 @@
 import 'dart:async';
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_screenshot_blocker/flutter_screenshot_blocker.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pbkdf2.dart';
+import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
@@ -16,11 +14,9 @@ import 'app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (!kIsWeb && Platform.isAndroid) {
-    try {
-      FlutterScreenshotBlocker.enableScreenshotBlocking();
-    } on Object catch (_) { /* ignored */ }
-  }
+  // Screenshot / screen-recording protection (Android FLAG_SECURE). Secure by
+  // default; honours the user's Settings toggle.
+  await ScreenSecurity.init();
 
   await ThemeController.instance.init();
 
