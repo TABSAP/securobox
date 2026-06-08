@@ -16,6 +16,7 @@ import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
+import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
@@ -30,7 +31,6 @@ class SecuritySettingsScreen extends StatefulWidget {
 class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     with SingleTickerProviderStateMixin {
   bool _appLockEnabled = false;
-  bool _videoLockEnabled = false;
   bool _biometricEnabled = false;
   bool _faceUnlockEnabled = false;
   bool _faceRecogEnrolled = false;
@@ -147,7 +147,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       if (!mounted) return;
       setState(() {
         _appLockEnabled = prefs.getBool('appLock') ?? false;
-        _videoLockEnabled = prefs.getBool('videoLock') ?? false;
         _biometricEnabled = prefs.getBool('biometric') ?? false;
         _faceUnlockEnabled = prefs.getBool('biometric_face') ?? false;
         _pinLength = pinLen;
@@ -279,10 +278,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       await _verifyBiometricBeforeDisable('appLock');
       return;
     }
-    if (setting == 'videoLock' && !value) {
-      await _verifyBiometricBeforeDisable('videoLock');
-      return;
-    }
     if (setting == 'appLock' && value) {
       final hasPin = await PinCrypto.instance.hasPin();
       if (!hasPin) {
@@ -304,9 +299,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         switch (setting) {
           case 'appLock':
             _appLockEnabled = value;
-            break;
-          case 'videoLock':
-            _videoLockEnabled = value;
             break;
           case 'biometric':
             _biometricEnabled = value;
@@ -1528,6 +1520,92 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
+  Widget _buildScreenshotCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            LiquidColors.backgroundLight.withValues(alpha: .9),
+            LiquidColors.backgroundMid.withValues(alpha: .95),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: LiquidColors.accentBlue.withValues(alpha: 0.25),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      LiquidColors.accentBlue,
+                      LiquidColors.accentPurple,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.screenshot_monitor_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'BLOCK SCREENSHOTS & RECORDING',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: LiquidColors.textPrimary,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ),
+              ValueListenableBuilder<bool>(
+                valueListenable: ScreenSecurity.enabled,
+                builder: (context, on, _) => Switch(
+                  value: on,
+                  onChanged: (v) {
+                    HapticFeedback.lightImpact();
+                    ScreenSecurity.setEnabled(v);
+                  },
+                  activeThumbColor: Colors.white,
+                  activeTrackColor: LiquidColors.accentBlue,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'When on, the system blocks screenshots and screen recording of the '
+            'app. Turn it off to allow capturing the screen.',
+            style: TextStyle(
+              fontSize: 12,
+              color: LiquidColors.textSecondary,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildIntegrityLockCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2191,16 +2269,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       index: 0,
                       onChanged: (value) => _toggleSetting('appLock', value),
                     ),
-                    const SizedBox(height: 14),
-                    LiquidSecurityCard(
-                      icon: Icons.video_settings_outlined,
-                      title: 'Video Lock',
-                      subtitle: 'Lock individual videos with authentication',
-                      value: _videoLockEnabled,
-                      gradient: [LiquidColors.success, LiquidColors.accentBlue],
-                      index: 1,
-                      onChanged: (value) => _toggleSetting('videoLock', value),
-                    ),
                     // Fingerprint / generic biometric. Hidden on devices whose
                     // only biometric is face recognition — those get the
                     // dedicated Face Unlock card below instead.
@@ -2311,6 +2379,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     _buildDecoyCard(),
                     const SizedBox(height: 14),
                     _buildIntrusionCard(),
+                    const SizedBox(height: 14),
+                    _buildScreenshotCard(),
                     const SizedBox(height: 14),
                     _buildIntegrityLockCard(),
                     const SizedBox(height: 28),

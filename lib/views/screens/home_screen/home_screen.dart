@@ -34,6 +34,10 @@ class HomeScreenState extends State<HomeScreen>
   Timer? _searchDebounce;
   String _selectedCategory = "All";
 
+  /// Pseudo-category for the Favorites filter — kept out of [_allCategoriesForFilter]
+  /// so it never appears as an assignable folder in the Change Category menu.
+  static const String _favoritesFilter = 'Favorites';
+
   List<String> get _allCategoriesForFilter {
     final base = MediaHelper.mediaCategories;
     if (_customCategories.isEmpty) return base;
@@ -42,6 +46,12 @@ class HomeScreenState extends State<HomeScreen>
         .where((c) => !set.contains(c.toLowerCase()))
         .toList();
     return [...base, ...extras];
+  }
+
+  /// Filter chips above the library: "All", then "Favorites", then categories.
+  List<String> get _filterChips {
+    final base = _allCategoriesForFilter; // ['All', ...categories]
+    return [base.first, _favoritesFilter, ...base.skip(1)];
   }
 
   late AnimationController _headerAnimationController;
@@ -105,6 +115,7 @@ class HomeScreenState extends State<HomeScreen>
 
   void _filterMedia() {
     final query = _searchController.text.toLowerCase();
+    final favoritesOnly = _selectedCategory == _favoritesFilter;
 
     setState(() {
       _filteredMedia.clear();
@@ -116,7 +127,11 @@ class HomeScreenState extends State<HomeScreen>
 
       final selectedCat = _selectedCategory.trim().toLowerCase();
       for (final media in _allMedia) {
+        // Favorites is a view-only filter over the (encrypted) library.
+        if (favoritesOnly && !media.isFavorite) continue;
+
         bool matchesCategory =
+            favoritesOnly ||
             _selectedCategory == "All" ||
             media.category.trim().toLowerCase() == selectedCat;
 
@@ -215,6 +230,25 @@ class HomeScreenState extends State<HomeScreen>
     if (success) {
       await _loadMedia();
     }
+  }
+
+  /// Marks/unmarks an item as favorite. The file stays in the encrypted vault;
+  /// favoriting only flips a flag so it also surfaces in the Favorites filter.
+  Future<void> _toggleFavorite(VideoItem media) async {
+    HapticFeedback.selectionClick();
+    final newValue = !media.isFavorite;
+    final updated = await _mediaService.setFavorite(media, newValue);
+    if (!mounted) return;
+    if (updated == null) {
+      FlushBarHelper.flushBarErrorMessage('Could not update favorite', context);
+      return;
+    }
+    await _loadMedia();
+    if (!mounted) return;
+    FlushBarHelper.flushBarSuccessMessage(
+      newValue ? 'Added to Favorites' : 'Removed from Favorites',
+      context,
+    );
   }
 
   /// Identity gate for any action on a locked item. Honours the user's global
@@ -1185,13 +1219,14 @@ class HomeScreenState extends State<HomeScreen>
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          itemCount: _allCategoriesForFilter.length,
+          itemCount: _filterChips.length,
           separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (context, index) {
-            final categories = _allCategoriesForFilter;
+            final categories = _filterChips;
             final category = categories[index];
             final isSelected = _selectedCategory == category;
-            final isCustom = !MediaHelper.mediaCategories.contains(category);
+            final isCustom = !MediaHelper.mediaCategories.contains(category) &&
+                category != _favoritesFilter;
             return _CategoryPill(
               label: category,
               selected: isSelected,
@@ -1395,11 +1430,13 @@ class HomeScreenState extends State<HomeScreen>
           final media = _filteredMedia[index];
           return AnimatedMediaCard(
             media: media,
-            categories: MediaHelper.mediaCategories,
+            // Include custom categories so they appear in "Change Category".
+            categories: _allCategoriesForFilter,
             index: index,
             onTap: () => _openMedia(media),
             onCategorySelected: (category) =>
                 _updateMediaCategory(media, category),
+            onFavoriteToggle: () => _toggleFavorite(media),
             onDownloadTap: () => _showDownloadConfirmation(media),
             onDeleteTap: () => _deleteMedia(media),
             onRenameTap: () => _renameMedia(media),

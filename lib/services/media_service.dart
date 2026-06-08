@@ -75,6 +75,28 @@ class MediaService {
     }
   }
 
+  /// Marks [media] as favorite (or not) and persists it. The item stays in the
+  /// encrypted vault — favoriting only flips a flag used to surface it in the
+  /// Favorites view. Returns the updated item, or null on failure.
+  Future<VideoItem?> setFavorite(VideoItem media, bool value) async {
+    try {
+      final updatedMedia = media.copyWith(isFavorite: value);
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList = prefs.getStringList(_storageKey) ?? [];
+
+      final index = mediaList.indexWhere((item) => item.startsWith(media.id));
+      if (index == -1) return null;
+      mediaList[index] = updatedMedia.toStorageString();
+      await prefs.setStringList(_storageKey, mediaList);
+
+      final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
+      if (localIndex != -1) _mediaList[localIndex] = updatedMedia;
+      return updatedMedia;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<bool> toggleMediaLock(VideoItem media) async {
     try {
       final updatedMedia = media.copyWith(isLocked: !media.isLocked);

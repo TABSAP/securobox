@@ -34,7 +34,7 @@ dependencies:
   pointycastle: ^3.9.1
   uuid: ^4.5.1
   camera: ^0.11.1
-  google_mlkit_face_detection: 0.9.0
+  google_mlkit_face_detection: ^0.13.2
   connectivity_plus: ^6.1.0
   # Must stay in dependencies, not dev_dependencies: flutter_native_splash
   # ships a native Android plugin. As a dev_dependency the Flutter tool still

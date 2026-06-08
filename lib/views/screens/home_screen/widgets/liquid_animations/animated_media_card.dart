@@ -11,6 +11,7 @@ class AnimatedMediaCard extends StatefulWidget {
   final VoidCallback? onDeleteTap;
   final VoidCallback? onRenameTap;
   final Function(String)? onCategorySelected;
+  final VoidCallback? onFavoriteToggle;
   final List<String> categories;
   final int index;
 
@@ -22,6 +23,7 @@ class AnimatedMediaCard extends StatefulWidget {
     this.onDownloadTap,
     this.onDeleteTap,
     this.onCategorySelected,
+    this.onFavoriteToggle,
     required this.categories,
     required this.index,
     required this.onRenameTap,
@@ -63,11 +65,9 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   VideoItem get _m => widget.media;
-  // Per-item lock retired: every item renders unlocked. The whole vault is
-  // already gated by the app lock + AES encryption.
-  bool get _locked => false;
-  Color get _accent =>
-      _locked ? LiquidColors.warning : LiquidColors.getMediaColor(_m.type);
+  // The whole vault is gated by the app lock + AES encryption, so cards always
+  // render unlocked; the accent just reflects the media type.
+  Color get _accent => LiquidColors.getMediaColor(_m.type);
 
   @override
   Widget build(BuildContext context) {
@@ -94,34 +94,19 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
 
   Widget _buildCard(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: 0.92),
-            LiquidColors.backgroundMid.withValues(alpha: 0.96),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _accent.withValues(alpha: 0.28), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: _accent.withValues(alpha: 0.16),
-            blurRadius: 16,
-            spreadRadius: -2,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: LiquidColors.cardBorder),
       ),
       child: Row(
         children: [
           _buildThumbnail(),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(child: _buildInfo()),
-          const SizedBox(width: 10),
+          const SizedBox(width: 2),
           _buildActions(context),
         ],
       ),
@@ -129,52 +114,15 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   Widget _buildThumbnail() {
-    final gradient = _locked
-        ? LinearGradient(
-            colors: [LiquidColors.warning, LiquidColors.accentOrange],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
-        : LiquidColors.getMediaGradient(_m.type);
-    final icon = _locked
-        ? Icons.lock_rounded
-        : MediaHelper.getMediaIcon(_m.type);
-
     return Container(
-      width: 60,
-      height: 60,
+      width: 52,
+      height: 52,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: _accent.withValues(alpha: 0.45),
-            blurRadius: 14,
-            spreadRadius: -1,
-            offset: const Offset(0, 5),
-          ),
-        ],
+        gradient: LiquidColors.getMediaGradient(_m.type),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: RadialGradient(
-                  center: const Alignment(-0.5, -0.6),
-                  radius: 1.0,
-                  colors: [
-                    LiquidColors.textPrimary.withValues(alpha: 0.28),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Center(child: Icon(icon, color: Colors.white, size: 28)),
-        ],
-      ),
+      child: Icon(MediaHelper.getMediaIcon(_m.type), color: Colors.white, size: 24),
     );
   }
 
@@ -183,68 +131,63 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          _m.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: _locked ? LiquidColors.warning : LiquidColors.textPrimary,
-            fontSize: 15.5,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.1,
-          ),
-        ),
-        const SizedBox(height: 8),
         Row(
           children: [
-            _pill(_m.type.toUpperCase(), _accent, filled: true),
-            const SizedBox(width: 6),
-            Flexible(
-              child: _locked
-                  ? _pill('LOCKED', LiquidColors.warning, filled: false)
-                  : _pill(_m.category, LiquidColors.success, filled: false),
+            Expanded(
+              child: Text(
+                _m.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.1,
+                ),
+              ),
             ),
+            if (_m.isFavorite) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.favorite_rounded,
+                  size: 15, color: LiquidColors.accentPink),
+            ],
           ],
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 6),
         Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.schedule_rounded,
-              size: 11,
-              color: LiquidColors.textTertiary,
+            // Compact type tag, then a single muted "category · date" line.
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: _accent.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                _m.type.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  color: _accent,
+                  letterSpacing: 0.5,
+                ),
+              ),
             ),
-            const SizedBox(width: 4),
-            Text(
-              MediaHelper.formatDate(_m.id),
-              style: TextStyle(fontSize: 11, color: LiquidColors.textTertiary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '${_m.category}  ·  ${MediaHelper.formatDate(_m.id)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: LiquidColors.textTertiary,
+                ),
+              ),
             ),
           ],
         ),
       ],
-    );
-  }
-
-  Widget _pill(String label, Color color, {required bool filled}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: filled ? color.withValues(alpha: 0.18) : Colors.transparent,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: color.withValues(alpha: filled ? 0.4 : 0.3)),
-      ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 9.5,
-          fontWeight: FontWeight.w700,
-          color: color,
-          letterSpacing: 0.5,
-        ),
-      ),
     );
   }
 
@@ -309,6 +252,12 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       ),
       items: [
         _menuItem(
+          'favorite',
+          _m.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          _m.isFavorite ? 'Remove favorite' : 'Add to favorites',
+          LiquidColors.accentPink,
+        ),
+        _menuItem(
           'rename',
           Icons.drive_file_rename_outline_rounded,
           'Rename',
@@ -338,6 +287,9 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
 
     if (!mounted) return;
     switch (choice) {
+      case 'favorite':
+        widget.onFavoriteToggle?.call();
+        break;
       case 'rename':
         widget.onRenameTap?.call();
         break;
