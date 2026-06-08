@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:photo_manager/photo_manager.dart';
 
+import 'package:video_player_app/utils/app_rating.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/views/screens/secure_picker/secure_media_picker_screen.dart';
@@ -267,6 +268,10 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
         );
       } else {
         FlushBarHelper.flushBarSuccessMessage(msg, context);
+      }
+
+      if (import.added > 0) {
+        AppRating.recordImportAndMaybeAsk();
       }
     } catch (e) {
       if (!mounted) return;

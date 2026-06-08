@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:video_player_app/security_settings/privacy_policy_screen.dart';
 import 'package:video_player_app/security_settings/send_feedback_screen.dart';
+import 'package:video_player_app/utils/app_rating.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
@@ -185,6 +186,17 @@ class SupportScreen extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SendFeedbackScreen()),
               );
+            },
+          ),
+          const SizedBox(height: 8),
+          _actionTile(
+            icon: Icons.star_outline_rounded,
+            color: LiquidColors.warning,
+            label: 'Rate SecuroBox',
+            sublabel: 'Enjoying the app? Leave a rating on Google Play.',
+            onTap: () {
+              HapticFeedback.lightImpact();
+              AppRating.rateNow();
             },
           ),
           const SizedBox(height: 8),
