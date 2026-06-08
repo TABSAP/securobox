@@ -554,7 +554,9 @@ class HomeScreenState extends State<HomeScreen>
     if (ext.isEmpty) ext = _defaultExtForType(media.type);
 
     final title = media.title.trim();
-    final base = title.isEmpty ? 'file' : _stripKnownExt(title);
+    var base = title.isEmpty ? 'file' : _stripKnownExt(title);
+    base = base.replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1f]'), '').trim();
+    if (base.isEmpty) base = 'file';
     return ext.isEmpty ? base : '$base.$ext';
   }
 
@@ -792,7 +794,9 @@ class HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
-        );
+        ).then((_) async {
+          if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
+        });
         break;
 
       case 'audio':

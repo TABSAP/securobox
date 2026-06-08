@@ -434,6 +434,9 @@ class _AppLockScreenState extends State<AppLockScreen>
         _unlockApp();
       } else {
         await _recordBioFailure();
+        if (_bioFailCount >= SessionManager.bioCooldownThreshold) {
+          unawaited(IntrusionService.instance.captureSilently());
+        }
       }
     } catch (_) {
     } finally {

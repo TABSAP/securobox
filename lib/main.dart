@@ -37,6 +37,8 @@ void main() async {
 
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
 
+  unawaited(VaultCrypto.instance.wipeAllTempCache());
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,

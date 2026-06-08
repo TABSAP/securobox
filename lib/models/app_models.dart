@@ -76,8 +76,11 @@ class VideoItem {
     );
   }
 
+  static String _safe(String v) =>
+      v.replaceAll('|', ' ').replaceAll(RegExp(r'[\r\n]'), ' ');
+
   String toStorageString() {
-    return '$id|$title|$path|$type|$isLocked|$category|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite';
+    return '$id|${_safe(title)}|${_safe(path)}|$type|$isLocked|${_safe(category)}|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite';
   }
 
   factory VideoItem.fromStorageString(String storageString) {

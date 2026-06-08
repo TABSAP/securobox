@@ -3,7 +3,6 @@ import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_app/utils/vault_crypto.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoPath;
@@ -98,26 +97,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           _isInitialized = true;
         });
       }
-    } catch (e, st) {
-      String fileInfo = 'File: ${widget.videoPath}';
-      try {
-        final f = File(widget.videoPath);
-        if (await f.exists()) {
-          final size = await f.length();
-          final raf = await f.open();
-          final head = await raf.read(16);
-          await raf.close();
-          final hex = head
-              .map((b) => b.toRadixString(16).padLeft(2, '0'))
-              .join(' ');
-          fileInfo = 'File: ${widget.videoPath}\nSize: $size bytes\nHead: $hex';
-        } else {
-          fileInfo = 'File: ${widget.videoPath}\n(file does not exist)';
-        }
-      } catch (_) {}
-      final selfTest =
-          'Crypto self-test: ${VaultCrypto.lastSelfTestResult ?? "not run"}';
-      _errorDetail = '$e\n\n$fileInfo\n\n$selfTest\n\n$st';
+    } catch (_) {
+      _errorDetail =
+          'Unable to play this file. It may be in an unsupported format.';
       if (mounted) {
         _showErrorDialog();
       }

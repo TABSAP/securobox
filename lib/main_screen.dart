@@ -98,6 +98,7 @@ class _MainScreenState extends State<MainScreen>
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
       setState(() => _showPrivacyShield = true);
+      unawaited(VaultCrypto.instance.wipeAllTempCache());
     }
 
     if (state == AppLifecycleState.paused) {
