@@ -5,7 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pbkdf2.dart';
-import 'package:video_player_app/utils/screen_security.dart';
+import 'package:video_player_app/utils/screenshot_guard.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
@@ -14,30 +14,22 @@ import 'app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Screenshot / screen-recording protection (Android FLAG_SECURE). Secure by
-  // default; honours the user's Settings toggle.
-  await ScreenSecurity.init();
+  // Apply screenshot / screen-recording protection (default blocked, user can allow from settings)
+  await ScreenshotGuard.init();
 
   await ThemeController.instance.init();
 
   await SessionManager.instance.init();
 
   // Offline Integrity Lock — starts watching network interfaces immediately
-  // so the vault seals the moment the device is exposed to a network.
   await NetworkGuard.instance.init();
 
   unawaited(DisguiseService.instance.load());
 
-  // Spawn the PBKDF2 worker isolate up front so the very first PIN create /
-  // confirm / unlock hashes instantly instead of paying isolate-spawn latency.
+  // Prewarm PBKDF2 isolate for fast crypto operations
   prewarmPbkdf2();
 
-  // Warm the local_auth platform channel AND the capability queries the lock /
-  // onboarding screens run before they show the prompt (isDeviceSupported,
-  // canCheckBiometrics, getAvailableBiometrics) so the first-ever biometric
-  // prompt isn't slowed by cold lookups. The OS still pays a one-time cost to
-  // spin up the biometric hardware on the very first prompt — that part is
-  // unavoidable from app code.
+  // Warm local_auth for faster first biometric prompt
   unawaited(() async {
     try {
       final auth = LocalAuthentication();
@@ -47,11 +39,14 @@ void main() async {
     } catch (_) {}
   }());
 
+  // Self test vault crypto
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
 
+  // Lock orientation
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
   runApp(const MyApp());
 }
