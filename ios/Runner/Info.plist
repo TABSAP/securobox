@@ -50,8 +50,6 @@
 		<string>SecuroBox needs permission to save media you export from your private vault.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>SecuroBox uses the camera for in-app Secure Capture (taking photos or recording videos directly into your encrypted vault) and, only if you enable them, optional break-in detection and Face Unlock. Captures stay on your device.</string>
-		<key>NSMicrophoneUsageDescription</key>
-		<string>SecuroBox only requests microphone access if you record audio for your private vault.</string>
 		<key>NSFaceIDUsageDescription</key>
 		<string>SecuroBox uses Face ID to unlock the app and your private media vault.</string>
 		<key>NSDocumentsFolderUsageDescription</key>

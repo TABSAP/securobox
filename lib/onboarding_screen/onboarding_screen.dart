@@ -33,7 +33,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   _Step _step = _Step.welcome;
   String _newPin = '';
   String _confirmPin = '';
-  int _pinLength = 4;
+  int _pinLength = 6;
   String? _error;
   bool _biometricAvailable = false;
   bool _enablingBiometric = false;
@@ -421,17 +421,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: Icon(Icons.pin_outlined, color: Colors.white, size: 50),
           ),
           const SizedBox(height: 28),
-          Text('Choose Your PIN Length',
+          Text('Set a Strong PIN',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: LiquidColors.textPrimary)),
           const SizedBox(height: 10),
-          Text('Longer PINs are exponentially harder to guess',
+          Text('SecuroBox uses a 6-digit PIN for stronger protection',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: LiquidColors.textSecondary)),
           const SizedBox(height: 32),
-          _lengthOption(digits: 4, label: '4-digit PIN', sub: 'Quicker to type — 10,000 combinations'),
-          const SizedBox(height: 12),
-          _lengthOption(digits: 6, label: '6-digit PIN', sub: 'Recommended — 1,000,000 combinations', recommended: true),
+          _lengthOption(digits: 6, label: '6-digit PIN', sub: '1,000,000 combinations — recommended for a vault', recommended: true),
           const Spacer(flex: 3),
           SizedBox(
             width: double.infinity,

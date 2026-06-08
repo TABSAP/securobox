@@ -36,7 +36,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
 
   _CaptureMode _mode = _CaptureMode.photo;
   bool _recording = false;
-  bool _micGranted = false;
   Timer? _recordTimer;
   int _recordSeconds = 0;
 
@@ -103,12 +102,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         _fail('Camera permission is needed for Secure Capture.');
         return;
       }
-      try {
-        final mic = await Permission.microphone.request();
-        _micGranted = mic.isGranted;
-      } catch (_) {
-        _micGranted = false;
-      }
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
         _fail('No camera was found on this device.');
@@ -137,7 +130,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     final controller = CameraController(
       camera,
       ResolutionPreset.high,
-      enableAudio: _micGranted,
+      enableAudio: false,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
     try {
