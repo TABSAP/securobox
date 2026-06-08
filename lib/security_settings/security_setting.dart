@@ -350,6 +350,17 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         : setting == 'videoLock'
         ? [LiquidColors.success, LiquidColors.accentBlue]
         : [LiquidColors.accentPurple, LiquidColors.accentPink];
+
+    // Verify with biometrics only for the OTHER locks, and only when a
+    // biometric unlock is actually switched on in-app. Turning off Biometric or
+    // Face itself always verifies with the PIN — asking for the very factor
+    // you're disabling is circular and confusing (the bug where disabling Face
+    // prompted for a fingerprint the user had already turned off).
+    final bool verifyWithBiometric = _biometricAvailable &&
+        (_biometricEnabled || _faceUnlockEnabled) &&
+        setting != 'biometric' &&
+        setting != 'biometric_face';
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -422,7 +433,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       color: LiquidColors.warning.withValues(alpha: 0.2),
                     ),
                     child: Icon(
-                      _biometricAvailable
+                      verifyWithBiometric
                           ? _getBiometricIcon()
                           : Icons.lock_rounded,
                       color: LiquidColors.warning,
@@ -435,7 +446,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _biometricAvailable
+                          verifyWithBiometric
                               ? '${_getBiometricTypeName()} verification required'
                               : 'PIN verification required',
                           style: TextStyle(
@@ -446,7 +457,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _biometricAvailable
+                          verifyWithBiometric
                               ? 'Your ${_getBiometricTypeName().toLowerCase()} is needed to disable this security feature.'
                               : 'Your PIN is needed to disable this security feature.',
                           style: TextStyle(
@@ -490,7 +501,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  _biometricAvailable
+                  verifyWithBiometric
                       ? _getBiometricIcon()
                       : Icons.lock_rounded,
                   size: 16,
@@ -498,7 +509,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _biometricAvailable
+                  verifyWithBiometric
                       ? 'Verify & Disable'
                       : 'Enter PIN & Disable',
                   style: const TextStyle(
@@ -522,7 +533,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     //    EITHER biometric or the correct app PIN is enough to proceed.
     setState(() => _isLoading = true);
     bool verified = false;
-    if (_biometricAvailable) {
+    if (verifyWithBiometric) {
       SessionManager.instance.beginTrustedInteraction();
       try {
         verified = await _localAuth.authenticate(

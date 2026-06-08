@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -93,13 +95,13 @@ class SessionManager {
 
   Future<void> unlock() async {
     shouldLock.value = false;
-    // Independent prefs writes — run them concurrently so unlocking navigates in
-    // one I/O round-trip instead of three serial ones.
-    await Future.wait([
-      resetFailedAttempts(),
-      resetFailedBiometricAttempts(),
-      markActive(),
-    ]);
+    // markActive is a quick SharedPreferences write and is needed before we
+    // navigate. The lockout resets now touch secure storage (slower Keystore
+    // ops) — run them in the background so unlocking isn't blocked behind
+    // Keystore I/O, which was making the first unlock feel stuck.
+    await markActive();
+    unawaited(resetFailedAttempts());
+    unawaited(resetFailedBiometricAttempts());
   }
 
   Future<int> recordFailedAttempt() async {

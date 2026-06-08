@@ -22,6 +22,7 @@ import 'package:video_player_app/widgets/biometric_auth_sheet.dart';
 
 import '../main_screen.dart';
 import '../utils/liquid_colors.dart';
+import '../utils/liquid_circular_progress.dart';
 
 class AppLockScreen extends StatefulWidget {
   final bool isOverlay;
@@ -39,6 +40,7 @@ class _AppLockScreenState extends State<AppLockScreen>
   bool _biometricEnabled = false;
   bool _faceRecogEnrolled = false;
   bool _isAuthenticating = false;
+  bool _isUnlocking = false;
   bool _hasError = false;
   bool _showPin = false;
 
@@ -392,6 +394,10 @@ class _AppLockScreenState extends State<AppLockScreen>
       HapticFeedback.heavyImpact();
       return;
     }
+    // Show a loader while we finish unlocking + build the main screen, so the
+    // moment between a successful PIN/biometric and the app appearing doesn't
+    // look frozen (the first build of MainScreen can take a beat).
+    if (mounted) setState(() => _isUnlocking = true);
     await SessionManager.instance.unlock();
     if (!mounted) return;
     final modeChanged = VaultContext.instance.modeChanged;
@@ -752,6 +758,15 @@ class _AppLockScreenState extends State<AppLockScreen>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+
+    // After a successful PIN/biometric we briefly show a loader while the
+    // session finishes unlocking and MainScreen builds, so it never looks frozen.
+    if (_isUnlocking) {
+      return Scaffold(
+        backgroundColor: LiquidColors.backgroundDeep,
+        body: const Center(child: LiquidCircularProgress(size: 64)),
+      );
+    }
 
     return Scaffold(
       body: Container(
