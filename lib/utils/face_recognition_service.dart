@@ -5,19 +5,6 @@ import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
-/// On-device face recognition used as an unlock shortcut.
-///
-/// The enrolled template is a small geometric signature derived from ML Kit
-/// face contours/landmarks (no raw photo is ever stored); it lives in
-/// `flutter_secure_storage` (Android EncryptedSharedPreferences / iOS
-/// Keychain), never on disk or in the vault.
-///
-/// Caveats: geometric matching is *not* as strong as a learned face embedding
-/// — a printed photo of you, or rarely a very similar-looking person, could
-/// still pass — so the PIN always remains the real gate and this shortcut is
-/// disabled during the wrong-PIN cooldown. The matching here is tuned strict:
-/// a tight, multi-sample enrollment template, a per-template distance budget,
-/// and two consecutive matching frames are required to unlock.
 class FaceRecognitionService {
   FaceRecognitionService._();
   static final FaceRecognitionService instance = FaceRecognitionService._();
@@ -33,29 +20,14 @@ class FaceRecognitionService {
     ),
   );
 
-  /// Hard ceiling on the verify distance. The effective threshold is the
-  /// smaller of this and `enrollSpread + _spreadMargin`, so a tight enrollment
-  /// makes matching *stricter*, never looser.
+
   static const double matchThreshold = 0.07;
   static const double _spreadMargin = 0.022;
-
-  /// Face readings collected during enrollment before building the template.
   static const int enrollSamples = 5;
-
-  /// Minimum mutually-consistent readings required to enroll.
   static const int minEnrollSamples = 3;
 
-  /// Largest pairwise distance allowed among the readings kept for the
-  /// template. If the captures can't be made this consistent, enrollment fails
-  /// and the user is asked to retry.
   static const double enrollConsistency = 0.075;
-
-  /// Matching frames required (during verification) before the app unlocks.
   static const int verifyMatchesRequired = 2;
-
-  /// Reject a captured frame whose face detection is this incomplete (too many
-  /// missing contours/landmarks => the signature would be mostly placeholder
-  /// values and could falsely match another low-quality capture).
   static const int _maxMissingFeatures = 5; // out of 13 contours + 4 landmarks
 
   FaceDetector? _detector;
