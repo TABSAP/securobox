@@ -116,11 +116,10 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
 
   Future<void> _smartImport() async {
     HapticFeedback.lightImpact();
-    await _pickAndImport(
-      category: null,
-      type: FileType.any,
-      useStreamFallback: true,
-    );
+    // Smart import pulls photos, videos and audio straight from the gallery via
+    // the in-app picker, so originals can be reliably moved out of the gallery
+    // and auto-sorted. Documents have their own category tile (file picker).
+    await _importFromGallery(null, RequestType.all);
   }
 
   // Photos / Videos / Audio come from the gallery — use the in-app asset picker
@@ -152,11 +151,11 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     }
   }
 
-  Future<void> _importFromGallery(String category, RequestType type) async {
+  Future<void> _importFromGallery(String? category, RequestType type) async {
     final assets = await SecureMediaPickerScreen.show(
       context,
       type: type,
-      title: 'Add $category',
+      title: category == null ? 'Add to vault' : 'Add $category',
     );
     if (assets == null || assets.isEmpty || !mounted) return;
 
@@ -1038,8 +1037,9 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                     ),
                     SizedBox(height: 3),
                     Text(
-                      'Pick anything — videos, photos, audio or docs. '
-                      'We sort them into the right category automatically.',
+                      'Photos, videos and audio from your gallery — sorted '
+                      'automatically and moved into your vault. Use the '
+                      'Documents tile for files.',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,

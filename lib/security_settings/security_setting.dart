@@ -2867,6 +2867,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   Future<void> _disableFaceRecognition() async {
     HapticFeedback.lightImpact();
+    // Verify with biometrics only when a biometric unlock is actually switched
+    // on in-app. If the user has turned biometric off, asking for it here is the
+    // same confusing bug as on the toggles — fall back to the PIN instead.
+    final bool verifyWithBiometric =
+        _biometricAvailable && (_biometricEnabled || _faceUnlockEnabled);
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -2880,7 +2885,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           ),
         ),
         content: Text(
-          _biometricAvailable
+          verifyWithBiometric
               ? 'Your enrolled face data will be deleted from this device. '
                     'Verify with your ${_getBiometricTypeName().toLowerCase()} '
                     'or app PIN to turn it off.'
@@ -2919,7 +2924,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     // enough, so Face Unlock can always be turned off even when biometrics
     // are unavailable, cancelled or fail.
     bool verified = false;
-    if (_biometricAvailable) {
+    if (verifyWithBiometric) {
       SessionManager.instance.beginTrustedInteraction();
       try {
         verified = await _localAuth.authenticate(
