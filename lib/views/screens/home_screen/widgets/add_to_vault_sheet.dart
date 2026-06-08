@@ -7,8 +7,11 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:photo_manager/photo_manager.dart';
+
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/responsive.dart';
+import 'package:video_player_app/views/screens/secure_picker/secure_media_picker_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/session_manager.dart';
@@ -120,9 +123,57 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     );
   }
 
+  // Photos / Videos / Audio come from the gallery — use the in-app asset picker
+  // so we get the real asset id and can reliably move the original out of the
+  // gallery. Everything else (documents, custom folders) uses the file picker.
+  RequestType? _galleryRequestType(String category) {
+    switch (category) {
+      case 'Photos':
+        return RequestType.image;
+      case 'Videos':
+        return RequestType.video;
+      case 'Audio':
+        return RequestType.audio;
+      default:
+        return null;
+    }
+  }
+
   Future<void> _importInto(String category) async {
     HapticFeedback.selectionClick();
-    await _pickAndImport(category: category, type: _fileTypeForCategory(category));
+    final galleryType = _galleryRequestType(category);
+    if (galleryType != null) {
+      await _importFromGallery(category, galleryType);
+    } else {
+      await _pickAndImport(
+        category: category,
+        type: _fileTypeForCategory(category),
+      );
+    }
+  }
+
+  Future<void> _importFromGallery(String category, RequestType type) async {
+    final assets = await SecureMediaPickerScreen.show(
+      context,
+      type: type,
+      title: 'Add $category',
+    );
+    if (assets == null || assets.isEmpty || !mounted) return;
+
+    final items = <PickedMedia>[];
+    SessionManager.instance.beginTrustedInteraction();
+    try {
+      for (final a in assets) {
+        final f = await a.file;
+        if (f != null && await f.exists()) {
+          items.add(PickedMedia(f, galleryAssetId: a.id));
+        }
+      }
+    } catch (_) {
+    } finally {
+      SessionManager.instance.endTrustedInteraction();
+    }
+    await _runImport(items, category);
   }
 
   /// Closes the add sheet itself — and only it. While files are imported, the
@@ -151,6 +202,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     // — send the app to the background. Mark this as a trusted round-trip so the
     // auto-lock doesn't fire on resume and strand the picker/import behind the
     // lock screen (which made biometric/PIN get stuck).
+    final items = <PickedMedia>[];
     SessionManager.instance.beginTrustedInteraction();
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -164,7 +216,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       );
       if (result == null || result.files.isEmpty) return;
 
-      final items = <PickedMedia>[];
       for (final pf in result.files) {
         final path = pf.path;
         File? file;
@@ -177,20 +228,37 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
           items.add(PickedMedia(file, identifier: pf.identifier));
         }
       }
-      if (items.isEmpty) {
-        if (!mounted) return;
-        FlushBarHelper.flushBarErrorMessage(
-          'Couldn\'t read the selected files. Try again, or pick them from '
-          'on-device storage.',
-          context,
-        );
-        return;
+    } catch (e) {
+      if (mounted) {
+        FlushBarHelper.flushBarErrorMessage('Import failed: $e', context);
       }
+      return;
+    } finally {
+      SessionManager.instance.endTrustedInteraction();
+    }
+    await _runImport(items, category);
+  }
 
+  /// Encrypts the picked [items] into the vault and reports the result. Shared
+  /// by the file picker and the in-app gallery picker. The OS gallery-delete
+  /// confirmation backgrounds the app, so the import runs inside a trusted
+  /// interaction to keep auto-lock from stranding it.
+  Future<void> _runImport(List<PickedMedia> items, String? category) async {
+    if (items.isEmpty) {
       if (!mounted) return;
-      _progress.value = (0, items.length);
-      setState(() => _importing = true);
+      FlushBarHelper.flushBarErrorMessage(
+        'Couldn\'t read the selected files. Try again, or pick them from '
+        'on-device storage.',
+        context,
+      );
+      return;
+    }
 
+    if (!mounted) return;
+    _progress.value = (0, items.length);
+    setState(() => _importing = true);
+    SessionManager.instance.beginTrustedInteraction();
+    try {
       final import = await MediaImporter.instance.importFiles(
         items: items,
         category: category,
