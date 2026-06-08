@@ -34,7 +34,6 @@ class _LiquidBackgroundState extends State<LiquidBackground>
 
   @override
   void dispose() {
-    // _controller is only created when animate is true.
     if (widget.animate) _controller.dispose();
     super.dispose();
   }
@@ -60,9 +59,6 @@ class _LiquidBackgroundState extends State<LiquidBackground>
 
     return AnimatedBuilder(
       animation: _controller,
-      // The UI subtree is built once and kept in its own paint layer via the
-      // RepaintBoundary, so the 60fps background-gradient animation repaints
-      // only the background — never the whole screen on top of it.
       child: RepaintBoundary(child: widget.child),
       builder: (context, child) {
         return Container(

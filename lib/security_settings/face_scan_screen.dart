@@ -12,7 +12,6 @@ import '../utils/liquid_colors.dart';
 
 enum FaceScanMode { enroll, verify }
 
-// Easypaisa-flavoured palette (shared visual language with BiometricAuthSheet).
 const Color _kGreenDeep = Color(0xFF008A3D);
 const Color _kGreen = Color(0xFF12B25C);
 const Color _kGreenBright = Color(0xFF2BD976);
@@ -21,13 +20,6 @@ const Color _kRedBright = Color(0xFFFF6B6B);
 
 enum _Phase { scanning, success, failed }
 
-/// Camera screen that either enrolls the owner's face (averaging several
-/// readings) or verifies a live face against the enrolled template — styled to
-/// match the app's premium fintech biometric flow (green gradient,
-/// glassmorphism, glowing scan ring, scan-line sweep, success burst, error
-/// shake, haptics).
-///
-/// Pops `true` on success (enrolled / recognized), `false` otherwise.
 class FaceScanScreen extends StatefulWidget {
   final FaceScanMode mode;
   const FaceScanScreen({super.key, required this.mode});
@@ -55,7 +47,7 @@ class _FaceScanScreenState extends State<FaceScanScreen>
 
   final List<List<double>> _samples = [];
   int _verifyAttempts = 0;
-  int _verifyHits = 0; // consecutive matching frames during verification
+  int _verifyHits = 0;
 
   late final AnimationController _pulse = AnimationController(
     vsync: this,
@@ -101,8 +93,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
     FaceRecognitionService.instance.dispose();
     super.dispose();
   }
-
-  // ── camera / scan lifecycle ──────────────────────────────────────────────
 
   Future<void> _start() async {
     setState(() {
@@ -240,8 +230,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
           }
           setState(() => _hint = 'Almost there — hold steady…');
         } else {
-          // A face was clearly detected but didn't match — reset the streak so
-          // only the enrolled person's own face accumulates the matches.
           _verifyHits = 0;
           _verifyAttempts++;
           if (_verifyAttempts >= _maxVerifyAttempts) {
@@ -280,7 +268,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
       if (!mounted) return;
       _toSuccess(alreadyFinished: true);
     } catch (_) {
-      // Readings weren't consistent enough for a reliable template — start over.
       _samples.clear();
       _verifyAttempts = 0;
       _verifyHits = 0;
@@ -369,8 +356,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
       Navigator.of(context).pop(result);
     }
   }
-
-  // ── build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -575,8 +560,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
     );
   }
 
-  // ── the camera "orb" ─────────────────────────────────────────────────────
-
   Widget _orbArea(double size) {
     final controller = _controller;
     return SizedBox(
@@ -613,7 +596,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
             child: Stack(
               alignment: Alignment.center,
               children: [
-                // expanding ping ripple while scanning
                 if (_phase == _Phase.scanning && _cameraReady)
                   Opacity(
                     opacity: (1 - _ping.value) * 0.5,
@@ -629,7 +611,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                       ),
                     ),
                   ),
-                // success burst ring
                 if (_phase == _Phase.success && successT < 1)
                   Opacity(
                     opacity: (1 - successT.clamp(0.0, 1.0)) * 0.85,
@@ -645,7 +626,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                       ),
                     ),
                   ),
-                // soft halo
                 Container(
                   width: size * 1.06,
                   height: size * 1.06,
@@ -659,7 +639,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                     ),
                   ),
                 ),
-                // the camera circle
                 Transform.scale(
                   scale: _phase == _Phase.success
                       ? (0.72 + 0.28 * successT.clamp(0.0, 1.0))
@@ -690,7 +669,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            // preview / placeholder
                             if (_initFailed)
                               Container(
                                 color: LiquidColors.backgroundLight,
@@ -727,7 +705,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                                   ),
                                 ),
                               ),
-                            // scanning sweep line
                             if (_phase == _Phase.scanning && _cameraReady)
                               AnimatedBuilder(
                                 animation: _sweep,
@@ -765,7 +742,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                                   );
                                 },
                               ),
-                            // success / failed overlay
                             if (_phase == _Phase.success ||
                                 (_phase == _Phase.failed && !_initFailed))
                               Container(
@@ -788,7 +764,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                                   ),
                                 ),
                               ),
-                            // top-left sheen
                             IgnorePointer(
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
@@ -816,8 +791,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
       ),
     );
   }
-
-  // ── state-specific buttons ───────────────────────────────────────────────
 
   Widget _stateButtons() {
     switch (_phase) {
@@ -888,8 +861,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
         );
     }
   }
-
-  // ── small button primitives (Easypaisa look) ────────────────────────────
 
   Widget _primaryButton({
     required IconData icon,

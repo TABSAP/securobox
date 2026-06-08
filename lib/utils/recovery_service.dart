@@ -9,9 +9,6 @@ class RecoveryService {
   RecoveryService._();
   static final RecoveryService instance = RecoveryService._();
 
-  // The recovery code is hashed with salted PBKDF2-HMAC-SHA256 (100k), matching
-  // the PIN's strength (v1 used an unsalted single SHA-256). Bumped to v2 keys so
-  // a fresh salted hash is written; recovery must be re-set up after upgrade.
   static const _kHashKey = 'recovery_hash_v2';
   static const _kSaltKey = 'recovery_salt_v2';
   static const _kEmailKey = 'recovery_email_v1';

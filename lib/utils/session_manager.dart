@@ -17,12 +17,6 @@ class SessionManager {
   static const bioCooldownThreshold = 3;
   static const _bioCooldownSeconds = 60;
 
-  // Lockout state (attempt counts + cooldown deadlines) lives in OS-backed
-  // secure storage, not SharedPreferences, so clearing the app's data cannot
-  // reset the wrong-PIN/biometric escalation. Because the COUNT persists, even
-  // moving the device clock forward to expire a deadline can't drop the
-  // escalation level — the next wrong attempt re-triggers it. resetOnError:false
-  // so a transient Keystore error never silently clears the lockout.
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(resetOnError: false),
     iOptions: IOSOptions(
@@ -41,7 +35,6 @@ class SessionManager {
     60: 'After 1 minute',
     300: 'After 5 minutes',
     900: 'After 15 minutes',
-    
 
   };
 
@@ -51,11 +44,6 @@ class SessionManager {
   final ValueNotifier<bool> shouldLock = ValueNotifier<bool>(false);
   final ValueNotifier<bool> showPrivacyShield = ValueNotifier<bool>(false);
 
-  // Tracks in-app operations that legitimately background the app — the OS file
-  // picker, gallery picker, or a system biometric prompt. While one is active,
-  // the app must NOT auto-lock on resume (otherwise picking a file or verifying
-  // biometrics pushes the lock screen on top mid-flow and gets stuck). A depth
-  // counter handles overlapping/nested interactions safely.
   int _trustedDepth = 0;
   bool get inTrustedInteraction => _trustedDepth > 0;
   void beginTrustedInteraction() => _trustedDepth++;
@@ -95,10 +83,6 @@ class SessionManager {
 
   Future<void> unlock() async {
     shouldLock.value = false;
-    // markActive is a quick SharedPreferences write and is needed before we
-    // navigate. The lockout resets now touch secure storage (slower Keystore
-    // ops) — run them in the background so unlocking isn't blocked behind
-    // Keystore I/O, which was making the first unlock feel stuck.
     await markActive();
     unawaited(resetFailedAttempts());
     unawaited(resetFailedBiometricAttempts());

@@ -34,8 +34,6 @@ class HomeScreenState extends State<HomeScreen>
   Timer? _searchDebounce;
   String _selectedCategory = "All";
 
-  /// Pseudo-category for the Favorites filter — kept out of [_allCategoriesForFilter]
-  /// so it never appears as an assignable folder in the Change Category menu.
   static const String _favoritesFilter = 'Favorites';
 
   List<String> get _allCategoriesForFilter {
@@ -48,7 +46,6 @@ class HomeScreenState extends State<HomeScreen>
     return [...base, ...extras];
   }
 
-  /// Filter chips above the library: "All", then "Favorites", then categories.
   List<String> get _filterChips {
     final base = _allCategoriesForFilter; // ['All', ...categories]
     return [base.first, _favoritesFilter, ...base.skip(1)];
@@ -100,8 +97,6 @@ class HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  // Debounced: filtering the whole vault and rebuilding the screen on every
-  // keystroke causes visible lag on large libraries.
   void _onSearchChanged() {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 280), () {
@@ -127,7 +122,6 @@ class HomeScreenState extends State<HomeScreen>
 
       final selectedCat = _selectedCategory.trim().toLowerCase();
       for (final media in _allMedia) {
-        // Favorites is a view-only filter over the (encrypted) library.
         if (favoritesOnly && !media.isFavorite) continue;
 
         bool matchesCategory =
@@ -232,8 +226,6 @@ class HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Marks/unmarks an item as favorite. The file stays in the encrypted vault;
-  /// favoriting only flips a flag so it also surfaces in the Favorites filter.
   Future<void> _toggleFavorite(VideoItem media) async {
     HapticFeedback.selectionClick();
     final newValue = !media.isFavorite;
@@ -251,36 +243,25 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
-  /// Identity gate for any action on a locked item. Honours the user's global
-  /// security toggles: the biometric prompt is only raised when Biometric or
-  /// Face Unlock is enabled, and the PIN prompt is only shown when App Lock is
-  /// enabled. If both are turned off the item opens without an extra prompt —
-  /// a disabled factor is never asked for. Returns true only when the user
-  /// verified (or no factor is enabled).
   Future<bool> _unlockProtectedItem({required String reason}) async {
     final prefs = await SharedPreferences.getInstance();
     final biometricEnabled = (prefs.getBool('biometric') ?? false) ||
         (prefs.getBool('biometric_face') ?? false);
     final appLockEnabled = prefs.getBool('appLock') ?? false;
 
-    // Neither lock factor is enabled — don't ask for anything.
     if (!biometricEnabled && !appLockEnabled) return true;
 
-    // Biometric / Face ID first, but only when the user has it switched on.
     if (biometricEnabled &&
         await _mediaService.authenticateUser(reason: reason)) {
       return true;
     }
     if (!mounted) return false;
 
-    // App PIN fallback, only when App Lock is enabled.
     if (appLockEnabled) return _verifyWithAppPin();
 
-    // Biometric was the only enabled factor and it didn't pass.
     return false;
   }
 
-  /// Verifies the vault's PIN through the unlock dialog.
   Future<bool> _verifyWithAppPin() async {
     if (!await PinCrypto.instance.hasPin()) {
       if (mounted) {
@@ -676,8 +657,6 @@ class HomeScreenState extends State<HomeScreen>
               FlushBarHelper.flushBarErrorMessage('Download failed', context);
             }
           } finally {
-            // Delete only this export's decrypted temp file — not the whole
-            // cache, which would yank a file out from under an open player.
             if (decryptedToTemp) {
               try {
                 await File(savePath).delete();
@@ -1154,8 +1133,6 @@ class HomeScreenState extends State<HomeScreen>
                   fontSize: 14,
                   fontWeight: FontWeight.w400,
                 ),
-                // Every state set explicitly — otherwise the focused state
-                // falls back to the app theme's blue input border.
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -1233,9 +1210,6 @@ class HomeScreenState extends State<HomeScreen>
               isCustom: isCustom,
               onTap: () {
                 HapticFeedback.selectionClick();
-                // Tapping the active category again clears back to "All".
-                // _filterMedia() runs its own setState, so set the field
-                // first and call it directly — no nested setState.
                 _selectedCategory = isSelected ? "All" : category;
                 _filterMedia();
               },
@@ -1430,7 +1404,6 @@ class HomeScreenState extends State<HomeScreen>
           final media = _filteredMedia[index];
           return AnimatedMediaCard(
             media: media,
-            // Include custom categories so they appear in "Change Category".
             categories: _allCategoriesForFilter,
             index: index,
             onTap: () => _openMedia(media),

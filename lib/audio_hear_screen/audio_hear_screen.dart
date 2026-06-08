@@ -185,8 +185,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     return h > 0 ? '$h:${two(m)}:${two(s)}' : '${two(m)}:${two(s)}';
   }
 
-  // ── build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -288,8 +286,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
       ),
     );
   }
-
-  // ── spinning vinyl disc ──────────────────────────────────────────────────
 
   Widget _disc1() {
     return AnimatedBuilder(
@@ -399,8 +395,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     );
   }
 
-  // ── progress ─────────────────────────────────────────────────────────────
-
   Widget _progress(double pos, double total) {
     return Column(
       children: [
@@ -457,8 +451,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
       ],
     );
   }
-
-  // ── transport ────────────────────────────────────────────────────────────
 
   Widget _mainTransport() {
     return Row(
@@ -641,8 +633,6 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
       ],
     );
   }
-
-  // ── states ───────────────────────────────────────────────────────────────
 
   Widget _loadingState() {
     return Center(

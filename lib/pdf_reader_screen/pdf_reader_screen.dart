@@ -89,8 +89,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
     });
   }
 
-  // ── pages ────────────────────────────────────────────────────────────────
-
   void _jump(int page) {
     final p = page.clamp(1, _totalPages);
     _controller.jumpToPage(p);
@@ -153,8 +151,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
     }
   }
 
-  // ── search ───────────────────────────────────────────────────────────────
-
   void _toggleSearch() {
     setState(() {
       _searching = !_searching;
@@ -206,8 +202,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
   void _onSearchUpdate() {
     if (mounted) setState(() {});
   }
-
-  // ── menu ─────────────────────────────────────────────────────────────────
 
   void _onMenu(String value) {
     switch (value) {
@@ -316,8 +310,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
         ),
       );
 
-  // ── build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -413,8 +405,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           ],
         ),
       );
-
-  // ── search bar ───────────────────────────────────────────────────────────
 
   Widget _searchField() {
     return Container(
@@ -523,8 +513,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
       ),
     ];
   }
-
-  // ── body ─────────────────────────────────────────────────────────────────
 
   Widget _buildBody() {
     if (_loading) {
@@ -639,8 +627,6 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
       },
     );
   }
-
-  // ── bottom bar ───────────────────────────────────────────────────────────
 
   Widget _bottomBar() {
     final progress = _totalPages <= 1 ? 0.0 : _currentPage / _totalPages;

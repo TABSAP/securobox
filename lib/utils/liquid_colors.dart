@@ -1,24 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// App color tokens. Values resolve against the current theme brightness, which
-/// is set by [ThemeController] via [applyBrightness] (and re-applied whenever
-/// the theme mode or platform brightness changes). Everything still reads as
-/// `LiquidColors.x`, so call sites didn't change — but in light mode the
-/// surfaces become light and the text tokens become dark.
 class LiquidColors {
   LiquidColors._();
 
   static bool _dark = true;
   static bool get isDark => _dark;
 
-  /// Called by [ThemeController]; safe to call from anywhere.
   static void applyBrightness(Brightness brightness) {
     _dark = brightness == Brightness.dark;
   }
 
   static Color _pick(Color dark, Color light) => _dark ? dark : light;
 
-  // ── Brand gradient (kept vivid in both modes — used for accent chrome) ──
   static const Color primaryStart = Color(0xFF4158D0);
   static const Color primaryMid = Color(0xFFC850C0);
   static const Color primaryEnd = Color(0xFFFFCC70);
@@ -26,43 +19,33 @@ class LiquidColors {
   static const Color secondaryStart = Color(0xFF0093E9);
   static const Color secondaryEnd = Color(0xFF80D0C7);
 
-  // ── Surfaces ──
-  /// The page canvas / scaffold background.
   static Color get backgroundDeep =>
       _pick(const Color(0xFF0A0F1E), const Color(0xFFF4F6FB));
 
-  /// Mid-elevation surface (cards, sheets).
   static Color get backgroundMid =>
       _pick(const Color(0xFF141B2B), const Color(0xFFFFFFFF));
 
-  /// Higher-elevation surface (dialogs, raised cards).
   static Color get backgroundLight =>
       _pick(const Color(0xFF1E2738), const Color(0xFFF1F4FA));
 
-  /// Solid card surface (use when you want an opaque card fill).
   static Color get surface =>
       _pick(const Color(0xFF1A1F2E), const Color(0xFFFFFFFF));
 
-  /// Subtle fill for chips / inactive tiles / input fields.
   static Color get surfaceMuted =>
       _pick(const Color(0x14FFFFFF), const Color(0xFFEDF0F7));
 
-  /// Hairline border on cards.
   static Color get cardBorder =>
       _pick(const Color(0x12FFFFFF), const Color(0xFFE1E6EF));
 
   static Color get divider =>
       _pick(const Color(0x0FFFFFFF), const Color(0xFFE6EAF1));
 
-  /// Drop-shadow color for elevated surfaces.
   static Color get shadow =>
       _pick(const Color(0x4D000000), const Color(0x14000000));
 
-  /// Full-screen modal scrim / privacy overlay backdrop.
   static Color get scrim =>
       _pick(const Color(0x99000000), const Color(0x66000000));
 
-  // ── Text ──
   static Color get textPrimary =>
       _pick(const Color(0xFFFFFFFF), const Color(0xFF1A1F2E));
   static Color get textSecondary =>
@@ -70,7 +53,6 @@ class LiquidColors {
   static Color get textTertiary =>
       _pick(const Color(0xFF6B7280), const Color(0xFF8A93A3));
 
-  // ── Accents (slightly deepened in light mode for contrast on white) ──
   static Color get accentBlue =>
       _pick(const Color(0xFF3B82F6), const Color(0xFF2563EB));
   static Color get accentPurple =>
@@ -88,7 +70,6 @@ class LiquidColors {
       _pick(const Color(0xFFEF4444), const Color(0xFFDC2626));
   static Color get info => accentBlue;
 
-  // ── Gradients ──
   static Gradient get primaryGradient => const LinearGradient(
         colors: [primaryStart, primaryMid, primaryEnd],
         begin: Alignment.topLeft,

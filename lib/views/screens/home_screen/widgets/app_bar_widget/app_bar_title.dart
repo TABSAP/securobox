@@ -8,9 +8,6 @@ class AppBarTitleWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild when the theme mode changes so the text colors (which read from
-    // LiquidColors, not Theme.of) re-resolve — this widget is often a const
-    // child of the AppBar, so its parent doesn't otherwise rebuild it.
     return AnimatedBuilder(
       animation: ThemeController.instance,
       builder: (context, _) => TweenAnimationBuilder(

@@ -1,9 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-/// Width at or above which the device is treated as a tablet / large screen.
 const double kTabletBreakpoint = 600;
 
-/// Width at or above which an extra grid column is worthwhile.
 const double kWideBreakpoint = 900;
 
 extension Responsive on BuildContext {
@@ -13,15 +11,11 @@ extension Responsive on BuildContext {
 
   bool get isWide => screenWidth >= kWideBreakpoint;
 
-  /// Picks a value by form factor without scattering MediaQuery checks.
   T responsive<T>({required T phone, required T tablet, T? wide}) {
     if (isWide && wide != null) return wide;
     return isTablet ? tablet : phone;
   }
 
-  /// Symmetric horizontal padding that keeps [phone] spacing on small screens
-  /// but, on tablets, grows so the content column is centred and capped near
-  /// [maxContent] wide instead of stretching edge-to-edge.
   double contentInset({double maxContent = 680, double phone = 16}) {
     final w = screenWidth;
     if (w < kTabletBreakpoint) return phone;
@@ -30,9 +24,6 @@ extension Responsive on BuildContext {
   }
 }
 
-/// Centres its [child] and caps it at [maxWidth] on tablets so content stops
-/// stretching edge-to-edge on large screens. On phones it is a no-op pass
-/// through, preserving the existing full-width layout.
 class ResponsiveCenter extends StatelessWidget {
   const ResponsiveCenter({
     super.key,

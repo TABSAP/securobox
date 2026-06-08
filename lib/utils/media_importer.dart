@@ -24,9 +24,6 @@ class ImportResult {
 class PickedMedia {
   final File file;
   final String? identifier;
-  // When the file was chosen via the in-app gallery picker we already know the
-  // exact photo_manager asset id, so the original can be removed reliably
-  // without any name/size guessing.
   final String? galleryAssetId;
   const PickedMedia(this.file, {this.identifier, this.galleryAssetId});
 }
@@ -108,8 +105,6 @@ class MediaImporter {
         added++;
 
         if (deleteOriginals && galleryTypes.contains(fileType)) {
-          // Prefer the exact asset id from the in-app gallery picker; only fall
-          // back to the name/size scan for files chosen via the system picker.
           final directId = items[i].galleryAssetId;
           if (directId != null && directId.isNotEmpty) {
             if (!pendingGalleryIds.contains(directId)) {
@@ -148,7 +143,6 @@ class MediaImporter {
       deleteOriginalsRequested: deleteOriginals,
     );
   }
-
 
   Future<int> moveCategoryItems(String from, String to) async {
     if (from == to) return 0;

@@ -5,13 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'liquid_colors.dart';
 
-/// Owns the app-wide theme mode (System / Light / Dark) and keeps
-/// [LiquidColors] in sync with the resolved brightness so colors are correct
-/// even outside a build (e.g. `CustomPainter`s reading `LiquidColors.x`).
 class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
   ThemeController._() {
-    // Observe — don't overwrite — so Flutter's own brightness tracking
-    // (needed for ThemeMode.system + MediaQuery) keeps working.
     WidgetsBinding.instance.addObserver(this);
   }
   static final ThemeController instance = ThemeController._();
@@ -21,7 +16,6 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
   ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
 
-  /// The brightness actually in effect right now (resolves `system`).
   Brightness get effectiveBrightness {
     switch (_mode) {
       case ThemeMode.light:
@@ -33,8 +27,6 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Loads the persisted preference. Defaults to following the system theme
-  /// when nothing is stored.
   Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();

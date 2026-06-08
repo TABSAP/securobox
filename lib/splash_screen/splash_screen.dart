@@ -77,8 +77,6 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       final hasOnboarded = prefs.getBool('hasOnboarded') ?? false;
-      // Any of the three lock layers is enough to gate the app — the user
-      // keeps full control of which factor(s) they want.
       final lockEnabled = (prefs.getBool('appLock') ?? false) ||
           (prefs.getBool('biometric') ?? false) ||
           (prefs.getBool('biometric_face') ?? false);
@@ -118,7 +116,6 @@ class _SplashScreenState extends State<SplashScreen>
         ),
         child: Stack(
           children: [
-            // soft depth blobs
             Positioned(
               top: -120,
               left: -90,
@@ -129,7 +126,6 @@ class _SplashScreenState extends State<SplashScreen>
               right: -110,
               child: _blob(LiquidColors.accentPurple, 340),
             ),
-            // logo + wordmark
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -171,7 +167,6 @@ class _SplashScreenState extends State<SplashScreen>
                 ],
               ),
             ),
-            // bottom: loader + security badge + version
             Positioned(
               left: 0,
               right: 0,

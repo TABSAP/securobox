@@ -298,8 +298,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  /// One selectable theme card, framed by a live miniature of the theme so
-  /// the option previews exactly what tapping it does.
   Widget _themeOption(ThemeMode current, ThemeMode mode, String label) {
     final selected = mode == current;
     return GestureDetector(
@@ -407,8 +405,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
-  /// A tiny mock of an app screen rendered in [brightness] — used inside the
-  /// theme picker so each tile shows what the theme really looks like.
   Widget _miniScreen(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     final bg = isDark ? const Color(0xFF0F1626) : const Color(0xFFEDF1F7);
@@ -619,8 +615,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 }
 
-/// Clips to the top-left triangle, so the System theme tile can show the
-/// light mock diagonally over the dark one.
 class _DiagonalClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) => Path()

@@ -65,8 +65,6 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   VideoItem get _m => widget.media;
-  // The whole vault is gated by the app lock + AES encryption, so cards always
-  // render unlocked; the accent just reflects the media type.
   Color get _accent => LiquidColors.getMediaColor(_m.type);
 
   @override
@@ -156,7 +154,6 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
         const SizedBox(height: 6),
         Row(
           children: [
-            // Compact type tag, then a single muted "category · date" line.
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
               decoration: BoxDecoration(
@@ -192,8 +189,6 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   Widget _buildActions(BuildContext context) {
-    // Per-item lock removed: the whole vault is already gated by the app lock
-    // and AES encryption, so a second per-file lock was redundant.
     return _iconButton(
       icon: Icons.more_vert_rounded,
       color: LiquidColors.textSecondary,

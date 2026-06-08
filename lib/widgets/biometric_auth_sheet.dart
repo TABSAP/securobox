@@ -8,18 +8,8 @@ import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 
-/// Result of a [BiometricAuthSheet] flow.
 enum BiometricAuthResult { authenticated, usePin, cancelled }
 
-/// Full-screen biometric verification page, restyled to SecuroBox's own design
-/// language: a theme-aware canvas, a single hero "scan orb" with breathing,
-/// scan-sweep, success-burst and error-shake states, clean typography and a
-/// consistent bottom action stack. Auto-prioritises Face ID when the device
-/// exposes it.
-///
-/// The class name and public surface ([BiometricAuthSheet.show] + every
-/// constructor argument) are preserved so existing callers don't change; under
-/// the hood it pushes a full-screen page.
 class BiometricAuthSheet extends StatefulWidget {
   final String title;
   final String subtitle;
@@ -27,10 +17,6 @@ class BiometricAuthSheet extends StatefulWidget {
   final bool allowPinFallback;
   final String fallbackLabel;
   final IconData fallbackIcon;
-  /// Invoked exactly once with the flow's result. The host route (created in
-  /// [show]) removes the sheet itself, so the State never calls Navigator.pop
-  /// directly — a plain pop would remove whatever is on top (e.g. a transient
-  /// Flushbar overlay) instead of this sheet, crashing the navigator.
   final void Function(BiometricAuthResult result)? onResult;
 
   const BiometricAuthSheet({
@@ -68,10 +54,6 @@ class BiometricAuthSheet extends StatefulWidget {
         onResult: (result) {
           if (!completer.isCompleted) completer.complete(result);
           if (!route.isActive) return;
-          // Remove THIS route specifically. If the sheet is on top, pop it for
-          // the exit animation; if something transient (e.g. a Flushbar) sits
-          // above it, surgically remove just our route so we never pop — and
-          // crash on — the wrong one.
           if (route.isCurrent) {
             navigator.pop();
           } else {
@@ -100,17 +82,11 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   bool _preferFace = true;
   bool _bioReady = false;
   bool _introDone = false;
-  // True when the OS reports it *can* run a biometric prompt. We rely on this
-  // rather than getAvailableBiometrics(), which returns an empty list on many
-  // Android devices even when a fingerprint / face is actually enrolled.
   bool _canAuthenticate = false;
   bool _retriedWarmup = false;
   String _errorMessage = '';
   bool _running = false;
-  // Ensures the result is delivered (and the sheet removed) only once.
   bool _resolved = false;
-  // While non-null, biometrics are on the 3-strike 60s cooldown and the page
-  // shows a live countdown instead of a "Try Again" button.
   Duration? _cooldownLeft;
   Timer? _cooldownTimer;
 
@@ -172,9 +148,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       );
       return;
     }
-    // Trigger the OS prompt the instant the first frame is on screen — no fixed
-    // delay. Waiting for the frame (instead of a timer) keeps it from firing
-    // mid-build, which Android would cancel, while staying effectively instant.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _authenticate();
     });
@@ -182,9 +155,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
   Future<void> _detectBiometrics() async {
     try {
-      // Fire all three platform queries together rather than serially — on the
-      // first-ever use the local_auth channel is cold, and three back-to-back
-      // round-trips are the main first-time delay before the prompt appears.
       final supportedF = _auth.isDeviceSupported();
       final canCheckF = _auth.canCheckBiometrics;
       final listF = _auth.getAvailableBiometrics();
@@ -198,8 +168,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       setState(() {
         _canAuthenticate = supported || canCheck;
         final hasFace = list.contains(BiometricType.face);
-        // Android usually reports "strong" / "weak" rather than a specific
-        // type, and sometimes nothing at all — fall back to fingerprint.
         final hasFp =
             list.contains(BiometricType.fingerprint) ||
             (!hasFace && list.isNotEmpty) ||
@@ -248,8 +216,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       ..reset()
       ..repeat();
     HapticFeedback.lightImpact();
-    // The OS biometric prompt backgrounds/defocuses the app; mark it trusted so
-    // resume doesn't auto-lock on top of the prompt and freeze the flow.
     SessionManager.instance.beginTrustedInteraction();
     try {
       final ok = await _auth.authenticate(
@@ -381,8 +347,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     setState(() => _phase = _AuthPhase.success);
     _success.forward(from: 0);
     HapticFeedback.heavyImpact();
-    // Resolve almost immediately — the user has verified, so unlocking should
-    // feel instant. A tiny beat lets the success tick register without lag.
     Future<void>.delayed(const Duration(milliseconds: 120), () {
       if (mounted) _close(BiometricAuthResult.authenticated);
     });
@@ -427,14 +391,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   void _close(BiometricAuthResult result) {
     if (_resolved) return;
     _resolved = true;
-    // Hand the result back to [show], which removes this sheet's own route.
     widget.onResult?.call(result);
   }
 
-  // ── phase-driven palette ───────────────────────────────────────────────────
-
-  /// The single accent that drives the orb, glow and chips for the current
-  /// phase: blue while idle/scanning, green on success, red on failure.
   Color get _accent {
     switch (_phase) {
       case _AuthPhase.success:
@@ -459,14 +418,10 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     }
   }
 
-  // ── build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final isDark = LiquidColors.isDark;
     final size = MediaQuery.of(context).size;
-    // Responsive hero size — scales with the smaller screen edge, clamped so it
-    // stays comfortable on both phones and tablets.
     final double disc = (size.shortestSide * 0.36).clamp(124.0, 168.0).toDouble();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -481,7 +436,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
           backgroundColor: LiquidColors.backgroundDeep,
           body: Stack(
             children: [
-              // Ambient accent glow behind the hero — soft, follows the phase.
               Positioned.fill(
                 child: IgnorePointer(
                   child: Align(
@@ -577,8 +531,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     );
   }
 
-  // ── top bar ────────────────────────────────────────────────────────────────
-
   Widget _topBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
@@ -640,7 +592,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
               ],
             ),
             const Spacer(),
-            // Mirror the back button's width so the brand stays centered.
             const SizedBox(width: 44),
           ],
         ),
@@ -681,8 +632,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       ),
     );
   }
-
-  // ── orb ──────────────────────────────────────────────────────────────────
 
   Widget _orb(double disc) {
     final reserved = disc + 64;
@@ -746,7 +695,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                         ),
                       ),
                     ),
-                  // Soft halo.
                   Container(
                     width: disc + 24,
                     height: disc + 24,
@@ -755,7 +703,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                       color: c.withValues(alpha: 0.06 + 0.04 * breathing),
                     ),
                   ),
-                  // Main disc.
                   Transform.scale(
                     scale: isSuccess
                         ? (0.82 + 0.18 * burstT)
@@ -866,8 +813,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     }
   }
 
-  // ── text ─────────────────────────────────────────────────────────────────
-
   Widget _titleText() {
     final String text;
     switch (_phase) {
@@ -933,8 +878,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     );
   }
 
-  /// Compact status pill shown under the subtitle: a live "scanning" indicator
-  /// while authenticating, or a quiet "what to do" hint while idle.
   Widget _statusChip() {
     switch (_phase) {
       case _AuthPhase.scanning:
@@ -1005,8 +948,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         return const SizedBox.shrink();
     }
   }
-
-  // ── action area ────────────────────────────────────────────────────────────
 
   Widget _actions() {
     switch (_phase) {
@@ -1151,8 +1092,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     );
   }
 
-  // ── buttons ──────────────────────────────────────────────────────────────
-
   Widget _primaryButton({
     required IconData icon,
     required String label,
@@ -1258,7 +1197,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   }
 }
 
-/// Tap-down scale micro-interaction.
 class _Pressable extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

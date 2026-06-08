@@ -17,11 +17,6 @@ import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 
-/// Bottom sheet that drives the "add to vault" flow from the Library tab.
-///
-/// Two entry points:
-///   • Smart import — pick anything and auto-bucket by extension.
-///   • Category — pick into a specific built-in or custom folder.
 class AddToVaultSheet extends StatefulWidget {
   final Future<void> Function() onImported;
   const AddToVaultSheet({super.key, required this.onImported});
@@ -59,9 +54,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
   final List<String> _customCategories = [];
   bool _loadingCustoms = true;
   bool _importing = false;
-  // Per-file progress as (done, total). Held in a notifier so progress updates
-  // rebuild only the small banner — not the whole sheet (grid, cards, painters)
-  // — which is what caused the UI to stutter during a multi-file import.
   final ValueNotifier<(int, int)> _progress = ValueNotifier((0, 0));
 
   String get _customKey => VaultContext.instance.customCategoriesKey;
@@ -116,15 +108,9 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
 
   Future<void> _smartImport() async {
     HapticFeedback.lightImpact();
-    // Smart import pulls photos, videos and audio straight from the gallery via
-    // the in-app picker, so originals can be reliably moved out of the gallery
-    // and auto-sorted. Documents have their own category tile (file picker).
     await _importFromGallery(null, RequestType.all);
   }
 
-  // Photos / Videos / Audio come from the gallery — use the in-app asset picker
-  // so we get the real asset id and can reliably move the original out of the
-  // gallery. Everything else (documents, custom folders) uses the file picker.
   RequestType? _galleryRequestType(String category) {
     switch (category) {
       case 'Photos':
@@ -175,11 +161,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     await _runImport(items, category);
   }
 
-  /// Closes the add sheet itself — and only it. While files are imported, the
-  /// OS gallery-delete confirmation briefly backgrounds the app, after which
-  /// the auto-lock screen may be pushed on top; a plain `pop()` would then
-  /// close that instead. Removing this widget's own route avoids the race so
-  /// the sheet always closes once data has been added.
   void _dismissSheet() {
     if (!mounted) return;
     final route = ModalRoute.of(context);
@@ -197,10 +178,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     required FileType type,
     bool useStreamFallback = false,
   }) async {
-    // Picking files — and the OS gallery-delete confirmation later in the import
-    // — send the app to the background. Mark this as a trusted round-trip so the
-    // auto-lock doesn't fire on resume and strand the picker/import behind the
-    // lock screen (which made biometric/PIN get stuck).
     final items = <PickedMedia>[];
     SessionManager.instance.beginTrustedInteraction();
     try {
@@ -208,9 +185,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
         type: type,
         allowMultiple: true,
         withData: false,
-        // Smart import (FileType.any) can return content-URI files that have no
-        // direct path; a read stream lets us materialise those so they still
-        // import instead of being silently skipped ("nothing imported").
         withReadStream: useStreamFallback,
       );
       if (result == null || result.files.isEmpty) return;
@@ -238,10 +212,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     await _runImport(items, category);
   }
 
-  /// Encrypts the picked [items] into the vault and reports the result. Shared
-  /// by the file picker and the in-app gallery picker. The OS gallery-delete
-  /// confirmation backgrounds the app, so the import runs inside a trusted
-  /// interaction to keep auto-lock from stranding it.
   Future<void> _runImport(List<PickedMedia> items, String? category) async {
     if (items.isEmpty) {
       if (!mounted) return;
@@ -261,8 +231,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       final import = await MediaImporter.instance.importFiles(
         items: items,
         category: category,
-        // Update the notifier only — rebuilds just the progress banner, not the
-        // whole sheet, so the import doesn't stutter the UI.
         onProgress: (done, total) => _progress.value = (done, total),
       );
 
@@ -309,9 +277,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     }
   }
 
-  /// Writes a picked file that has no direct path (e.g. a SAF / content-URI
-  /// item from Smart Import) to a temp file so it can be encrypted like any
-  /// other import. Returns null if the pick can't be read.
   Future<File?> _materializePick(PlatformFile pf) async {
     final stream = pf.readStream;
     if (stream == null) return null;
@@ -329,9 +294,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     }
   }
 
-  /// Shared name dialog for creating and renaming custom categories.
-  /// [excludeName] is left out of the duplicate check so a rename can keep
-  /// the same spelling/casing.
   Future<String?> _promptCategoryName({
     required IconData icon,
     required String title,
@@ -529,7 +491,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     await _importInto(result);
   }
 
-  /// Bottom-sheet menu shown when the ⋮ on a custom category tile is tapped.
   Future<void> _showCategoryMenu(String name) async {
     HapticFeedback.selectionClick();
     final action = await showModalBottomSheet<String>(
@@ -1090,8 +1051,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
         ),
       );
     }
-    // Only the user's own custom categories are listed — the built-in
-    // "pick a category" grid is gone; Smart Import auto-sorts everything else.
     final customs = _customCategories;
     return GridView.builder(
       shrinkWrap: true,

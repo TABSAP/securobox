@@ -4,18 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_screenshot_blocker/flutter_screenshot_blocker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Controls Android's `FLAG_SECURE`, which blocks **both** screenshots and
-/// screen recording. Secure by default; the user can turn it off in Settings.
-///
-/// [enabled] is a notifier so the Settings toggle stays in sync, and applying
-/// the change re-issues the native flag immediately.
 class ScreenSecurity {
   ScreenSecurity._();
 
   static const _kKey = 'screenshotBlock';
   static final ValueNotifier<bool> enabled = ValueNotifier<bool>(true);
 
-  /// Loads the saved preference (default on) and applies it. Call once at start.
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     enabled.value = prefs.getBool(_kKey) ?? true;
@@ -38,7 +32,6 @@ class ScreenSecurity {
         await FlutterScreenshotBlocker.disableScreenshotBlocking();
       }
     } catch (_) {
-      // Native channel unavailable — leave as-is.
     }
   }
 }

@@ -7,13 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/pbkdf2.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 
-/// Manages the decoy ("fake") PIN and the decoy vault's auto-seeded content.
-///
-/// The fake PIN is hashed with the same PBKDF2-HMAC-SHA256 / 100k-iteration
-/// scheme as the real PIN, so an attacker who somehow reads secure storage
-/// can't tell which hash is the "real" one by the algorithm. It is stored
-/// under separate keys, and the decoy vault uses a separate master key and a
-/// separate on-disk directory — the two vaults are cryptographically isolated.
 class DecoyService {
   DecoyService._();
   static final DecoyService instance = DecoyService._();
@@ -99,9 +92,6 @@ class DecoyService {
     }
   }
 
-  /// Hidden audit trail: each time the decoy vault is opened under the fake
-  /// PIN, bump a counter and append a timestamp (last 10 kept). Stored in
-  /// secure storage, not visible anywhere in the decoy UI.
   Future<void> recordDuressEntry() async {
     try {
       final raw = await _secure.read(key: _kDuressLog) ?? '0|';
@@ -128,7 +118,6 @@ class DecoyService {
     }
   }
 
-  // ---- seed believable-but-harmless decoy library metadata ----
   Future<void> _seedDecoyVaultIfEmpty() async {
     final prefs = await SharedPreferences.getInstance();
     final existing = prefs.getStringList(VaultContext.decoyLibraryKey);
@@ -139,7 +128,6 @@ class DecoyService {
 
     String entry(String title, String type, String category, int daysOffset) {
       final id = (base + daysOffset * 86400000).toString();
-      // id|title|path|type|isLocked|category|isDeleted|deletedDate|encrypted|isHidden
       return '$id|$title||$type|false|$category|false||false|false';
     }
 
@@ -166,7 +154,6 @@ class DecoyService {
       final id = (dlBase + daysOffset * 86400000).toString();
       final date =
           DateTime.fromMillisecondsSinceEpoch(int.parse(id)).toIso8601String();
-      // id|fileName|fileSize|status|date|path||url::progress
       return '$id|$name|$size|completed|$date|||::1.0';
     }
 

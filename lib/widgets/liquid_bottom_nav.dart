@@ -6,8 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 
-/// Shared selected-tab channel. The main shell (`MainScreen`) listens here;
-/// pushed content screens write here, then pop back to the shell.
 class AppNav {
   AppNav._();
   static final ValueNotifier<int> tab = ValueNotifier<int>(0);
@@ -20,16 +18,7 @@ class _NavItem {
   const _NavItem(this.icon, this.activeIcon, this.label);
 }
 
-/// The single bottom navigation bar used across the whole app — the animated
-/// "liquid" blob bar that morphs and glides under the active tab.
-///
-/// On the shell it is given the live [selectedIndex] (0-2) so the blob glides
-/// to the active tab. On a pushed content screen [selectedIndex] is null — no
-/// blob, every tab muted — and tapping one pops back to the shell and selects
-/// it. The tap behaviour adapts automatically from the widget's route
-/// position, so there is exactly one nav-bar widget in the app.
 class LiquidBottomNav extends StatefulWidget {
-  /// The active tab (0-2) on the shell, or null on a pushed content screen.
   final int? selectedIndex;
 
   const LiquidBottomNav({super.key, this.selectedIndex});
@@ -89,7 +78,6 @@ class _LiquidBottomNavState extends State<LiquidBottomNav>
   void _onTap(int i) {
     HapticFeedback.selectionClick();
     AppNav.tab.value = i;
-    // On a pushed content screen, return to the shell so the tab is shown.
     final route = ModalRoute.of(context);
     if (route != null && !route.isFirst) {
       Navigator.of(context).popUntil((r) => r.isFirst);
@@ -132,7 +120,6 @@ class _LiquidBottomNavState extends State<LiquidBottomNav>
                   animation: _slide,
                   builder: (context, _) {
                     final t = Curves.easeOutCubic.transform(_slide.value);
-                    // droplet stretch: peaks at mid-glide, then relaxes
                     final wave = math.sin(_slide.value * math.pi);
                     final bw = _blobW * (1 + wave * 0.5);
                     final bh = _blobH * (1 - wave * 0.18);
@@ -144,8 +131,6 @@ class _LiquidBottomNavState extends State<LiquidBottomNav>
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        // The blob exists only when a tab is active (the
-                        // shell). Pushed content screens have no active tab.
                         if (_curr >= 0)
                           Positioned(
                             left: blobLeft - (bw - _blobW) / 2,
@@ -198,7 +183,6 @@ class _LiquidBottomNavState extends State<LiquidBottomNav>
                                 size: 23,
                               ),
                             );
-                            // Live break-in count badge on the Intrusions tab.
                             if (i == 1) {
                               iconWidget = Stack(
                                 clipBehavior: Clip.none,

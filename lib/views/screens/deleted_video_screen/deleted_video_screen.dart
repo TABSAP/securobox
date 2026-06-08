@@ -209,7 +209,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     }
   }
 
-  /// A red, two-button confirmation for an irreversible delete.
   Future<bool?> _confirmDeleteForever(String title, String body) {
     return showDialog<bool>(
       context: context,
@@ -322,8 +321,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     );
   }
 
-  /// Permanently deletes a single item — wipes its encrypted file from disk
-  /// and drops the library entry. Irreversible, so it is gated by a confirm.
   Future<void> _permanentDelete(VideoItem video) async {
     final confirmed = await _confirmDeleteForever(
       'Delete forever?',
@@ -341,7 +338,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         try {
           final v = VideoItem.fromStorageString(mediaData);
           if (v.id == video.id) {
-            // Wipe the encrypted file from disk, then drop the entry.
             await VaultCrypto.instance.deleteEncryptedFile(v.path);
           } else {
             updatedMediaList.add(mediaData);
@@ -384,7 +380,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         try {
           final v = VideoItem.fromStorageString(mediaData);
           if (v.isDeleted && !v.isHidden) {
-            // Empty Trash is permanent — wipe the encrypted file and drop it.
             await VaultCrypto.instance.deleteEncryptedFile(v.path);
             removed++;
           } else {
@@ -870,8 +865,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                   ),
-                  // Every state set explicitly — otherwise the focused state
-                  // falls back to the app theme's blue input border.
                   border: InputBorder.none,
                   enabledBorder: InputBorder.none,
                   focusedBorder: InputBorder.none,

@@ -10,9 +10,6 @@ import 'package:video_player/video_player.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_importer.dart';
 
-/// Direct Secure Capture — take a photo or video, review it, and only commit
-/// it to the encrypted vault when the user taps **Save**. A discarded capture
-/// is wiped and never reaches the vault or the device gallery.
 class SecureCameraScreen extends StatefulWidget {
   const SecureCameraScreen({super.key});
 
@@ -34,9 +31,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   int _savedCount = 0;
   String? _error;
 
-  // Transient red banner shown when a capture or save fails.
   String? _captureError;
-  // Transient green confirmation shown on the camera after a successful save.
   bool _justSaved = false;
 
   _CaptureMode _mode = _CaptureMode.photo;
@@ -45,9 +40,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   Timer? _recordTimer;
   int _recordSeconds = 0;
 
-  // Review state — the just-captured file, held only in temp. It is NOT in the
-  // vault yet; it lands there only if the user taps Save, and is wiped if the
-  // user discards it.
   String? _reviewPath;
   bool _reviewIsVideo = false;
   VideoPlayerController? _reviewVideo;
@@ -76,11 +68,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final c = _controller;
     if (state == AppLifecycleState.inactive) {
-      // Backgrounding tears down the camera — any in-progress recording is
-      // lost, so reset the recording UI to a clean state.
       _recordTimer?.cancel();
-      // A capture awaiting review is plaintext in the cache — wipe it so an
-      // interrupted/abandoned review never leaves an unencrypted file behind.
       if (_reviewPath != null) {
         _wipeReviewFile(_reviewPath);
         if (mounted) {
@@ -115,7 +103,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         _fail('Camera permission is needed for Secure Capture.');
         return;
       }
-      // Microphone is best-effort — video still records (silently) without it.
       try {
         final mic = await Permission.microphone.request();
         _micGranted = mic.isGranted;
@@ -255,8 +242,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     }
   }
 
-  /// Opens the review step on a freshly captured file. Nothing is saved here —
-  /// the capture only lands in the vault when the user taps Save.
   Future<void> _openReview(File capture, {required bool isVideo}) async {
     VideoPlayerController? videoCtrl;
     if (isVideo) {
@@ -285,8 +270,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     });
   }
 
-  /// Commits the reviewed capture into the encrypted vault. This is the *only*
-  /// path that saves a capture — it runs solely on a Save tap.
   Future<void> _saveCapture() async {
     final path = _reviewPath;
     if (path == null || _saving) return;
@@ -300,9 +283,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         items: [PickedMedia(File(path))],
         category: _reviewIsVideo ? 'Videos' : 'Photos',
       );
-      // importFiles swallows per-file encryption errors, so added == 0 is the
-      // only signal the capture never reached the vault. Keep the review open
-      // (and the temp file) so the user can retry Save.
       if (mounted && result.added == 0) {
         setState(() {
           _saving = false;
@@ -311,7 +291,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         HapticFeedback.heavyImpact();
         return;
       }
-      // importFiles may leave the source temp file behind — wipe any leftover.
       _wipeReviewFile(path);
       final video = _reviewVideo;
       if (!mounted) {
@@ -332,7 +311,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         if (mounted) setState(() => _justSaved = false);
       });
     } catch (_) {
-      // Keep the review open so the user can retry Save or discard.
       if (mounted) {
         setState(() {
           _saving = false;
@@ -343,7 +321,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     }
   }
 
-  /// Discards the reviewed capture — the temp file is wiped and never saved.
   Future<void> _discardCapture() async {
     if (_saving) return;
     HapticFeedback.selectionClick();
@@ -405,8 +382,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     );
   }
 
-  // ── live camera ──────────────────────────────────────────────────────────
-
   Widget _cameraView() {
     return Stack(
       children: [
@@ -440,8 +415,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     );
   }
 
-  /// Full-bleed camera preview — scaled to cover the screen so there are no
-  /// black letterbox bars, the way a native camera app looks.
   Widget _preview() {
     final c = _controller!;
     var scale =
@@ -456,8 +429,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     );
   }
 
-  /// A soft black gradient behind the top / bottom controls so they stay
-  /// legible over a bright camera scene.
   Widget _scrim({required bool top}) {
     return IgnorePointer(
       child: Container(
@@ -611,8 +582,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // The Photo / Video switch hides while recording to keep focus on
-          // the running clip.
           if (!_recording) ...[
             _modeToggle(),
             const SizedBox(height: 22),
@@ -729,8 +698,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white),
       );
     } else {
-      // Video: a red disc that morphs to a rounded "stop" square while
-      // recording.
       inner = AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOut,
@@ -774,8 +741,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
       ),
     );
   }
-
-  // ── capture review ───────────────────────────────────────────────────────
 
   Widget _reviewView() {
     return Stack(
@@ -829,7 +794,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     );
   }
 
-  /// Neutral header making it explicit the capture is not in the vault yet.
   Widget _reviewHeaderBadge() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),

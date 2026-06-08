@@ -1,12 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// App-wide "liquid" page transition.
-///
-/// The incoming screen fades in while gently rising into place; the screen it
-/// covers eases upward and dims so the navigation stack feels layered and
-/// fluid. Wired through [PageTransitionsTheme] in the app theme, so every
-/// [MaterialPageRoute] across the whole app picks it up automatically — and
-/// the reverse plays on back-navigation.
 class LiquidPageTransitionsBuilder extends PageTransitionsBuilder {
   const LiquidPageTransitionsBuilder();
 
@@ -30,7 +23,6 @@ class LiquidPageTransitionsBuilder extends PageTransitionsBuilder {
     );
 
     return SlideTransition(
-      // The covered page drifts up a touch as a new screen settles over it.
       position: Tween<Offset>(
         begin: Offset.zero,
         end: const Offset(0, -0.03),
@@ -49,8 +41,6 @@ class LiquidPageTransitionsBuilder extends PageTransitionsBuilder {
   }
 }
 
-/// The liquid transition applied uniformly to every platform, so screen
-/// changes feel identical across the app.
 const PageTransitionsTheme liquidPageTransitionsTheme = PageTransitionsTheme(
   builders: {
     TargetPlatform.android: LiquidPageTransitionsBuilder(),

@@ -5,12 +5,6 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 
-/// In-app gallery picker built on photo_manager.
-///
-/// Unlike the system file picker, this gives us the real [AssetEntity] (with its
-/// id), so after a file is encrypted into the vault its original can be removed
-/// from the gallery reliably — the whole point of "move into vault". Returns the
-/// selected assets, or null if cancelled.
 class SecureMediaPickerScreen extends StatefulWidget {
   final RequestType type;
   final String title;
@@ -67,8 +61,6 @@ class _SecureMediaPickerScreenState extends State<SecureMediaPickerScreen> {
   }
 
   Future<void> _init() async {
-    // Picking sends us through the OS permission sheet — mark it trusted so the
-    // app doesn't auto-lock and strand the picker behind the lock screen.
     SessionManager.instance.beginTrustedInteraction();
     try {
       final ps = await PhotoManager.requestPermissionExtend();

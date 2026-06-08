@@ -10,7 +10,6 @@ class FaceRecognitionService {
   static final FaceRecognitionService instance = FaceRecognitionService._();
 
   static const _kTemplateKey = 'face_template_v3';
-  // Older keys from earlier (looser) cuts of the feature; cleared on enrollment.
   static const _kLegacyKeys = ['face_template_v2', 'face_template_v1'];
 
   static const _secure = FlutterSecureStorage(
@@ -20,25 +19,17 @@ class FaceRecognitionService {
     ),
   );
 
-  /// Hard ceiling on the verify distance. The effective threshold is the
-  /// smaller of this and `enrollSpread + _spreadMargin`, so a tight enrollment
-  /// makes matching *stricter*, never looser.
   static const double matchThreshold = 0.05;
   static const double _spreadMargin = 0.012;
 
-  /// Face readings collected during enrollment before building the template.
   static const int enrollSamples = 5;
   static const int minEnrollSamples = 3;
 
   static const double enrollConsistency = 0.075;
 
-  /// Matching frames required (during verification) before the app unlocks.
   static const int verifyMatchesRequired = 3;
 
-  /// Reject a captured frame whose face detection is this incomplete (too many
-  /// missing contours/landmarks => the signature would be mostly placeholder
-  /// values and could falsely match another low-quality capture).
-  static const int _maxMissingFeatures = 5; // out of 13 contours + 4 landmarks
+  static const int _maxMissingFeatures = 5;
 
   FaceDetector? _detector;
   FaceDetector get _faceDetector => _detector ??= FaceDetector(
@@ -75,9 +66,6 @@ class FaceRecognitionService {
     }
   }
 
-  /// Runs ML Kit on a captured photo file and, if a single clear, frontal face
-  /// is found, returns its normalized signature vector. On any quality problem
-  /// returns `(vector: null, error: <hint>)`.
   Future<({List<double>? vector, String? error})> signatureFromImageFile(
     String path,
   ) async {
@@ -116,10 +104,6 @@ class FaceRecognitionService {
     return (vector: vec, error: null);
   }
 
-  // Ordered plan: each contour resampled to a fixed number of points so the
-  // signature vector is always the same length regardless of what ML Kit
-  // returns. Missing/short contours are filled with a deterministic fallback
-  // (and a frame with too many of them is rejected — see _maxMissingFeatures).
   static const Map<FaceContourType, int> _contourPlan = {
     FaceContourType.face: 18,
     FaceContourType.leftEyebrowTop: 5,
@@ -144,9 +128,6 @@ class FaceRecognitionService {
   ];
 
   List<double>? _buildVector(Face face) {
-    // Normalization frame: midpoint of the two eyes; x-axis along eye line;
-    // scale = inter-ocular distance. Prefer eye-contour centroids (more
-    // stable), fall back to the eye landmarks.
     final eyeL =
         _eyePoint(face, FaceContourType.leftEye, FaceLandmarkType.leftEye);
     final eyeR =
@@ -276,10 +257,6 @@ class FaceRecognitionService {
     return m;
   }
 
-  /// Builds the template from [samples]: keeps only a mutually-consistent
-  /// subset, averages it, and stores it along with its spread. Throws
-  /// [StateError] if a tight-enough set of at least [minEnrollSamples]
-  /// readings can't be found — the caller should ask the user to retry.
   Future<void> enroll(List<List<double>> samples) async {
     if (samples.isEmpty) throw StateError('No face readings captured.');
     final len = samples.first.length;
@@ -291,7 +268,6 @@ class FaceRecognitionService {
     var kept = List<List<double>>.from(clean);
     while (kept.length > minEnrollSamples &&
         _maxPairwise(kept) > enrollConsistency) {
-      // drop the reading that is, on average, furthest from the rest
       var worstIdx = 0;
       var worstAvg = -1.0;
       for (var i = 0; i < kept.length; i++) {
@@ -327,7 +303,6 @@ class FaceRecognitionService {
   }
 
   Future<void> _store(List<double> vector, double spread) async {
-    // Layout: [spread, ...vector]
     final f64 = Float64List(vector.length + 1)
       ..[0] = spread
       ..setRange(1, vector.length + 1, vector);
@@ -356,9 +331,6 @@ class FaceRecognitionService {
     }
   }
 
-  /// Returns whether [candidate] matches the enrolled template and the measured
-  /// distance. The accept budget is `min(matchThreshold, enrollSpread + margin)`
-  /// so a tight enrollment yields a stricter check.
   Future<({bool matched, double dist})> verifyVector(
     List<double> candidate,
   ) async {

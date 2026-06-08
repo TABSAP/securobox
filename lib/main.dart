@@ -14,22 +14,18 @@ import 'app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Apply screenshot / screen-recording protection (default blocked, user can allow from settings)
   await ScreenSecurity.init();
 
   await ThemeController.instance.init();
 
   await SessionManager.instance.init();
 
-  // Offline Integrity Lock — starts watching network interfaces immediately
   await NetworkGuard.instance.init();
 
   unawaited(DisguiseService.instance.load());
 
-  // Prewarm PBKDF2 isolate for fast crypto operations
   prewarmPbkdf2();
 
-  // Warm local_auth for faster first biometric prompt
   unawaited(() async {
     try {
       final auth = LocalAuthentication();
@@ -39,10 +35,8 @@ void main() async {
     } catch (_) {}
   }());
 
-  // Self test vault crypto
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
 
-  // Lock orientation
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,

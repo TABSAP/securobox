@@ -14,7 +14,6 @@ class MediaService {
   String get _storageKey => VaultContext.instance.libraryKey;
   String get _downloadHistoryKey => VaultContext.instance.downloadHistoryKey;
 
-  /// Gallery album / folder name that downloaded media is filed under.
   static const String galleryAlbum = 'SecuroBox';
 
   final LocalAuthentication _localAuth = LocalAuthentication();
@@ -75,9 +74,6 @@ class MediaService {
     }
   }
 
-  /// Marks [media] as favorite (or not) and persists it. The item stays in the
-  /// encrypted vault — favoriting only flips a flag used to surface it in the
-  /// Favorites view. Returns the updated item, or null on failure.
   Future<VideoItem?> setFavorite(VideoItem media, bool value) async {
     try {
       final updatedMedia = media.copyWith(isFavorite: value);
@@ -221,15 +217,11 @@ class MediaService {
   }
 
   Future<bool> authenticateUser({String reason = 'Authenticate to access locked media'}) async {
-    // The OS biometric prompt backgrounds/defocuses the app; flag it as a
-    // trusted round-trip so resume doesn't auto-lock on top of it and freeze.
     SessionManager.instance.beginTrustedInteraction();
     try {
       final bool canCheck = await _localAuth.canCheckBiometrics;
       final bool supported = await _localAuth.isDeviceSupported();
       if (!canCheck && !supported) return false;
-      // Note: getAvailableBiometrics() returns an empty list on many Android
-      // devices even when biometrics are enrolled — don't gate on it.
       return await _localAuth.authenticate(
         localizedReason: reason,
         biometricOnly: true,

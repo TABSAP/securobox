@@ -147,8 +147,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       });
       return;
     }
-    // Brief beat so the final dot visibly fills, then advance — kept short so
-    // moving to the confirm step feels instant.
     Future.delayed(const Duration(milliseconds: 90), () {
       if (mounted) {
         setState(() => _step = _Step.confirmPin);
@@ -215,8 +213,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _afterRecovery();
   }
 
-  /// Moves past the recovery step into biometric setup (if available) or
-  /// straight into the app.
   void _afterRecovery() {
     if (!mounted) return;
     if (_biometricAvailable) {
@@ -296,7 +292,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     }
   }
 
-  // ============ WELCOME SCREEN ============
   Widget _welcome() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -377,7 +372,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   elevation: 0,
                 ),
                 child: Text('Get Started',
-                
+
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
@@ -406,7 +401,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  // ============ LENGTH PICKER ============
   Widget _lengthPicker() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -526,7 +520,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  // ============ PIN ENTRY SCREEN (AppLockScreen Style) ============
   Widget _pinEntryScreen() {
     final isConfirm = _step == _Step.confirmPin;
     final entered = isConfirm ? _confirmPin : _newPin;
@@ -560,7 +553,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Header (using same LiquidLockHeader as AppLockScreen)
               LiquidLockHeader(
                 title: isConfirm ? 'Confirm PIN' : 'Create PIN',
                 subtitle: isConfirm
@@ -570,7 +562,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
               const SizedBox(height: 32),
 
-              // PIN Dots with shake animation (using LiquidPinDots)
               AnimatedBuilder(
                 animation: _errorController,
                 builder: (context, child) {
@@ -587,7 +578,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
               const SizedBox(height: 32),
 
-              // Error Message
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
@@ -634,7 +624,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  // ============ NUMBER PAD (AppLockScreen Style) ============
   Widget _buildNumberPad() {
     return GridView.builder(
       shrinkWrap: true,
@@ -675,7 +664,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  // ============ RECOVERY EMAIL PROMPT ============
   Widget _recoveryPrompt() {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -791,7 +779,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  // ============ BIOMETRIC PROMPT ============
   Widget _biometricPrompt() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),

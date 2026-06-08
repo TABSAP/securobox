@@ -775,7 +775,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       child: OrientationBuilder(
         builder: (context, orientation) {
 
-
           return AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,

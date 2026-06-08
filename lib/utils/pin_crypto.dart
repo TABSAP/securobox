@@ -18,15 +18,6 @@ class PinCrypto {
   static const defaultPinLength = 4;
   static const supportedPinLengths = [4, 6];
 
-  /// Session cache of the configured PIN length.
-  ///
-  /// Held on the singleton so it survives widget / activity recreation — e.g.
-  /// when the user switches the disguise (app icon / name), Android may rebuild
-  /// the Flutter view, but the Dart process (and this singleton) live on. UI can
-  /// read [cachedPinLength] synchronously to render the correct number of PIN
-  /// fields on the very first frame, so the PIN-length UI stays consistent for
-  /// the whole session instead of briefly flashing the 4-digit default while an
-  /// async [getPinLength] read completes.
   int _cachedPinLength = defaultPinLength;
   int get cachedPinLength => _cachedPinLength;
 

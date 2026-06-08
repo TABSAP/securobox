@@ -59,8 +59,6 @@ class _AppLockScreenState extends State<AppLockScreen>
   @override
   void initState() {
     super.initState();
-    // Warm the PBKDF2 worker isolate while the user is still looking at the
-    // keypad, so verifying the PIN is instant the moment the last digit lands.
     prewarmPbkdf2();
     _loadPreferences();
     _startCooldownTicker();
@@ -101,8 +99,6 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 
   Future<void> _loadPreferences() async {
-    // These reads are independent — start them together and await as a batch so
-    // the lock screen settles in one I/O round-trip instead of five serial ones.
     final prefsF = SharedPreferences.getInstance();
     final pinLenF = PinCrypto.instance.getPinLength();
     final faceEnrolledF = FaceRecognitionService.instance.isEnrolled();
@@ -124,8 +120,6 @@ class _AppLockScreenState extends State<AppLockScreen>
       _pinLength = pinLen;
       _bioCooldownRemaining = bioCooldown;
       _bioFailCount = bioFails;
-      // The bio stage rests when any biometric / face method exists;
-      // otherwise the PIN keypad is the resting stage.
       if (!bioEnabled && !faceEnrolled) _showPin = true;
     });
 
@@ -133,9 +127,6 @@ class _AppLockScreenState extends State<AppLockScreen>
         mounted &&
         !NetworkGuard.instance.blockUnlock) {
       if (_biometricEnabled && !_bioLocked) {
-        // Biometric / Face ID is triggered first on open. Fire it as soon as the
-        // lock card paints its first frame — no fixed delay, so the prompt is
-        // instant while still avoiding a mid-build trigger.
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && !_showPin && !_bioLocked) _useBiometric();
         });
@@ -146,8 +137,6 @@ class _AppLockScreenState extends State<AppLockScreen>
   bool get _padDisabled => _cooldownRemaining != null;
   bool get _bioLocked => _bioCooldownRemaining != null;
 
-  /// Records one failed biometric / face-scan attempt; after the 3rd, the
-  /// 60-second biometric cooldown kicks in (PIN keypad still works).
   Future<void> _recordBioFailure() async {
     final count = await SessionManager.instance.recordFailedBiometricAttempt();
     final remaining = await SessionManager.instance
@@ -161,8 +150,6 @@ class _AppLockScreenState extends State<AppLockScreen>
     if (justLocked) HapticFeedback.heavyImpact();
   }
 
-  /// Inline "Incorrect PIN" feedback right under the dots. Lighter than the
-  /// previous floating snackbar — the user keeps the context of their entry.
   Widget _wrongPinBanner() {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
@@ -210,8 +197,6 @@ class _AppLockScreenState extends State<AppLockScreen>
     );
   }
 
-  /// Small "attempts before biometric lock" hint, shown once the user has at
-  /// least one failed biometric / face-scan try and isn't already locked out.
   Widget _bioAttemptsBanner() {
     final left = SessionManager.bioCooldownThreshold - _bioFailCount;
     if (_bioLocked || _bioFailCount <= 0 || left <= 0) {
@@ -260,9 +245,6 @@ class _AppLockScreenState extends State<AppLockScreen>
     );
   }
 
-  /// Shown whenever the Offline Integrity Lock is on and the device has a
-  /// network path: the vault is sealed and no credential will open it until
-  /// the user goes fully offline. Reacts live to connectivity changes.
   Widget _networkSealBanner() {
     return ValueListenableBuilder<bool>(
       valueListenable: NetworkGuard.instance.online,
@@ -348,7 +330,6 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 
   Future<void> _checkPin() async {
-    // 1. Real PIN → real vault.
     if (await PinCrypto.instance.verifyPin(_enteredPin)) {
       if (!mounted) return;
       VaultContext.instance.exitDecoy();
@@ -356,8 +337,6 @@ class _AppLockScreenState extends State<AppLockScreen>
       return;
     }
 
-    // 2. Decoy PIN → completely separate fake vault. Silently log who's
-    //    coercing access; the entry leaves a hidden audit trail.
     if (await DecoyService.instance.verifyFakePin(_enteredPin)) {
       if (!mounted) return;
       VaultContext.instance.enterDecoy();
@@ -368,10 +347,6 @@ class _AppLockScreenState extends State<AppLockScreen>
       return;
     }
 
-    // 3. Wrong → cooldown. Capture a break-in photo from the 3rd failed attempt
-    //    onward, then again at each further escalation point (3, 6, 9, …) so a
-    //    persistent intruder is photographed repeatedly. The first two misses
-    //    are skipped — usually the owner mistyping.
     HapticFeedback.heavyImpact();
     final failedAttempts = await SessionManager.instance.recordFailedAttempt();
     if (failedAttempts >= 3 && failedAttempts % 3 == 0) {
@@ -387,23 +362,15 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 
   Future<void> _unlockApp() async {
-    // Offline Integrity Lock: even a correct credential cannot open the vault
-    // while the device has a network path — decrypted content must never be
-    // available during network exposure. The banner explains why.
     if (NetworkGuard.instance.blockUnlock) {
       HapticFeedback.heavyImpact();
       return;
     }
-    // Show a loader while we finish unlocking + build the main screen, so the
-    // moment between a successful PIN/biometric and the app appearing doesn't
-    // look frozen (the first build of MainScreen can take a beat).
     if (mounted) setState(() => _isUnlocking = true);
     await SessionManager.instance.unlock();
     if (!mounted) return;
     final modeChanged = VaultContext.instance.modeChanged;
     VaultContext.instance.clearModeChanged();
-    // If the vault mode flipped, the existing screen stack holds data from the
-    // other namespace — tear it down and rebuild from scratch.
     if (widget.isOverlay && !modeChanged) {
       Navigator.of(context).pop();
     } else {
@@ -437,18 +404,14 @@ class _AppLockScreenState extends State<AppLockScreen>
       );
       if (!mounted) return;
       if (result == BiometricAuthResult.authenticated) {
-        // Biometric verifies the device owner → always the real vault.
         VaultContext.instance.exitDecoy();
         _unlockApp();
         return;
       }
       if (result == BiometricAuthResult.usePin) {
-        // Deliberate switch away from biometric — not a failed attempt.
         HapticFeedback.selectionClick();
         setState(() => _showPin = true);
       }
-      // The sheet records each failed attempt (and runs its own 60s countdown)
-      // itself — just pull the latest cooldown / strike count into this screen.
       await _refreshCooldown();
     } finally {
       if (mounted) setState(() => _isAuthenticating = false);
@@ -467,27 +430,21 @@ class _AppLockScreenState extends State<AppLockScreen>
       );
       if (!mounted) return;
       if (ok == true) {
-        // Recognized the device owner → real vault.
         VaultContext.instance.exitDecoy();
         _unlockApp();
       } else {
         await _recordBioFailure();
       }
     } catch (_) {
-      // Fall back to PIN silently.
     } finally {
       if (mounted) setState(() => _isAuthenticating = false);
     }
   }
 
-  /// Two side-by-side unlock options: fingerprint (left) and face scan (right).
-  /// Whichever isn't available is shown dimmed; in the wrong-PIN cooldown only
-  /// the (strong) device biometric is offered — the in-app face scan is hidden.
   Widget _buildBiometricOptions() {
     final showFace = _faceRecogEnrolled && !_padDisabled && !_bioLocked;
     final fingerprintActive =
         (_biometricEnabled || _padDisabled) && !_bioLocked;
-    // Nothing useful to offer.
     if (!fingerprintActive && !showFace && !_faceRecogEnrolled && !_bioLocked) {
       return const SizedBox.shrink();
     }
@@ -516,8 +473,6 @@ class _AppLockScreenState extends State<AppLockScreen>
               : (_faceRecogEnrolled ? null : 'Set up in Settings')),
     );
 
-    // During the wrong-PIN cooldown only the device biometric makes sense; if
-    // the biometric path itself is on its 60s cooldown, show that tile alone too.
     if (_padDisabled || _bioLocked) {
       return Center(child: SizedBox(width: 210, child: fpTile));
     }
@@ -531,11 +486,6 @@ class _AppLockScreenState extends State<AppLockScreen>
     );
   }
 
-  /// The "biometric first" screen shown before the keypad: a big tappable
-  /// biometric orb, then (if both are set up) a "Scan Face instead" link, then
-  /// the "Use PIN instead" fallback button.
-  /// Shown on the biometric stage once the 3-strike 60s cooldown is active:
-  /// biometrics are temporarily off-limits, but the PIN keypad still works.
   Widget _bioLockedStage() {
     return Column(
       children: [
@@ -639,8 +589,6 @@ class _AppLockScreenState extends State<AppLockScreen>
     return Column(
       children: [
         const SizedBox(height: 8),
-        // Isolated so the orb's 60fps pulse + glow blur repaints only itself,
-        // not the rest of the lock card.
         RepaintBoundary(
           child: AnimatedBuilder(
             animation: _bioPulse,
@@ -759,8 +707,6 @@ class _AppLockScreenState extends State<AppLockScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    // After a successful PIN/biometric we briefly show a loader while the
-    // session finishes unlocking and MainScreen builds, so it never looks frozen.
     if (_isUnlocking) {
       return Scaffold(
         backgroundColor: LiquidColors.backgroundDeep,
@@ -829,9 +775,6 @@ class _AppLockScreenState extends State<AppLockScreen>
 
                     _networkSealBanner(),
 
-                    // Smooth, professional swap between the biometric stage
-                    // and the PIN keypad — a gentle crossfade + rise, with
-                    // the card height easing between the two.
                     AnimatedSize(
                       duration: const Duration(milliseconds: 340),
                       curve: Curves.easeInOutCubic,
@@ -860,9 +803,6 @@ class _AppLockScreenState extends State<AppLockScreen>
                                   AnimatedBuilder(
                                     animation: _errorController,
                                     builder: (context, child) {
-                                      // Damped horizontal shake: a few oscillations whose
-                                      // amplitude decays to zero — settles instead of
-                                      // swinging back like the old elastic tween.
                                       final v = _errorController.value;
                                       final dx =
                                           math.sin(v * math.pi * 6) *
@@ -997,8 +937,6 @@ class _AppLockScreenState extends State<AppLockScreen>
 
                                   const SizedBox(height: 16),
 
-                                  // During PIN cooldown the keypad is hidden — give a
-                                  // prominent biometric escape hatch instead of a link.
                                   if (_padDisabled) _buildBiometricOptions(),
 
                                   if (!_padDisabled &&
@@ -1083,7 +1021,6 @@ class _AppLockScreenState extends State<AppLockScreen>
   }
 }
 
-/// One of the two side-by-side unlock tiles on the lock screen.
 class _BioTile extends StatefulWidget {
   final IconData icon;
   final String label;

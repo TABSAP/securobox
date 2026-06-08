@@ -21,7 +21,6 @@ class VaultCrypto {
   static const _kIvLengthBytes = 16;
   static const _kTempPrefix = 'sp_dec_';
 
-  // every namespace this crypto layer can touch (used by resetAll / wipeAll)
   static const _allMasterKeyIds = [
     'vault_master_key_v1',
     'vault_master_key_decoy_v1',
@@ -113,11 +112,6 @@ class VaultCrypto {
       writeIvHeader: true,
     );
 
-    // Verify the encrypted copy before the caller may treat the import as
-    // successful. AES-CTR ciphertext is exactly as long as the plaintext, so
-    // a complete `.enc` file is always `sourceLength + 16-byte IV header`.
-    // A short file means a truncated / partial write — fail loudly and bin
-    // the bad output so the caller never deletes the user's original.
     final outFile = File(outPath);
     final outLength = await outFile.exists() ? await outFile.length() : -1;
     if (outLength != sourceLength + _kIvLengthBytes) {
@@ -179,8 +173,6 @@ class VaultCrypto {
     } catch (_) {}
   }
 
-  /// Wipes decrypted temp files for BOTH the real and decoy namespaces.
-  /// Called by the auth router whenever the vault mode flips.
   Future<void> wipeAllTempCache() async {
     try {
       final tmp = await getTemporaryDirectory();
@@ -197,15 +189,6 @@ class VaultCrypto {
     } catch (_) {}
   }
 
-  /// Tears down the *live* encryption session: forgets the decrypted master
-  /// key held in RAM and wipes every decrypted temp file, for both namespaces.
-  ///
-  /// This is the safe half of "key rotation". The at-rest AES-256 master key
-  /// in the Keystore/Keychain is deliberately NOT regenerated — every file in
-  /// the vault is encrypted under it, so replacing it would orphan the whole
-  /// library. Instead, re-authentication re-reads the key from secure storage
-  /// into a fresh in-memory cache, which *is* a new session. Used by the
-  /// Offline Integrity Lock the instant a network path is detected.
   Future<void> revokeSession() async {
     _cachedRealKey = null;
     _cachedDecoyKey = null;
@@ -219,8 +202,6 @@ class VaultCrypto {
     } catch (_) {}
   }
 
-  /// Nukes EVERYTHING — both vaults' encrypted files, temp caches and master
-  /// keys. Used only by the (deliberate, real-PIN-gated) full wipe path.
   Future<void> resetAll() async {
     _cachedRealKey = null;
     _cachedDecoyKey = null;

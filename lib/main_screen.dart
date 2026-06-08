@@ -38,10 +38,7 @@ class _MainScreenState extends State<MainScreen>
     SessionManager.instance.shouldLock.addListener(_onLockRequested);
     SessionManager.instance.markActive();
     _startInactivityTimer();
-    // Sync the break-in count so the Intrusions tab badge is correct on launch.
     unawaited(IntrusionService.instance.refreshCount());
-    // This shell owns the selected tab; pushed content screens request a tab
-    // through AppNav and pop back here.
     AppNav.tab.value = 0;
     AppNav.tab.addListener(_onTabRequested);
   }
@@ -116,8 +113,6 @@ class _MainScreenState extends State<MainScreen>
   Future<void> _onResumed() async {
     if (_isShowingLockScreen) return;
 
-    // We backgrounded for an in-app picker / OS biometric prompt, not because
-    // the user left — treat it as a trusted round-trip and don't auto-lock.
     if (SessionManager.instance.inTrustedInteraction) {
       _wasPaused = false;
       SessionManager.instance.markActive();
@@ -157,8 +152,6 @@ class _MainScreenState extends State<MainScreen>
     if (!lockEnabled) return;
 
     _isShowingLockScreen = true;
-    // Wipe decrypted temp files in the background — the lock screen already
-    // covers all content, so blocking its appearance on file I/O only adds lag.
     unawaited(VaultCrypto.instance.wipeTempCache());
     if (!mounted) {
       _isShowingLockScreen = false;
@@ -182,8 +175,6 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild the whole shell (and therefore every tab) when the theme mode
-    // changes, so screens that read LiquidColors directly pick up new colors.
     return AnimatedBuilder(
       animation: ThemeController.instance,
       builder: (context, _) => Listener(
@@ -194,9 +185,6 @@ class _MainScreenState extends State<MainScreen>
           children: [
             Scaffold(
               backgroundColor: LiquidColors.backgroundDeep,
-              // IndexedStack keeps every tab alive, so TickerMode pauses the
-              // off-screen tabs' animations (e.g. the Library's looping
-              // gradient) instead of letting them run at 60fps unseen.
               body: IndexedStack(
                 index: _selectedIndex,
                 children: [
@@ -254,6 +242,3 @@ class _PrivacyShield extends StatelessWidget {
     );
   }
 }
-
-// The bottom navigation bar is the shared LiquidBottomNav widget
-// (lib/widgets/liquid_bottom_nav.dart) — one nav bar for the whole app.

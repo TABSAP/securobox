@@ -36,11 +36,8 @@ class IntrusionService {
 
   bool _capturing = false;
 
-  /// Live count of break-in photos in the log. The bottom-nav Intrusions tab
-  /// watches this, so a new capture surfaces in the app in real time.
   final ValueNotifier<int> logCount = ValueNotifier<int>(0);
 
-  /// Syncs [logCount] with what's stored — call once when the app starts.
   Future<void> refreshCount() async {
     logCount.value = await count();
   }

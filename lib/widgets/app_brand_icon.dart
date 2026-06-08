@@ -3,9 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 
-/// Renders the app's brand icon, automatically reflecting the user's current
-/// disguise choice. Listens to [DisguiseService] so changes propagate to every
-/// surface (splash, onboarding, About hero, etc.) without a manual rebuild.
 class AppBrandIcon extends StatelessWidget {
   final double size;
   final double radius;

@@ -8,9 +8,6 @@ import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 
-/// Hidden screen for creating / changing / disabling the decoy ("duress") PIN.
-/// Reached only via a long-press on the version label in Security Settings —
-/// there is no menu item, so its existence isn't advertised.
 class DecoySetupScreen extends StatefulWidget {
   const DecoySetupScreen({super.key});
 
@@ -161,7 +158,6 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
       });
       return;
     }
-    // Decoy PIN must not collide with the real PIN.
     if (await PinCrypto.instance.verifyPin(_newPin)) {
       if (!mounted) return;
       _shakeNow();

@@ -6,9 +6,6 @@ import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
 
 class RecoverySetupScreen extends StatefulWidget {
-  /// When non-null the screen is in re-issue mode: the email is pre-filled,
-  /// the input is locked, and the user only confirms before generating a new
-  /// code against the same address.
   final String? lockedEmail;
 
   const RecoverySetupScreen({super.key, this.lockedEmail});
@@ -24,10 +21,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
   final _formKey = GlobalKey<FormState>();
   _Stage _stage = _Stage.collectEmail;
   String _code = '';
-  // True once the user has opened the email composer for the code at least once.
   bool _emailOpened = false;
-  // True once the user has saved the code somehow — copied it or opened email.
-  // Finishing only requires that the code was saved, not specifically emailed.
   bool _codeSaved = false;
   bool _saving = false;
   String? _saveError;
@@ -64,9 +58,6 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
   void _proceedToCode() {
     final emailError = _validateEmail(_emailController.text);
     if (emailError != null) {
-      // The form's inline error is easy to miss on small screens — also
-      // surface a banner and a haptic so the user can't accidentally proceed
-      // believing it worked.
       HapticFeedback.heavyImpact();
       _formKey.currentState?.validate();
       FlushBarHelper.flushBarErrorMessage(emailError, context);
@@ -97,8 +88,6 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
     try {
       if (await canLaunchUrl(uri) && await launchUrl(uri)) {
         if (!mounted) return;
-        // We have no server, so this just opens the user's email app with the
-        // code pre-filled — they still have to tap Send there. Make that clear.
         FlushBarHelper.flushBarInfoMessage(
           'Your email app opened with the code filled in — tap Send there to keep a copy.',
           context,

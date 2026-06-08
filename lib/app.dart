@@ -16,7 +16,6 @@ class MyApp extends StatelessWidget {
         final mode = ThemeController.instance.mode;
         final isDark =
             ThemeController.instance.effectiveBrightness == Brightness.dark;
-        // Keep LiquidColors + the status bar in sync with the resolved theme.
         LiquidColors.applyBrightness(
             isDark ? Brightness.dark : Brightness.light);
         SystemChrome.setSystemUIOverlayStyle(
@@ -36,8 +35,6 @@ class MyApp extends StatelessWidget {
 
   ThemeData _buildTheme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
-    // LiquidColors is global mutable state, so compute palette pieces
-    // explicitly here rather than reading the (possibly mismatched) getters.
     final bg = dark ? const Color(0xFF0A0F1E) : const Color(0xFFF4F6FB);
     final surface = dark ? const Color(0xFF141B2B) : const Color(0xFFFFFFFF);
     final raised = dark ? const Color(0xFF1E2738) : const Color(0xFFF1F4FA);

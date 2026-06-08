@@ -4,12 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 
-/// Modal PIN-entry dialog. Verifies the entered code against [PinCrypto] and
-/// pops `true` on success, `false` on cancel.
-///
-/// Use [PinUnlockDialog.show] for the common "verify before doing X" pattern:
-/// it auto-fetches the configured PIN length, shows the dialog, and returns
-/// whether the user verified.
 class PinUnlockDialog extends StatefulWidget {
   final int pinLength;
   final String title;

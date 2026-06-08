@@ -40,9 +40,6 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
     super.dispose();
   }
 
-  /// Re-reads the encrypted log from disk. Called by [MainScreen] every time
-  /// the Intrusions tab is opened, since the screen is kept alive inside an
-  /// [IndexedStack] and would otherwise show whatever was captured at launch.
   void reload() {
     if (mounted) _load();
   }
@@ -73,8 +70,6 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
     });
     _enter.forward(from: 0);
   }
-
-  // ── helpers ──────────────────────────────────────────────────────────────
 
   static const _months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -121,7 +116,6 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
     return '${_months[d.month - 1]} ${d.day}, ${d.year}';
   }
 
-  /// Entries grouped into calendar-day buckets (newest first).
   List<_DayBucket> get _buckets {
     final sorted = [..._entries]
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -137,8 +131,6 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
     }
     return out;
   }
-
-  // ── actions ──────────────────────────────────────────────────────────────
 
   Future<bool> _confirmDelete(IntrusionEntry entry) async {
     HapticFeedback.lightImpact();
@@ -237,8 +229,6 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
       ),
     ));
   }
-
-  // ── build ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -615,7 +605,6 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                       child: Image.file(
                         File(path),
                         fit: BoxFit.cover,
-                        // Decode at thumbnail size, not full camera resolution.
                         cacheWidth: 240,
                         cacheHeight: 240,
                         errorBuilder: (_, _, _) => fallback(),
@@ -623,7 +612,6 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                     ),
             ),
           ),
-          // Subtle scrim + "tap to expand" cue along the bottom of the photo.
           if (path != null)
             Positioned(
               left: 0,

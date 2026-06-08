@@ -48,7 +48,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   final List<String> _newPin = [];
   bool _confirmPinMode = false;
   final List<String> _confirmPin = [];
-  
+
   int _pinLength = PinCrypto.defaultPinLength;
   int _newPinLength = PinCrypto.defaultPinLength;
 
@@ -72,7 +72,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   @override
   void initState() {
     super.initState();
- 
+
     _pinLength = PinCrypto.instance.cachedPinLength;
     _newPinLength = _pinLength;
     _initAnimations();
@@ -109,7 +109,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       if (initial) {
-       
+
         try {
           final avail = await _localAuth.getAvailableBiometrics();
           if ((prefs.getBool('biometric') ?? false) &&
@@ -119,10 +119,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             await prefs.setBool('biometric', false);
           }
         } catch (_) {}
-      
+
         await DisguiseService.instance.load();
       }
-
 
       final pinLenF = PinCrypto.instance.getPinLength();
       final intrusionEnabledF = IntrusionService.instance.isEnabled();
@@ -142,7 +141,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           : null;
       final decoyEnabled = await decoyEnabledF;
       final faceRecogEnrolled = await faceRecogEnrolledF;
-      // Cached — no native PackageManager call on every settings change.
       final currentDisguise = DisguiseService.instance.currentKey;
       if (!mounted) return;
       setState(() {
@@ -173,7 +171,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   Future<void> _checkBiometricCapability() async {
     try {
-   
+
       final bool canCheck = await _localAuth.canCheckBiometrics;
       final bool supported = await _localAuth.isDeviceSupported();
       List<BiometricType> availableBiometrics = const <BiometricType>[];
@@ -190,7 +188,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             _biometricEnabled = false;
             _saveSetting('biometric', false);
           }
-      
+
           if (availableBiometrics.isNotEmpty &&
               !availableBiometrics.contains(BiometricType.face) &&
               _faceUnlockEnabled) {
@@ -213,7 +211,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool get _faceAvailable => _availableBiometrics.contains(BiometricType.face);
   bool get _fingerprintAvailable =>
       _availableBiometrics.contains(BiometricType.fingerprint);
-
 
   static const Set<String> _lockSettings = {
     'appLock',
@@ -256,7 +253,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       );
       return;
     }
-
 
     if (setting == 'biometric' && value) {
       await _testAndEnableBiometric();
@@ -318,7 +314,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
   Future<void> _verifyBiometricBeforeDisable(String setting) async {
-    // Get setting name for display
     final settingName = setting == 'appLock'
         ? 'App Lock'
         : setting == 'videoLock'
@@ -327,7 +322,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         ? 'Face Unlock'
         : 'Biometric Authentication';
 
-    // Get setting icon
     final settingIcon = setting == 'appLock'
         ? Icons.lock_outline_rounded
         : setting == 'videoLock'
@@ -336,18 +330,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         ? Icons.face_retouching_natural
         : _getBiometricIcon();
 
-    // Get gradient colors
     final gradientColors = setting == 'appLock'
         ? [LiquidColors.accentBlue, LiquidColors.primaryMid]
         : setting == 'videoLock'
         ? [LiquidColors.success, LiquidColors.accentBlue]
         : [LiquidColors.accentPurple, LiquidColors.accentPink];
 
-    // Verify with biometrics only for the OTHER locks, and only when a
-    // biometric unlock is actually switched on in-app. Turning off Biometric or
-    // Face itself always verifies with the PIN — asking for the very factor
-    // you're disabling is circular and confusing (the bug where disabling Face
-    // prompted for a fingerprint the user had already turned off).
     final bool verifyWithBiometric = _biometricAvailable &&
         (_biometricEnabled || _faceUnlockEnabled) &&
         setting != 'biometric' &&
@@ -399,7 +387,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
             const SizedBox(height: 16),
 
-            // Biometric verification notice
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -517,12 +504,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       ),
     );
 
-    // User cancelled
     if (confirm != true || !mounted) return;
 
-    // 1. Try biometric / Face ID first when the device supports it. If it
-    //    fails or is cancelled we fall through to the PIN keypad dialog —
-    //    EITHER biometric or the correct app PIN is enough to proceed.
     setState(() => _isLoading = true);
     bool verified = false;
     if (verifyWithBiometric) {
@@ -535,9 +518,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           persistAcrossBackgrounding: true,
         );
       } on LocalAuthException {
-        // Sensor unavailable / user cancelled / lockout — fall through to PIN.
       } catch (_) {
-        // Defensive: any other failure → PIN fallback.
       } finally {
         SessionManager.instance.endTrustedInteraction();
       }
@@ -545,9 +526,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     if (!mounted) return;
     setState(() => _isLoading = false);
 
-    // 2. PIN fallback. Always offered when biometric didn't verify (whether
-    //    because the device lacks biometrics, the user cancelled, the OS
-    //    failed, or the user tapped through without authenticating).
     if (!verified) {
       verified = await PinUnlockDialog.show(
         context,
@@ -565,8 +543,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       return;
     }
 
-    // 3. Verified — disable just this setting. The other two locks (if any)
-    //    stay on so the vault keeps a working lock layer.
     setState(() => _isLoading = true);
     try {
       await _saveSetting(setting, false);
@@ -589,9 +565,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
-  // ============ ADD THIS HELPER METHOD ============
-
-  /// Returns appropriate warning message based on the setting being disabled
   String _getDisableWarningMessage(String setting) {
     switch (setting) {
       case 'appLock':
@@ -607,8 +580,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
-  // ============ PROFESSIONAL BIOMETRIC ENABLE/DISABLE ============
-
   Future<void> _testAndEnableBiometric({String prefKey = 'biometric'}) async {
     if (!_biometricAvailable ||
         (prefKey == 'biometric_face' && !_faceAvailable)) {
@@ -618,7 +589,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
     final isFace = prefKey == 'biometric_face';
 
-    // Show professional bottom sheet
     final confirmed = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -628,9 +598,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
     if (confirmed != true || !mounted) return;
 
-    // Let the sheet's dismiss animation fully clear before raising the OS
-    // biometric prompt — calling it mid-route-transition makes Android cancel
-    // the prompt immediately, which looks like "it keeps failing".
     await Future<void>.delayed(const Duration(milliseconds: 280));
     if (!mounted) return;
 
@@ -644,7 +611,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     } on LocalAuthException catch (e) {
       if (!mounted) return;
       if (_isTransientAuthCode(e.code)) {
-        // Sensor / UI momentarily unavailable — one quick warm-up retry.
         await Future<void>.delayed(const Duration(milliseconds: 700));
         if (!mounted) return;
         try {
@@ -675,8 +641,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   Future<bool> _authenticateOnce(String reason) async {
-    // OS biometric prompt round-trips through the background — flag it trusted
-    // so resume doesn't auto-lock on top of it.
     SessionManager.instance.beginTrustedInteraction();
     try {
       return await _localAuth.authenticate(
@@ -738,7 +702,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
-  // ============ BIOMETRIC ENABLE BOTTOM SHEET ============
   Widget _buildBiometricEnableSheet() {
     return Container(
       decoration: BoxDecoration(
@@ -751,7 +714,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle bar
           Center(
             child: Container(
               margin: const EdgeInsets.only(top: 12, bottom: 20),
@@ -764,7 +726,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
           ),
 
-          // Biometric Icon with Pulse Animation
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0.8, end: 1.0),
             duration: const Duration(milliseconds: 800),
@@ -807,7 +768,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
           const SizedBox(height: 24),
 
-          // Title
           Text(
             'Enable ${_getBiometricTypeName()}',
             style: TextStyle(
@@ -820,7 +780,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
           const SizedBox(height: 8),
 
-          // Subtitle
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
@@ -836,7 +795,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
           const SizedBox(height: 24),
 
-          // Security badges
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
@@ -870,7 +828,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
           const SizedBox(height: 28),
 
-          // Enable button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: SizedBox(
@@ -909,7 +866,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
           const SizedBox(height: 12),
 
-          // Cancel text button
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             style: TextButton.styleFrom(
@@ -929,7 +885,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  // ============ SECURITY BADGE ============
   Widget _securityBadge(IconData icon, String title, String subtitle) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
@@ -981,7 +936,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  // ============ BIOMETRIC NOT AVAILABLE SHEET ============
   void _showBiometricNotAvailableSheet() {
     showModalBottomSheet(
       context: context,
@@ -1080,7 +1034,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  // ============ VERIFICATION FAILED SHEET ============
   void _showVerificationFailedSheet({String prefKey = 'biometric'}) {
     showModalBottomSheet(
       context: context,
@@ -1202,7 +1155,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  // ============ ERROR BOTTOM SHEET ============
   void _showErrorBottomSheet(String title, String message) {
     showModalBottomSheet(
       context: context,
@@ -1296,7 +1248,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  // ============ HANDLE SUCCESS ============
   Future<void> _handleBiometricEnabled({String prefKey = 'biometric'}) async {
     await _saveSetting(prefKey, true);
     if (!mounted) return;
@@ -1309,18 +1260,15 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       }
     });
 
-    // Auto-enable app lock if not already enabled
     if (!_appLockEnabled) {
       await _saveSetting('appLock', true);
       if (mounted) setState(() => _appLockEnabled = true);
     }
 
-    // Show success sheet
     if (!mounted) return;
     _showBiometricEnabledSuccessSheet(isFace: prefKey == 'biometric_face');
   }
 
-  // ============ SUCCESS SHEET ============
   void _showBiometricEnabledSuccessSheet({bool isFace = false}) {
     final label = isFace ? 'Face Unlock' : _getBiometricTypeName();
     showModalBottomSheet(
@@ -1349,7 +1297,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 ),
               ),
             ),
-            // Success checkmark
             TweenAnimationBuilder<double>(
               tween: Tween<double>(begin: 0.0, end: 1.0),
               duration: const Duration(milliseconds: 600),
@@ -1771,8 +1718,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
-  /// Scrolls the in-flow PIN UI into view after the next frame, so the user
-  /// always sees the verification keypad / length picker the moment it appears.
   void _ensurePinFlowVisible() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = _pinFlowKey.currentContext;
@@ -1787,8 +1732,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     });
   }
 
-  /// Plain change-PIN flow: verify the current PIN, then set a new PIN of the
-  /// SAME length. Used by the "Change PIN" button.
   void _startPinChange() {
     setState(() {
       _changingPin = true;
@@ -1805,10 +1748,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     _ensurePinFlowVisible();
   }
 
-  /// Change-PIN-length flow: verify the current PIN first, then show the
-  /// length picker, then set a new PIN of the chosen length. The recorded
-  /// length is only persisted once the new PIN is saved, so cancelling at any
-  /// point leaves the existing PIN (and its length) untouched.
   void _startPinLengthChange() {
     setState(() {
       _changingPin = true;
@@ -1825,7 +1764,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     _ensurePinFlowVisible();
   }
 
-  /// Picks the new PIN length, then advances to new-PIN entry.
   void _selectNewPinLength(int digits) {
     HapticFeedback.selectionClick();
     setState(() {
@@ -1843,11 +1781,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     setState(() {
       _pinError = null;
       if (_verifyingOldPin) {
-        // Old PIN is verified at the CURRENT length.
         if (_oldPin.length < _pinLength) _oldPin.add(number);
         if (_oldPin.length == _pinLength) _validateOldPin();
       } else if (!_confirmPinMode) {
-        // New + confirm use the TARGET length.
         if (_newPin.length < _newPinLength) _newPin.add(number);
         if (_newPin.length == _newPinLength) _validateFirstPin();
       } else {
@@ -1872,8 +1808,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     setState(() {
       _verifyingOldPin = false;
       _pinError = null;
-      // In a length-change flow the next step is picking the new length;
-      // otherwise go straight to entering the new (same-length) PIN.
       _choosingLength = _lengthSelectionFlow;
     });
     _ensurePinFlowVisible();
@@ -1960,8 +1894,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           _confirmPinMode = false;
           _choosingLength = false;
           _lengthSelectionFlow = false;
-          // setPin() persisted the new length; reflect it in the live UI so the
-          // PIN-length selector and any rebuilds show the new value.
           _pinLength = _newPinLength;
           _oldPin.clear();
           _newPin.clear();
@@ -2021,8 +1953,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       _confirmPinMode = false;
       _choosingLength = false;
       _lengthSelectionFlow = false;
-      // Drop the pending target length — nothing was persisted, so the current
-      // PIN (and its length) is untouched.
       _newPinLength = _pinLength;
       _oldPin.clear();
       _newPin.clear();
@@ -2255,8 +2185,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       caption: 'Choose how the app unlocks.',
                     ),
                     const SizedBox(height: 12),
-                    // App Lock is the master "show the lock screen" switch —
-                    // always visible, whichever unlock method is in use.
                     LiquidSecurityCard(
                       icon: Icons.lock_outline_rounded,
                       title: 'App Lock',
@@ -2269,9 +2197,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       index: 0,
                       onChanged: (value) => _toggleSetting('appLock', value),
                     ),
-                    // Fingerprint / generic biometric. Hidden on devices whose
-                    // only biometric is face recognition — those get the
-                    // dedicated Face Unlock card below instead.
                     if (!(_faceAvailable && !_fingerprintAvailable)) ...[
                       const SizedBox(height: 14),
                       LiquidSecurityCard(
@@ -2328,8 +2253,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       onStartChange: _startPinChange,
                     ),
                     const SizedBox(height: 14),
-                    // PIN-length control sits right next to "Change PIN" so its
-                    // verify → pick-length → new-PIN flow appears directly below.
                     _buildPinLengthControl(),
                     if (_changingPin) ...[
                       const SizedBox(height: 14),
@@ -2343,8 +2266,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                                 oldPin: _oldPin,
                                 newPin: _newPin,
                                 confirmPin: _confirmPin,
-                                // Old-PIN stage uses the current length; the
-                                // new/confirm stages use the target length.
                                 totalLength: _verifyingOldPin
                                     ? _pinLength
                                     : _newPinLength,
@@ -2645,7 +2566,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-
   Widget _buildImportCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2938,9 +2858,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   Future<void> _disableFaceRecognition() async {
     HapticFeedback.lightImpact();
-    // Verify with biometrics only when a biometric unlock is actually switched
-    // on in-app. If the user has turned biometric off, asking for it here is the
-    // same confusing bug as on the toggles — fall back to the PIN instead.
     final bool verifyWithBiometric =
         _biometricAvailable && (_biometricEnabled || _faceUnlockEnabled);
     final ok = await showDialog<bool>(
@@ -2991,9 +2908,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
     if (ok != true || !mounted) return;
 
-    // Identity gate — biometric first, app PIN as fallback. EITHER one is
-    // enough, so Face Unlock can always be turned off even when biometrics
-    // are unavailable, cancelled or fail.
     bool verified = false;
     if (verifyWithBiometric) {
       SessionManager.instance.beginTrustedInteraction();
@@ -3005,9 +2919,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           persistAcrossBackgrounding: true,
         );
       } on LocalAuthException {
-        // Sensor unavailable / cancelled / lockout — fall through to PIN.
       } catch (_) {
-        // Defensive: any other failure → PIN fallback.
       } finally {
         SessionManager.instance.endTrustedInteraction();
       }
@@ -3203,7 +3115,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  /// Status pill for the Face Unlock card — a coloured dot plus a state label.
   Widget _faceStatusPill(bool enrolled, Color accent) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -3235,7 +3146,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  /// Small capability chip shown on the Face Unlock card.
   Widget _faceFeatureChip(IconData icon, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -3264,7 +3174,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  /// Gradient call-to-action used when Face Unlock is not yet enrolled.
   Widget _faceSetupButton() {
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -3477,9 +3386,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     HapticFeedback.lightImpact();
     final wasEnabled = _recoveryEnabled;
 
-    // Re-issuing replaces the stored hash + email, so require the previously-
-    // saved email first — otherwise anyone with momentary access to an unlocked
-    // app could quietly rotate the recovery target.
     if (wasEnabled) {
       final verified = await _verifyRecoveryEmail();
       if (!verified || !mounted) return;
@@ -4466,7 +4372,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _biometricEnabled,
         () => _toggleSetting('biometric', true),
       ),
-    
+
       _Protection(
         'Face Unlock',
         _faceUnlockEnabled || _faceRecogEnrolled,
@@ -4754,7 +4660,6 @@ class _SecurityScoreRing extends StatelessWidget {
           return Stack(
             alignment: Alignment.center,
             children: [
-              // Soft accent glow behind the ring.
               Container(
                 width: size - 14,
                 height: size - 14,
