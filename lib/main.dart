@@ -5,7 +5,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pbkdf2.dart';
-import 'package:video_player_app/utils/screenshot_guard.dart';
+import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
@@ -15,7 +15,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Apply screenshot / screen-recording protection (default blocked, user can allow from settings)
-  await ScreenshotGuard.init();
+  await ScreenSecurity.init();
 
   await ThemeController.instance.init();
 

@@ -23,8 +23,8 @@ class FaceRecognitionService {
   /// Hard ceiling on the verify distance. The effective threshold is the
   /// smaller of this and `enrollSpread + _spreadMargin`, so a tight enrollment
   /// makes matching *stricter*, never looser.
-  static const double matchThreshold = 0.07;
-  static const double _spreadMargin = 0.022;
+  static const double matchThreshold = 0.05;
+  static const double _spreadMargin = 0.012;
 
   /// Face readings collected during enrollment before building the template.
   static const int enrollSamples = 5;
@@ -33,7 +33,7 @@ class FaceRecognitionService {
   static const double enrollConsistency = 0.075;
 
   /// Matching frames required (during verification) before the app unlocks.
-  static const int verifyMatchesRequired = 2;
+  static const int verifyMatchesRequired = 3;
 
   /// Reject a captured frame whose face detection is this incomplete (too many
   /// missing contours/landmarks => the signature would be mostly placeholder

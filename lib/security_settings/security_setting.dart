@@ -9,7 +9,6 @@ import 'package:video_player_app/security_settings/recovery_setup_screen.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/responsive.dart';
-import 'package:video_player_app/utils/screenshot_guard.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/face_recognition_service.dart';
 import 'package:video_player_app/utils/import_settings.dart';
@@ -39,7 +38,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _offlineIntegrityLock = false;
   int _intrusionCount = 0;
   bool _deleteOriginals = false;
-  bool _blockScreenshots = true;
   String _currentDisguise = 'default';
   bool _recoveryEnabled = false;
   String? _recoveryEmail;
@@ -130,7 +128,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final intrusionEnabledF = IntrusionService.instance.isEnabled();
       final intrusionCountF = IntrusionService.instance.count();
       final deleteOriginalsF = ImportSettings.instance.deleteOriginalsEnabled();
-      final blockScreenshotsF = ScreenshotGuard.isBlocking();
       final recoveryEnabledF = RecoveryService.instance.isEnabled();
       final decoyEnabledF = DecoyService.instance.hasFakePin();
       final faceRecogEnrolledF = FaceRecognitionService.instance.isEnrolled();
@@ -139,7 +136,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final intrusionEnabled = await intrusionEnabledF;
       final intrusionCount = await intrusionCountF;
       final deleteOriginals = await deleteOriginalsF;
-      final blockScreenshots = await blockScreenshotsF;
       final recoveryEnabled = await recoveryEnabledF;
       final recoveryEmail = recoveryEnabled
           ? await RecoveryService.instance.getEmail()
@@ -159,7 +155,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _offlineIntegrityLock = NetworkGuard.instance.enabled;
         _intrusionCount = intrusionCount;
         _deleteOriginals = deleteOriginals;
-        _blockScreenshots = blockScreenshots;
         _currentDisguise = currentDisguise;
         _recoveryEnabled = recoveryEnabled;
         _recoveryEmail = recoveryEmail;
@@ -1766,19 +1761,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  Future<void> _toggleBlockScreenshots(bool value) async {
-    HapticFeedback.lightImpact();
-    await ScreenshotGuard.setBlocking(value);
-    if (!mounted) return;
-    setState(() => _blockScreenshots = value);
-    FlushBarHelper.flushBarSuccessMessage(
-      value
-          ? 'Screenshots and screen recording are now blocked'
-          : 'Screenshots are allowed — your vault content may appear in captures',
-      context,
-    );
-  }
-
   Future<void> _openIntrusionLog() async {
     HapticFeedback.lightImpact();
     await Navigator.of(
@@ -2411,8 +2393,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     ),
                     const SizedBox(height: 12),
                     _buildImportCard(),
-                    const SizedBox(height: 14),
-                    _buildScreenshotCard(),
                     const SizedBox(height: 14),
                     _buildDisguiseCard(),
                     const SizedBox(height: 28),
