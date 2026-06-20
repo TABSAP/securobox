@@ -24,10 +24,11 @@ SecuroBox is a 100% offline private media vault. Keep your videos, audio, photos
 • PDF reader with smooth scrolling and zoom
 • Image gallery with pinch-to-zoom
 
-★ Smart organization
+★ Organized library
 
-• Auto-categorized library: Videos, Photos, Audio, Documents, plus custom folders
-• Educational, Personal, Work, Sports, Travel categories built-in
+• Imported media is filed by type — Videos, Photos, Audio, Documents
+• Extra built-in categories you can sort into: Educational, Personal, Work, Sports, Travel
+• Create your own custom folders
 • Quick search across your vault
 • Recycle bin for accidentally deleted files
 

@@ -242,7 +242,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       await widget.onImported();
 
       if (!mounted) return;
-      final label = category ?? 'auto-detected';
+      final label = category ?? 'your vault';
       if (import.added == 0) {
         FlushBarHelper.flushBarErrorMessage(
           import.failed > 0
@@ -981,7 +981,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                   ),
                 ),
                 child: const Icon(
-                  Icons.auto_awesome_rounded,
+                  Icons.bolt_rounded,
                   color: Colors.white,
                   size: 24,
                 ),
@@ -993,7 +993,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                   mainAxisSize: MainAxisSize.min,
                   children: const [
                     Text(
-                      'Smart import',
+                      'Quick import',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 15,
@@ -1003,9 +1003,9 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                     ),
                     SizedBox(height: 3),
                     Text(
-                      'Photos, videos and audio from your gallery — sorted '
-                      'automatically and moved into your vault. Use the '
-                      'Documents tile for files.',
+                      'Import photos, videos and audio from your gallery '
+                      'into your encrypted vault. Use the Documents tile '
+                      'for files.',
                       style: TextStyle(
                         color: Colors.white70,
                         fontSize: 12,
