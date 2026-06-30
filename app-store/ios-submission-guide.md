@@ -91,21 +91,20 @@ Copy from **`app-store/listing/metadata.txt`**:
 
 ## 5. Screenshots (the one asset you still need to produce)
 
-Apple requires screenshots at specific sizes. Because the app supports **iPhone + iPad**, you need BOTH sets:
+The app is **iPhone-only** (`TARGETED_DEVICE_FAMILY = 1`), so you only need ONE set — no iPad screenshots required:
 
 | Device | Size needed | How many |
 |---|---|---|
 | iPhone 6.9" (15/16 Pro Max) | 1290 × 2796 | 3–10 |
-| iPad 13" (Pro M4) | 2064 × 2752 | 3–10 |
 
 **Easiest way to get them:** run the app in the iOS Simulator and press **⌘S** (File → Save Screen) on each screen.
 ```
-open -a Simulator          # then in Xcode pick an iPhone 16 Pro Max + iPad Pro 13"
+open -a Simulator          # then in Xcode pick an iPhone 16 Pro Max
 flutter run                # navigate to each screen, ⌘S to capture
 ```
 Reuse the same SCREENS you used for Google Play — lock screen, empty vault, library, security score, settings — **but do NOT include the Smart/Quick-import or Disguise screens** to stay consistent with the honest listing.
 
-> **Want to avoid iPad screenshots entirely?** I can switch the app to **iPhone-only** (one line: `TARGETED_DEVICE_FAMILY = 1`), which removes the iPad requirement and shrinks the review surface for a first launch. Tell me and I'll do it + rebuild. You can add iPad back later.
+> Only the **6.9"** size is strictly required; App Store Connect scales it for smaller iPhones. To add iPad later, set `TARGETED_DEVICE_FAMILY = "1,2"` and supply 13" iPad screenshots.
 
 ---
 
