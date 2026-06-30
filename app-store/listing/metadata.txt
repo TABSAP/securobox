@@ -1,0 +1,133 @@
+SECUROBOX — APP STORE LISTING METADATA
+(iOS-accurate. Copy each field into App Store Connect → your app → "App Information" / version page.)
+
+================================================================
+APP NAME (max 30 chars)
+================================================================
+SecuroBox - Private Vault
+
+(If "SecuroBox" alone is taken, the above is the safe choice. 25 chars.)
+
+================================================================
+SUBTITLE (max 30 chars)
+================================================================
+Private offline media vault
+
+================================================================
+PROMOTIONAL TEXT (max 170 chars — editable anytime without review)
+================================================================
+Lock your private videos, photos, audio and documents behind a PIN or Face ID. 100% offline, AES-256 encrypted — no cloud, no accounts, no tracking.
+
+================================================================
+KEYWORDS (max 100 chars, comma-separated, NO spaces after commas)
+================================================================
+vault,hide photos,private,secure,encrypt,lock,folder,password,album,privacy,offline,locker,pin
+
+================================================================
+DESCRIPTION
+================================================================
+SecuroBox is a 100% offline private media vault. Keep your videos, photos, audio and documents locked behind a PIN and Face ID — nothing ever leaves your device.
+
+★ Why SecuroBox
+
+• 100% offline — your files never touch the cloud
+• PIN + Face ID / Touch ID lock for the entire app
+• AES-256 encryption for every file at rest
+• Protected by iOS Data Protection (hardware-backed)
+• PIN hashed with PBKDF2 and stored in the iOS Keychain
+• No ads, no trackers, no analytics
+• No account, no sign-up
+
+★ What you can store
+
+• Videos (MP4, MOV, M4V and more)
+• Photos (JPG, PNG, HEIC, GIF, WEBP)
+• Audio (MP3, M4A, WAV, AAC, FLAC)
+• Documents (PDF, DOC, DOCX, PPT, XLS, TXT)
+
+★ Built-in players
+
+• Video player with playback speed, fullscreen and gesture controls
+• Audio player with background playback
+• PDF reader with smooth scrolling and zoom
+• Image viewer with pinch-to-zoom
+
+★ Organized library
+
+• Imported media is filed by type — Videos, Photos, Audio, Documents
+• Extra built-in categories you can sort into: Educational, Personal, Work, Sports, Travel
+• Create your own custom folders
+• Quick search across your vault
+• Recycle bin for accidentally deleted files
+
+★ Import options
+
+• Capture photos and videos straight into the vault with the in-app Secure Camera
+• Import existing photos, videos and audio from your library
+• Move-to-vault: imported photos and videos are removed from your library and kept safely in the vault — move them back out anytime
+• Files are encrypted into a private app container, isolated from the rest of your phone
+
+★ Security model
+
+• PIN with strength check (rejects 1234, 0000, sequential digits, repeats)
+• Optional Face ID / Touch ID unlock
+• Optional in-app Face Unlock
+• Auto-lock when the app goes to the background
+• Privacy screen hides your vault in the App Switcher
+
+★ Advanced protection
+
+• Break-in detection — silently captures a photo of anyone who enters the wrong PIN, saved only inside your vault
+• Decoy PIN — open a separate decoy vault under duress while your real vault stays hidden
+• Offline Integrity Lock — optionally seal the vault whenever the device is connected to a network
+• Optional PIN recovery using a one-time code you set up
+
+★ Privacy promise
+
+We do not collect, store, or transmit any of your data.
+We have no servers. We do not see your files.
+You are in control — always.
+
+================================================================
+SUPPORT URL
+================================================================
+https://tabsap.github.io/securobox/
+
+================================================================
+MARKETING URL (optional)
+================================================================
+https://tabsap.github.io/securobox/
+
+================================================================
+PRIVACY POLICY URL
+================================================================
+https://tabsap.github.io/securobox/play-store/privacy-policy.html
+
+================================================================
+PRIMARY CATEGORY
+================================================================
+Utilities
+(Secondary suggestion: Photo & Video)
+
+================================================================
+AGE RATING (questionnaire answers → expect 4+)
+================================================================
+Answer "None" to all content questions (no violence, no mature content, no
+gambling, no user-generated content shared online). The app shows only the
+user's own private files. Result: 4+.
+
+================================================================
+APP PRIVACY — "DATA NOT COLLECTED"
+================================================================
+In App Store Connect → App Privacy, select:
+  "Data Not Collected"
+The app collects nothing, has no SDKs, no analytics, no account. If asked
+about each data type, answer that none is collected.
+
+================================================================
+EXPORT COMPLIANCE
+================================================================
+Already declared in code: Info.plist has
+  ITSAppUsesNonExemptEncryption = false
+(standard AES-256 used only to protect the user's own data on device =
+export-exempt). App Store Connect will NOT ask the encryption question.
