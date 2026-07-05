@@ -2300,22 +2300,28 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     _buildDecoyCard(),
                     const SizedBox(height: 14),
                     _buildIntrusionCard(),
-                    const SizedBox(height: 14),
-                    _buildScreenshotCard(),
+                    if (Platform.isAndroid) ...[
+                      const SizedBox(height: 14),
+                      _buildScreenshotCard(),
+                    ],
                     const SizedBox(height: 14),
                     _buildIntegrityLockCard(),
                     const SizedBox(height: 28),
 
                     _sectionHeader(
-                      label: 'IMPORT & DISGUISE',
+                      label: Platform.isAndroid ? 'IMPORT & DISGUISE' : 'IMPORT',
                       icon: Icons.tune_rounded,
                       color: LiquidColors.accentBlue,
-                      caption: 'Originals handling and home-screen disguise.',
+                      caption: Platform.isAndroid
+                          ? 'Originals handling and home-screen disguise.'
+                          : 'Originals handling.',
                     ),
                     const SizedBox(height: 12),
                     _buildImportCard(),
-                    const SizedBox(height: 14),
-                    _buildDisguiseCard(),
+                    if (Platform.isAndroid) ...[
+                      const SizedBox(height: 14),
+                      _buildDisguiseCard(),
+                    ],
                     const SizedBox(height: 28),
 
                     const SizedBox(height: 40),

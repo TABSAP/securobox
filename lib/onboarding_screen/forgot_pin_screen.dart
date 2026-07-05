@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -264,22 +266,24 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
   }
 
   Widget _buildLossList() {
-    final items = const [
-      _LossItem(
+    final items = [
+      const _LossItem(
         icon: Icons.video_library_rounded,
         text: 'All imported videos, photos, audio, and documents',
       ),
-      _LossItem(
+      const _LossItem(
         icon: Icons.camera_front_rounded,
         text: 'Break-in selfies in the intrusion log',
       ),
-      _LossItem(
+      const _LossItem(
         icon: Icons.history_rounded,
         text: 'Download history and recycle bin',
       ),
       _LossItem(
         icon: Icons.tune_rounded,
-        text: 'Custom categories, disguise mode, and recovery email',
+        text: Platform.isAndroid
+            ? 'Custom categories, disguise mode, and recovery email'
+            : 'Custom categories and recovery email',
       ),
     ];
     return Container(

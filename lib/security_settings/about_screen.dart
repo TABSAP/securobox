@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -231,9 +233,11 @@ class AboutScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           _factRow(
-            Icons.android_rounded,
-            'Built for Android & iOS',
-            'Designed for everyday phones — minimum Android 5.0.',
+            Platform.isIOS ? Icons.phone_iphone_rounded : Icons.android_rounded,
+            Platform.isIOS ? 'Built for iPhone' : 'Built for Android & iOS',
+            Platform.isIOS
+                ? 'Designed for everyday iPhones — requires iOS 15.5 or later.'
+                : 'Designed for everyday phones — minimum Android 5.0.',
           ),
         ],
       ),
