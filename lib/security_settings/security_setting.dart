@@ -1908,22 +1908,24 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 ),
                 const SizedBox(height: AppSpace.sm),
                 _group([
-                  _tile(
-                    icon: Icons.face_rounded,
-                    color: LiquidColors.accentPurple,
-                    title: 'In-app Face Unlock',
-                    subtitle: _faceRecogEnrolled
-                        ? 'Enrolled'
-                        : 'Set up face recognition',
-                    trailing: _switch(_faceRecogEnrolled, (v) {
-                      if (v) {
-                        _openFaceEnroll();
-                      } else {
-                        _disableFaceRecognition();
-                      }
-                    }),
-                  ),
-                  _divider(),
+                  if (!_faceAvailable) ...[
+                    _tile(
+                      icon: Icons.face_rounded,
+                      color: LiquidColors.accentPurple,
+                      title: 'Face recognition',
+                      subtitle: _faceRecogEnrolled
+                          ? 'In-app face unlock is enrolled'
+                          : 'Set up in-app face unlock',
+                      trailing: _switch(_faceRecogEnrolled, (v) {
+                        if (v) {
+                          _openFaceEnroll();
+                        } else {
+                          _disableFaceRecognition();
+                        }
+                      }),
+                    ),
+                    _divider(),
+                  ],
                   _tile(
                     icon: Icons.password_rounded,
                     color: LiquidColors.success,

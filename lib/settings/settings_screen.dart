@@ -1,18 +1,16 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import 'package:video_player_app/history_screen/history_screen.dart';
 import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
+import 'package:video_player_app/security_settings/about_screen.dart';
 import 'package:video_player_app/security_settings/security_setting.dart';
+import 'package:video_player_app/security_settings/support_screen.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/responsive.dart';
-import 'package:video_player_app/utils/screen_security.dart';
-import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 import 'package:video_player_app/widgets/app_card.dart';
@@ -27,40 +25,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final LocalAuthentication _localAuth = LocalAuthentication();
-
-  bool _biometricEnabled = false;
-  bool _biometricAvailable = false;
-  bool _busyBiometric = false;
-  int _autoLockSeconds = 60;
   int _vaultBytes = -1;
   int _cacheBytes = -1;
 
   @override
   void initState() {
     super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bio =
-        (prefs.getBool('biometric') ?? false) ||
-        (prefs.getBool('biometric_face') ?? false);
-
-    bool available = false;
-    try {
-      final canCheck = await _localAuth.canCheckBiometrics;
-      final list = await _localAuth.getAvailableBiometrics();
-      available = canCheck && list.isNotEmpty;
-    } catch (_) {}
-
-    if (!mounted) return;
-    setState(() {
-      _biometricEnabled = bio;
-      _biometricAvailable = available;
-      _autoLockSeconds = SessionManager.instance.autoLockSeconds;
-    });
     _loadSizes();
   }
 
@@ -74,97 +44,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  Future<void> _toggleBiometric(bool value) async {
-    if (_busyBiometric) return;
-    HapticFeedback.selectionClick();
-    final prefs = await SharedPreferences.getInstance();
-
-    if (!value) {
-      await prefs.setBool('biometric', false);
-      await prefs.setBool('biometric_face', false);
-      await prefs.setBool('appLock', true);
-      if (mounted) setState(() => _biometricEnabled = false);
-      return;
-    }
-
-    setState(() => _busyBiometric = true);
-    SessionManager.instance.beginTrustedInteraction();
-    try {
-      final ok = await _localAuth.authenticate(
-        localizedReason: 'Enable biometric unlock for SecuroBox',
-        biometricOnly: true,
-        persistAcrossBackgrounding: true,
-      );
-      if (ok) {
-        final avail = await _localAuth.getAvailableBiometrics();
-        final hasFace = avail.contains(BiometricType.face);
-        final hasFingerprint = avail.contains(BiometricType.fingerprint);
-        if (hasFace && !hasFingerprint) {
-          await prefs.setBool('biometric_face', true);
-        } else {
-          await prefs.setBool('biometric', true);
-          if (hasFace) await prefs.setBool('biometric_face', true);
-        }
-        await prefs.setBool('appLock', true);
-        if (mounted) setState(() => _biometricEnabled = true);
-      }
-    } catch (_) {
-    } finally {
-      SessionManager.instance.endTrustedInteraction();
-      if (mounted) setState(() => _busyBiometric = false);
-    }
-  }
-
-  Future<void> _pickAutoLock() async {
-    HapticFeedback.selectionClick();
-    final selected = await showModalBottomSheet<int>(
-      context: context,
-      backgroundColor: LiquidColors.backgroundMid,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: AppSpace.md),
-              Text(
-                'Auto-lock',
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: AppSpace.sm),
-              for (final entry in SessionManager.autoLockOptions.entries)
-                ListTile(
-                  onTap: () => Navigator.pop(context, entry.key),
-                  title: Text(
-                    entry.value,
-                    style: TextStyle(color: LiquidColors.textPrimary),
-                  ),
-                  trailing: entry.key == _autoLockSeconds
-                      ? Icon(Icons.check_rounded, color: LiquidColors.accentBlue)
-                      : null,
-                ),
-              const SizedBox(height: AppSpace.sm),
-            ],
-          ),
-        );
-      },
-    );
-    if (selected == null) return;
-    await SessionManager.instance.setAutoLockSeconds(selected);
-    if (mounted) setState(() => _autoLockSeconds = selected);
-  }
-
-  void _openChangePin() {
+  void _open(Widget screen) {
     HapticFeedback.lightImpact();
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()),
-    );
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
   Future<void> _clearCache() async {
@@ -294,66 +176,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _statusHeader(),
             const SizedBox(height: AppSpace.lg),
 
-            const AppSectionHeader(label: 'Security'),
+            const AppSectionHeader(label: 'Security & privacy'),
             const SizedBox(height: AppSpace.sm),
             _group([
               _tile(
-                icon: Icons.fingerprint_rounded,
+                icon: Icons.shield_rounded,
                 color: LiquidColors.accentBlue,
-                title: 'Biometric unlock',
-                subtitle: _biometricAvailable
-                    ? 'Face or fingerprint'
-                    : 'Not available on this device',
-                trailing: _busyBiometric
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Switch.adaptive(
-                        value: _biometricEnabled,
-                        activeThumbColor: LiquidColors.accentBlue,
-                        onChanged: _biometricAvailable ? _toggleBiometric : null,
-                      ),
-              ),
-              _divider(),
-              _tile(
-                icon: Icons.lock_clock_rounded,
-                color: LiquidColors.accentPurple,
-                title: 'Auto-lock',
-                subtitle: 'Lock the vault after inactivity',
-                trailing: _valueTrailing(_autoLockShort(_autoLockSeconds)),
-                onTap: _pickAutoLock,
-              ),
-              _divider(),
-              _tile(
-                icon: Icons.password_rounded,
-                color: LiquidColors.success,
-                title: 'Change PIN',
-                subtitle: 'Update your vault PIN',
+                title: 'Security',
+                subtitle: 'Locks, PIN, biometrics, decoy & recovery',
                 trailing: _chevron(),
-                onTap: _openChangePin,
+                onTap: () => _open(const SecuritySettingsScreen()),
               ),
-              if (Platform.isAndroid) ...[
-                _divider(),
-                _tile(
-                  icon: Icons.screenshot_monitor_rounded,
-                  color: LiquidColors.accentOrange,
-                  title: 'Block screenshots',
-                  subtitle: 'Also hides the app-switcher preview',
-                  trailing: ValueListenableBuilder<bool>(
-                    valueListenable: ScreenSecurity.enabled,
-                    builder: (context, on, _) => Switch.adaptive(
-                      value: on,
-                      activeThumbColor: LiquidColors.accentBlue,
-                      onChanged: (v) {
-                        HapticFeedback.selectionClick();
-                        ScreenSecurity.setEnabled(v);
-                      },
-                    ),
-                  ),
-                ),
-              ],
+              _divider(),
+              _tile(
+                icon: Icons.history_rounded,
+                color: LiquidColors.accentOrange,
+                title: 'History',
+                subtitle: 'Files you exported out of the vault',
+                trailing: _chevron(),
+                onTap: () => _open(const HistoryScreen()),
+              ),
             ]),
             const SizedBox(height: AppSpace.lg),
 
@@ -365,9 +207,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: LiquidColors.success,
                 title: 'Storage used',
                 subtitle: 'Encrypted files in this vault',
-                trailing: _valueTrailing(
+                trailing: _valueOnly(
                   _vaultBytes < 0 ? '—' : _fmtBytes(_vaultBytes),
-                  chevron: false,
                 ),
               ),
               _divider(),
@@ -404,6 +245,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   },
                 ),
+              ),
+            ]),
+            const SizedBox(height: AppSpace.lg),
+
+            const AppSectionHeader(label: 'About'),
+            const SizedBox(height: AppSpace.sm),
+            _group([
+              _tile(
+                icon: Icons.info_outline_rounded,
+                color: LiquidColors.accentPurple,
+                title: 'About SecuroBox',
+                subtitle: 'Version, what makes it secure, and credits',
+                trailing: _chevron(),
+                onTap: () => _open(const AboutScreen()),
+              ),
+              _divider(),
+              _tile(
+                icon: Icons.help_outline_rounded,
+                color: LiquidColors.success,
+                title: 'Help & Support',
+                subtitle: 'Feedback, privacy policy, tips and FAQs',
+                trailing: _chevron(),
+                onTap: () => _open(const SupportScreen()),
               ),
             ]),
             const SizedBox(height: AppSpace.lg),
@@ -577,6 +441,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: LiquidColors.textTertiary,
                           fontSize: 12,
@@ -587,38 +453,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
-              if (trailing != null) ...[
-                const SizedBox(width: 8),
-                trailing,
-              ],
+              if (trailing != null) ...[const SizedBox(width: 8), trailing],
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _valueTrailing(String value, {bool chevron = true}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            color: LiquidColors.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        if (chevron) ...[
-          const SizedBox(width: 4),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: LiquidColors.textTertiary,
-            size: 20,
-          ),
-        ],
-      ],
     );
   }
 
@@ -630,21 +469,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  String _autoLockShort(int seconds) {
-    switch (seconds) {
-      case 0:
-        return 'Immediately';
-      case 30:
-        return '30 sec';
-      case 60:
-        return '1 min';
-      case 300:
-        return '5 min';
-      case 900:
-        return '15 min';
-      default:
-        return '${seconds}s';
-    }
+  Widget _valueOnly(String value) {
+    return Text(
+      value,
+      style: TextStyle(
+        color: LiquidColors.textSecondary,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+      ),
+    );
   }
 
   String _fmtBytes(int bytes) {
