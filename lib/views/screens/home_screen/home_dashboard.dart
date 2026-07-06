@@ -187,7 +187,7 @@ class HomeDashboardState extends State<HomeDashboard> {
           crossAxisCount: 2,
           mainAxisSpacing: AppSpace.sm + 2,
           crossAxisSpacing: AppSpace.sm + 2,
-          childAspectRatio: 1.55,
+          childAspectRatio: 1.25,
           children: [for (final c in _cats) _categoryCard(c)],
         ),
         const SizedBox(height: AppSpace.lg),
@@ -207,7 +207,7 @@ class HomeDashboardState extends State<HomeDashboard> {
         onTap: () => _openCategory(cat.type),
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
-          padding: const EdgeInsets.all(AppSpace.md - 2),
+          padding: const EdgeInsets.all(AppSpace.sm + 2),
           decoration: BoxDecoration(
             color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
             borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -215,14 +215,15 @@ class HomeDashboardState extends State<HomeDashboard> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   gradient: LiquidColors.getMediaGradient(cat.type),
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
                       color: color.withValues(alpha: 0.28),
@@ -235,25 +236,34 @@ class HomeDashboardState extends State<HomeDashboard> {
                 child: Icon(
                   MediaHelper.getMediaIcon(cat.type),
                   color: Colors.white,
-                  size: 22,
+                  size: 20,
                 ),
               ),
-              const Spacer(),
-              Text(
-                cat.label,
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '$count ${count == 1 ? 'item' : 'items'}',
-                style: TextStyle(
-                  color: LiquidColors.textTertiary,
-                  fontSize: 12,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    cat.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: LiquidColors.textPrimary,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '$count ${count == 1 ? 'item' : 'items'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: LiquidColors.textTertiary,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
