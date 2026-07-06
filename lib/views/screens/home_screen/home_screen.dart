@@ -704,30 +704,20 @@ class HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    String playPath = media.path;
-    if (media.encrypted) {
-      try {
-        playPath = await VaultCrypto.instance.decryptToTemp(media.path);
-        if (!mounted) return;
-      } catch (e) {
-        if (mounted) {
-          FlushBarHelper.flushBarErrorMessage(
-            'Failed to decrypt file',
-            context,
-          );
-        }
-        return;
-      }
-    }
-
+    if (!mounted) return;
     switch (media.type.toLowerCase()) {
       case 'video':
-        if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                VideoPlayerScreen(videoPath: playPath, videoTitle: media.title),
+            builder: (_) => _DecryptGate(
+              source: media.path,
+              encrypted: media.encrypted,
+              builder: (_, path) => VideoPlayerScreen(
+                videoPath: path,
+                videoTitle: media.title,
+              ),
+            ),
           ),
         ).then((_) {
           if (mounted) _loadMedia(silent: true);
@@ -735,79 +725,46 @@ class HomeScreenState extends State<HomeScreen>
         break;
 
       case 'image':
-        if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => Scaffold(
-              backgroundColor: LiquidColors.backgroundDeep,
-              appBar: AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back, color: LiquidColors.textPrimary),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                title: Text(
-                  media.title,
-                  style: TextStyle(color: LiquidColors.textPrimary),
-                ),
-              ),
-              body: Center(
-                child: InteractiveViewer(
-                  child: Image.file(
-                    File(playPath),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.broken_image,
-                              color: LiquidColors.error,
-                              size: 60,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Unable to load image',
-                              style: TextStyle(color: LiquidColors.textPrimary),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
+            builder: (_) => _DecryptGate(
+              source: media.path,
+              encrypted: media.encrypted,
+              builder: (_, path) =>
+                  _ImageViewer(path: path, title: media.title),
             ),
           ),
         );
         break;
 
       case 'audio':
-        if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                AudioPlayerScreen(filePath: playPath, fileName: media.title),
+            builder: (_) => _DecryptGate(
+              source: media.path,
+              encrypted: media.encrypted,
+              builder: (_, path) =>
+                  AudioPlayerScreen(filePath: path, fileName: media.title),
+            ),
           ),
         );
         break;
 
       case 'pdf':
       case 'document':
-        if (!mounted) return;
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) =>
-                PDFReaderScreen(filePath: playPath, fileName: media.title),
+            builder: (_) => _DecryptGate(
+              source: media.path,
+              encrypted: media.encrypted,
+              builder: (_, path) =>
+                  PDFReaderScreen(filePath: path, fileName: media.title),
+            ),
           ),
-        ).then((_) async {
-          if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
-        });
+        );
         break;
 
       default:
@@ -945,6 +902,7 @@ class HomeScreenState extends State<HomeScreen>
         body: Column(
           children: [
             _buildAnimatedHeader(),
+         
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 280),
@@ -968,6 +926,8 @@ class HomeScreenState extends State<HomeScreen>
                       ),
               ),
             ),
+           
+
           ],
         ),
       ),
@@ -1072,6 +1032,7 @@ class HomeScreenState extends State<HomeScreen>
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Column(
         children: [
+              SizedBox(height : 10),
           _buildSearchBar(),
           const SizedBox(height: 12),
           _buildCategoryFilter(),
@@ -1463,6 +1424,137 @@ class _SkeletonCard extends StatelessWidget {
           SizedBox(width: 12),
           AppSkeleton(width: 24, height: 24, radius: 6),
         ],
+      ),
+    );
+  }
+}
+
+class _DecryptGate extends StatefulWidget {
+  final String source;
+  final bool encrypted;
+  final Widget Function(BuildContext context, String path) builder;
+
+  const _DecryptGate({
+    required this.source,
+    required this.encrypted,
+    required this.builder,
+  });
+
+  @override
+  State<_DecryptGate> createState() => _DecryptGateState();
+}
+
+class _DecryptGateState extends State<_DecryptGate> {
+  String? _path;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepare();
+  }
+
+  Future<void> _prepare() async {
+    if (!widget.encrypted) {
+      if (mounted) setState(() => _path = widget.source);
+      return;
+    }
+    try {
+      final decrypted = await VaultCrypto.instance.decryptToTemp(widget.source);
+      if (mounted) setState(() => _path = decrypted);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final path = _path;
+    if (path != null) return widget.builder(context, path);
+
+    return Scaffold(
+      backgroundColor: LiquidColors.backgroundDeep,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: LiquidColors.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Center(
+        child: _failed
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.error_outline_rounded,
+                    color: LiquidColors.error,
+                    size: 52,
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Unable to open this file',
+                    style: TextStyle(
+                      color: LiquidColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            : SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: LiquidColors.accentBlue,
+                ),
+              ),
+      ),
+    );
+  }
+}
+
+class _ImageViewer extends StatelessWidget {
+  final String path;
+  final String title;
+
+  const _ImageViewer({required this.path, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: LiquidColors.backgroundDeep,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: LiquidColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(title, style: TextStyle(color: LiquidColors.textPrimary)),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          child: Image.file(
+            File(path),
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.broken_image, color: LiquidColors.error, size: 60),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Unable to load image',
+                    style: TextStyle(color: LiquidColors.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
