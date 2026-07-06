@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/responsive.dart';
+import 'package:video_player_app/widgets/app_skeleton.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -1009,7 +1010,7 @@ class _HistoryScreenState extends State<HistoryScreen>
       itemCount: 5,
       itemBuilder: (_, i) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: _SkeletonCard(delayMs: i * 80),
+        child: const _SkeletonCard(),
       ),
     );
   }
@@ -1376,103 +1377,40 @@ class _StatTile extends StatelessWidget {
   }
 }
 
-class _SkeletonCard extends StatefulWidget {
-  final int delayMs;
-
-  const _SkeletonCard({required this.delayMs});
-
-  @override
-  State<_SkeletonCard> createState() => _SkeletonCardState();
-}
-
-class _SkeletonCardState extends State<_SkeletonCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    );
-    Future.delayed(Duration(milliseconds: widget.delayMs), () {
-      if (mounted) _controller.repeat();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard();
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (_, _) {
-        final t = _controller.value;
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: LiquidColors.textPrimary.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+        ),
+      ),
+      child: const Row(
+        children: [
+          AppSkeleton(width: 56, height: 56, radius: 14),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AppSkeleton(width: double.infinity, height: 14, radius: 4),
+                SizedBox(height: 8),
+                AppSkeleton(width: 110, height: 10, radius: 4),
+              ],
             ),
           ),
-          child: Row(
-            children: [
-              _box(width: 56, height: 56, radius: 14, t: t),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _box(width: double.infinity, height: 14, radius: 4, t: t),
-                    const SizedBox(height: 8),
-                    _box(width: 110, height: 10, radius: 4, t: t),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              _box(width: 36, height: 36, radius: 10, t: t),
-              const SizedBox(width: 6),
-              _box(width: 36, height: 36, radius: 10, t: t),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _box({
-    required double width,
-    required double height,
-    required double radius,
-    required double t,
-  }) {
-    final shift = (t * 2 - 1).clamp(-1.0, 1.0);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: Container(
-        width: width,
-        height: height,
-        color: LiquidColors.textPrimary.withValues(alpha: 0.05),
-        foregroundDecoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment(shift - 0.3, 0),
-            end: Alignment(shift + 0.3, 0),
-            colors: [
-              LiquidColors.textPrimary.withValues(alpha: 0.0),
-              LiquidColors.textPrimary.withValues(alpha: 0.08),
-              LiquidColors.textPrimary.withValues(alpha: 0.0),
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+          SizedBox(width: 12),
+          AppSkeleton(width: 36, height: 36, radius: 10),
+          SizedBox(width: 6),
+          AppSkeleton(width: 36, height: 36, radius: 10),
+        ],
       ),
     );
   }

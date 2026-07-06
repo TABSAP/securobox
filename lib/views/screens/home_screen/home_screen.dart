@@ -8,6 +8,7 @@ import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/views/screens/secure_camera/secure_camera_screen.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 import 'package:video_player_app/widgets/app_empty_state.dart';
+import 'package:video_player_app/widgets/app_skeleton.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -1271,7 +1272,7 @@ class HomeScreenState extends State<HomeScreen>
       itemCount: 6,
       itemBuilder: (context, index) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: _SkeletonCard(delayMs: index * 80),
+        child: const _SkeletonCard(),
       ),
     );
   }
@@ -1429,107 +1430,39 @@ class _CategoryPill extends StatelessWidget {
   }
 }
 
-class _SkeletonCard extends StatefulWidget {
-  final int delayMs;
-
-  const _SkeletonCard({required this.delayMs});
-
-  @override
-  State<_SkeletonCard> createState() => _SkeletonCardState();
-}
-
-class _SkeletonCardState extends State<_SkeletonCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    );
-    Future.delayed(Duration(milliseconds: widget.delayMs), () {
-      if (mounted) _controller.repeat();
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+class _SkeletonCard extends StatelessWidget {
+  const _SkeletonCard();
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final t = _controller.value;
-        return Container(
-          height: 84,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: LiquidColors.textPrimary.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+    return Container(
+      height: 84,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+        ),
+      ),
+      child: const Row(
+        children: [
+          AppSkeleton(width: 60, height: 60, radius: 12),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AppSkeleton(width: double.infinity, height: 14, radius: 4),
+                SizedBox(height: 8),
+                AppSkeleton(width: 120, height: 10, radius: 4),
+              ],
             ),
           ),
-          child: Row(
-            children: [
-              _shimmerBox(width: 60, height: 60, radius: 12, t: t),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _shimmerBox(
-                      width: double.infinity,
-                      height: 14,
-                      radius: 4,
-                      t: t,
-                    ),
-                    const SizedBox(height: 8),
-                    _shimmerBox(width: 120, height: 10, radius: 4, t: t),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              _shimmerBox(width: 24, height: 24, radius: 6, t: t),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _shimmerBox({
-    required double width,
-    required double height,
-    required double radius,
-    required double t,
-  }) {
-    final shift = (t * 2 - 1).clamp(-1.0, 1.0);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: Container(
-        width: width,
-        height: height,
-        color: LiquidColors.textPrimary.withValues(alpha: 0.05),
-        foregroundDecoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment(shift - 0.3, 0),
-            end: Alignment(shift + 0.3, 0),
-            colors: [
-              LiquidColors.textPrimary.withValues(alpha: 0.0),
-              LiquidColors.textPrimary.withValues(alpha: 0.08),
-              LiquidColors.textPrimary.withValues(alpha: 0.0),
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+          SizedBox(width: 12),
+          AppSkeleton(width: 24, height: 24, radius: 6),
+        ],
       ),
     );
   }
