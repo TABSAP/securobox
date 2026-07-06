@@ -9,6 +9,7 @@ import 'package:video_player_app/views/screens/secure_camera/secure_camera_scree
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 import 'package:video_player_app/widgets/app_empty_state.dart';
 import 'package:video_player_app/widgets/app_skeleton.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -849,56 +850,76 @@ class HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return LiquidBackground(
-      animate: true,
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const AppBarTitleWidget(),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          systemOverlayStyle: SystemUiOverlayStyle.light,
-          flexibleSpace: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  LiquidColors.backgroundDeep.withValues(alpha: 0.85),
-                  LiquidColors.backgroundMid.withValues(alpha: 0.6),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: LiquidColors.isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
+        titleSpacing: 20,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
           ),
-          actions: [
-            _buildAppBarAction(
-              icon: Icons.photo_camera_rounded,
-              tooltip: 'Secure Camera',
-              onTap: _openSecureCamera,
-            ),
-            SizedBox(width: 10),
-            _buildAppBarAction(
-              icon: Icons.delete_outline_rounded,
-              tooltip: 'Recycle Bin',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DeletedVideosScreen(
-                      onVideosChanged: () => _loadMedia(),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-          ],
         ),
-        floatingActionButton: _buildAddFab(),
-        body: Column(
+        title: Text(
+          'Library',
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
+        ),
+        actions: [
+          _buildAppBarAction(
+            icon: Icons.photo_camera_rounded,
+            tooltip: 'Secure Camera',
+            onTap: _openSecureCamera,
+          ),
+          const SizedBox(width: 10),
+          _buildAppBarAction(
+            icon: Icons.delete_outline_rounded,
+            tooltip: 'Recycle Bin',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DeletedVideosScreen(
+                    onVideosChanged: () => _loadMedia(silent: true),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 12),
+        ],
+      ),
+      floatingActionButton: _buildAddFab(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              LiquidColors.backgroundDeep,
+              LiquidColors.backgroundMid,
+              LiquidColors.backgroundLight,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: Column(
           children: [
             _buildAnimatedHeader(),
-         
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 280),
@@ -922,8 +943,6 @@ class HomeScreenState extends State<HomeScreen>
                       ),
               ),
             ),
-           
-
           ],
         ),
       ),
@@ -931,36 +950,29 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildAddFab() {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: _openAddSheet,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: _openAddSheet,
+      child: Container(
+        width: 56,
+        height: 56,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: LiquidColors.accentBlue.withValues(alpha: 0.4),
+              blurRadius: 18,
+              spreadRadius: -2,
+              offset: const Offset(0, 8),
             ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.45),
-                blurRadius: 22,
-                spreadRadius: -2,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: const [
-              Icon(Icons.add_rounded, color: Colors.white, size: 22),
-            ],
-          ),
+          ],
         ),
+        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
     );
   }
@@ -1008,31 +1020,19 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildHeader() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            LiquidColors.backgroundDeep.withValues(alpha: 0.8),
-            LiquidColors.backgroundDeep.withValues(alpha: 0.0),
-          ],
-        ),
-        border: Border(
-          bottom: BorderSide(
-            color: LiquidColors.textPrimary.withValues(alpha: 0.05),
-            width: 1,
-          ),
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpace.md,
+        AppSpace.sm,
+        AppSpace.md,
+        AppSpace.sm,
       ),
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Column(
         children: [
-              SizedBox(height : 10),
           _buildSearchBar(),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpace.md),
           _buildCategoryFilter(),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpace.sm),
           _buildFilterInfo(),
         ],
       ),
