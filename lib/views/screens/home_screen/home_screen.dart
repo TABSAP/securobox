@@ -895,19 +895,7 @@ class HomeScreenState extends State<HomeScreen>
         ],
       ),
       floatingActionButton: _buildAddFab(),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundMid,
-              LiquidColors.backgroundLight,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+      body: LiquidBackground(
         child: Column(
           children: [
             _buildAnimatedHeader(),

@@ -818,47 +818,37 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       padding: const EdgeInsets.symmetric(horizontal: 22),
       child: Row(
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  LiquidColors.accentBlue,
-                  LiquidColors.accentPurple,
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: const Icon(
-              Icons.video_collection_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Add to your vault',
+                  'Add to vault',
                   style: TextStyle(
                     color: LiquidColors.textPrimary,
-                    fontSize: 17,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'Encrypted on this device. Never uploaded.',
-                  style: TextStyle(
-                    color: LiquidColors.textTertiary,
-                    fontSize: 11.5,
-                  ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.lock_rounded,
+                      size: 12,
+                      color: LiquidColors.success,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'Encrypted on this device — never uploaded',
+                      style: TextStyle(
+                        color: LiquidColors.textTertiary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -870,7 +860,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
               customBorder: const CircleBorder(),
               onTap: _importing ? null : () => Navigator.of(context).pop(),
               child: Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(9),
                 child: Icon(
                   Icons.close_rounded,
                   size: 20,

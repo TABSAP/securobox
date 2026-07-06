@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
 import '../../../../../models/app_models.dart';
 import '../../../../../utils/media_helper.dart';
 import '../../../../../utils/liquid_colors.dart';
@@ -92,11 +93,13 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
 
   Widget _buildCard(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: AppSpace.sm + 2),
+      padding: const EdgeInsets.all(AppSpace.sm + 2),
       decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(16),
+        color: LiquidColors.backgroundLight.withValues(
+          alpha: _pressed ? 0.78 : 0.55,
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: LiquidColors.cardBorder),
       ),
       child: Row(
@@ -104,7 +107,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           _buildThumbnail(),
           const SizedBox(width: 12),
           Expanded(child: _buildInfo()),
-          const SizedBox(width: 2),
+          const SizedBox(width: 4),
           _buildActions(context),
         ],
       ),
@@ -112,15 +115,53 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   Widget _buildThumbnail() {
-    return Container(
-      width: 52,
-      height: 52,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        gradient: LiquidColors.getMediaGradient(_m.type),
-        borderRadius: BorderRadius.circular(14),
+    return SizedBox(
+      width: 54,
+      height: 54,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LiquidColors.getMediaGradient(_m.type),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: _accent.withValues(alpha: 0.28),
+                  blurRadius: 10,
+                  spreadRadius: -3,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(
+              MediaHelper.getMediaIcon(_m.type),
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          if (_m.isFavorite)
+            Positioned(
+              right: -4,
+              top: -4,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: LiquidColors.backgroundLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.favorite_rounded,
+                  size: 12,
+                  color: LiquidColors.accentPink,
+                ),
+              ),
+            ),
+        ],
       ),
-      child: Icon(MediaHelper.getMediaIcon(_m.type), color: Colors.white, size: 24),
     );
   }
 
@@ -129,33 +170,22 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                _m.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.1,
-                ),
-              ),
-            ),
-            if (_m.isFavorite) ...[
-              const SizedBox(width: 6),
-              Icon(Icons.favorite_rounded,
-                  size: 15, color: LiquidColors.accentPink),
-            ],
-          ],
+        Text(
+          _m.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
+            fontSize: 15.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.1,
+          ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 7),
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
               decoration: BoxDecoration(
                 color: _accent.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(6),
@@ -164,7 +194,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
                 _m.type.toUpperCase(),
                 style: TextStyle(
                   fontSize: 9,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   color: _accent,
                   letterSpacing: 0.5,
                 ),
