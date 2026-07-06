@@ -9,6 +9,7 @@ import 'package:video_player_app/security_settings/support_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
+import 'package:video_player_app/widgets/app_section_header.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -150,12 +151,12 @@ class _SettingsScreenState extends State<SettingsScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _sectionLabel('APPEARANCE'),
+                  const AppSectionHeader(label: 'Appearance'),
                   const SizedBox(height: 10),
                   _appearanceCard(),
                   const SizedBox(height: 24),
 
-                  _sectionLabel('PRIVACY & DATA'),
+                  const AppSectionHeader(label: 'Privacy & Data'),
                   const SizedBox(height: 10),
                   _groupCard([
                     _navRow(
@@ -198,7 +199,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   ]),
                   const SizedBox(height: 24),
 
-                  _sectionLabel('INFORMATION'),
+                  const AppSectionHeader(label: 'Information'),
                   const SizedBox(height: 10),
                   _groupCard([
                     _navRow(
@@ -243,21 +244,6 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String label) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: LiquidColors.textSecondary,
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 1.0,
         ),
       ),
     );
