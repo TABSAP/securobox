@@ -698,17 +698,6 @@ class _HistoryScreenState extends State<HistoryScreen>
     return null;
   }
 
-  Future<void> _refreshDownloads() async {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
-
-    await _loadDownloads();
-  }
 
   Future<void> _clearDownloads() async {
     showDialog(
@@ -1237,32 +1226,26 @@ class _HistoryScreenState extends State<HistoryScreen>
   }
 
   Widget _buildDownloadList() {
-    return RefreshIndicator(
-      backgroundColor: LiquidColors.backgroundLight,
-      color: LiquidColors.accentBlue,
-      strokeWidth: 2.5,
-      onRefresh: _refreshDownloads,
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: EdgeInsets.symmetric(
-          horizontal: context.contentInset(phone: 16),
-        ),
-        itemCount: _downloads.length,
-        itemBuilder: (context, index) {
-          final download = _downloads[index];
-          return LiquidDownloadCard(
-            fileName: download.fileName,
-            fileSize: download.fileSize,
-            status: download.status,
-            date: download.date,
-            videoPath: download.videoPath,
-            fileExists: File(download.videoPath).existsSync(),
-            index: index,
-            onSave: () => _showDownloadConfirmation(download),
-            onShare: () => _shareVideo(download),
-          );
-        },
+    return ListView.builder(
+      controller: _scrollController,
+      padding: EdgeInsets.symmetric(
+        horizontal: context.contentInset(phone: 16),
       ),
+      itemCount: _downloads.length,
+      itemBuilder: (context, index) {
+        final download = _downloads[index];
+        return LiquidDownloadCard(
+          fileName: download.fileName,
+          fileSize: download.fileSize,
+          status: download.status,
+          date: download.date,
+          videoPath: download.videoPath,
+          fileExists: File(download.videoPath).existsSync(),
+          index: index,
+          onSave: () => _showDownloadConfirmation(download),
+          onShare: () => _shareVideo(download),
+        );
+      },
     );
   }
 }

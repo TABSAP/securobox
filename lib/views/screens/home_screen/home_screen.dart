@@ -679,10 +679,6 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Future<void> _onRefresh() async {
-    await _loadMedia(silent: true);
-  }
-
   Future<void> _openMedia(VideoItem media) async {
     if (media.isLocked) {
       final authenticated = await _unlockProtectedItem(
@@ -922,7 +918,7 @@ class HomeScreenState extends State<HomeScreen>
                       )
                     : KeyedSubtree(
                         key: const ValueKey('list'),
-                        child: _buildMediaListWithRefresh(),
+                        child: _buildMediaList(),
                       ),
               ),
             ),
@@ -1241,79 +1237,62 @@ class HomeScreenState extends State<HomeScreen>
   Widget _buildEmptyState() {
     final hasFilters =
         _searchController.text.isNotEmpty || _selectedCategory != "All";
-    return RefreshIndicator(
-      onRefresh: _onRefresh,
-      color: LiquidColors.accentBlue,
-      backgroundColor: LiquidColors.backgroundLight,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
-        children: [
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.6,
-            child: AppEmptyState(
-              icon: hasFilters
-                  ? Icons.search_off_rounded
-                  : Icons.lock_outline_rounded,
-              title: hasFilters ? 'No matches' : 'Your vault is empty',
-              message: hasFilters
-                  ? 'Try a different search term or category to find what you\'re looking for.'
-                  : 'Files you import are encrypted and stored only on this device — never in the cloud.',
-              actionLabel:
-                  hasFilters ? 'Clear filters' : 'Add your first file',
-              onAction: hasFilters
-                  ? () {
-                      setState(() {
-                        _selectedCategory = "All";
-                        _searchController.clear();
-                      });
-                      _filterMedia();
-                    }
-                  : _openAddSheet,
-            ),
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: AppEmptyState(
+            icon: hasFilters
+                ? Icons.search_off_rounded
+                : Icons.lock_outline_rounded,
+            title: hasFilters ? 'No matches' : 'Your vault is empty',
+            message: hasFilters
+                ? 'Try a different search term or category to find what you\'re looking for.'
+                : 'Files you import are encrypted and stored only on this device — never in the cloud.',
+            actionLabel: hasFilters ? 'Clear filters' : 'Add your first file',
+            onAction: hasFilters
+                ? () {
+                    setState(() {
+                      _selectedCategory = "All";
+                      _searchController.clear();
+                    });
+                    _filterMedia();
+                  }
+                : _openAddSheet,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildMediaListWithRefresh() {
-    return RefreshIndicator(
-      onRefresh: _onRefresh,
-      color: LiquidColors.accentBlue,
-      backgroundColor: LiquidColors.backgroundLight,
-      strokeWidth: 3,
-      displacement: 50,
-      edgeOffset: 0,
-      triggerMode: RefreshIndicatorTriggerMode.anywhere,
-      child: ListView.builder(
-        controller: _scrollController,
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-        padding: EdgeInsets.fromLTRB(
-          context.contentInset(phone: 16),
-          16,
-          context.contentInset(phone: 16),
-          16,
-        ),
-        itemCount: _filteredMedia.length,
-        itemBuilder: (context, index) {
-          final media = _filteredMedia[index];
-          return AnimatedMediaCard(
-            media: media,
-            categories: _allCategoriesForFilter,
-            index: index,
-            onTap: () => _openMedia(media),
-            onCategorySelected: (category) =>
-                _updateMediaCategory(media, category),
-            onFavoriteToggle: () => _toggleFavorite(media),
-            onDownloadTap: () => _showDownloadConfirmation(media),
-            onDeleteTap: () => _deleteMedia(media),
-            onRenameTap: () => _renameMedia(media),
-          );
-        },
+  Widget _buildMediaList() {
+    return ListView.builder(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        context.contentInset(phone: 16),
+        16,
+        context.contentInset(phone: 16),
+        16,
       ),
+      itemCount: _filteredMedia.length,
+      itemBuilder: (context, index) {
+        final media = _filteredMedia[index];
+        return AnimatedMediaCard(
+          media: media,
+          categories: _allCategoriesForFilter,
+          index: index,
+          onTap: () => _openMedia(media),
+          onCategorySelected: (category) =>
+              _updateMediaCategory(media, category),
+          onFavoriteToggle: () => _toggleFavorite(media),
+          onDownloadTap: () => _showDownloadConfirmation(media),
+          onDeleteTap: () => _deleteMedia(media),
+          onRenameTap: () => _renameMedia(media),
+        );
+      },
     );
   }
 }

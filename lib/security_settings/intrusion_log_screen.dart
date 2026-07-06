@@ -282,20 +282,13 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
             ? const Center(child: LiquidCircularProgress(size: 88))
             : _entries.isEmpty
                 ? _emptyState()
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    color: LiquidColors.accentBlue,
-                    backgroundColor: LiquidColors.surface,
-                    child: CustomScrollView(
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
-                      ),
-                      slivers: [
-                        SliverToBoxAdapter(child: _summaryBanner()),
-                        ..._buildSections(),
-                        const SliverToBoxAdapter(child: SizedBox(height: 28)),
-                      ],
-                    ),
+                : CustomScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(child: _summaryBanner()),
+                      ..._buildSections(),
+                      const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                    ],
                   ),
       ),
     );

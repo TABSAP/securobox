@@ -965,32 +965,26 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   }
 
   Widget _buildList() {
-    return RefreshIndicator(
-      onRefresh: _loadDeletedVideos,
-      color: LiquidColors.error,
-      backgroundColor: LiquidColors.backgroundLight,
-      strokeWidth: 2.5,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _filteredVideos.length,
-        itemBuilder: (context, index) {
-          final video = _filteredVideos[index];
-          final daysRemaining = video.deletedDate != null
-              ? _getDaysRemaining(video.deletedDate!)
-              : 30;
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _filteredVideos.length,
+      itemBuilder: (context, index) {
+        final video = _filteredVideos[index];
+        final daysRemaining = video.deletedDate != null
+            ? _getDaysRemaining(video.deletedDate!)
+            : 30;
 
-          return LiquidDeletedCard(
-            video: video,
-            daysRemaining: daysRemaining,
-            onRestore: () => _confirmRestore(video),
-            onDelete: () => _permanentDelete(video),
-            formatDate: _formatDate,
-            getIcon: _getMediaIcon,
-            getColor: _getMediaColor,
-            index: index,
-          );
-        },
-      ),
+        return LiquidDeletedCard(
+          video: video,
+          daysRemaining: daysRemaining,
+          onRestore: () => _confirmRestore(video),
+          onDelete: () => _permanentDelete(video),
+          formatDate: _formatDate,
+          getIcon: _getMediaIcon,
+          getColor: _getMediaColor,
+          index: index,
+        );
+      },
     );
   }
 }
