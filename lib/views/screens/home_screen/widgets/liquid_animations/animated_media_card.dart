@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/vault_thumbnail.dart';
 import '../../../../../models/app_models.dart';
 import '../../../../../utils/media_helper.dart';
 import '../../../../../utils/liquid_colors.dart';
@@ -121,27 +122,12 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
+          VaultThumbnail(
+            item: _m,
             width: 54,
             height: 54,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: LiquidColors.getMediaGradient(_m.type),
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: _accent.withValues(alpha: 0.28),
-                  blurRadius: 10,
-                  spreadRadius: -3,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Icon(
-              MediaHelper.getMediaIcon(_m.type),
-              color: Colors.white,
-              size: 24,
-            ),
+            radius: 15,
+            iconSize: 24,
           ),
           if (_m.isFavorite)
             Positioned(

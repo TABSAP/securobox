@@ -14,6 +14,7 @@ import 'package:video_player_app/views/screens/secure_camera/secure_camera_scree
 import 'package:video_player_app/widgets/app_empty_state.dart';
 import 'package:video_player_app/widgets/app_section_header.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/vault_thumbnail.dart';
 
 class _Cat {
   final String type;
@@ -169,31 +170,43 @@ class HomeDashboardState extends State<HomeDashboard> {
       );
     }
 
-    final recent = _all.take(8).toList();
+    final recent = _all.take(10).toList();
+    final inset = context.contentInset(phone: 16);
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(
-        context.contentInset(phone: 16),
-        AppSpace.md,
-        context.contentInset(phone: 16),
-        AppSpace.xl + 40,
-      ),
+      padding: EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.xl + 40),
       children: [
-        const AppSectionHeader(label: 'Categories'),
-        const SizedBox(height: AppSpace.sm),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: AppSpace.sm + 2,
-          crossAxisSpacing: AppSpace.sm + 2,
-          childAspectRatio: 1.25,
-          children: [for (final c in _cats) _categoryCard(c)],
+        if (recent.isNotEmpty) ...[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: inset),
+            child: const AppSectionHeader(
+              label: 'Recently added',
+              caption: 'Your latest additions',
+            ),
+          ),
+          const SizedBox(height: AppSpace.sm),
+          _recentCarousel(recent, inset),
+          const SizedBox(height: AppSpace.lg),
+        ],
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: inset),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppSectionHeader(label: 'Categories'),
+              const SizedBox(height: AppSpace.sm),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: AppSpace.sm + 2,
+                crossAxisSpacing: AppSpace.sm + 2,
+                childAspectRatio: 1.25,
+                children: [for (final c in _cats) _categoryCard(c)],
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: AppSpace.lg),
-        const AppSectionHeader(label: 'Recently added'),
-        const SizedBox(height: AppSpace.sm),
-        _recentGroup(recent),
       ],
     );
   }
@@ -272,93 +285,57 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-  Widget _recentGroup(List<VideoItem> items) {
-    return Container(
-      decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: LiquidColors.cardBorder),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Column(
-          children: [
-            for (var i = 0; i < items.length; i++) ...[
-              if (i > 0)
-                Padding(
-                  padding: const EdgeInsets.only(left: 66),
-                  child: Divider(
-                    height: 1,
-                    thickness: 1,
-                    color: LiquidColors.textPrimary.withValues(alpha: 0.05),
-                  ),
-                ),
-              _recentTile(items[i]),
-            ],
-          ],
-        ),
+  Widget _recentCarousel(List<VideoItem> items, double inset) {
+    return SizedBox(
+      height: 170,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.symmetric(horizontal: inset),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: AppSpace.sm + 2),
+        itemBuilder: (_, i) => _recentCard(items[i]),
       ),
     );
   }
 
-  Widget _recentTile(VideoItem m) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _openItem(m),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpace.sm + 2),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  gradient: LiquidColors.getMediaGradient(m.type),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  MediaHelper.getMediaIcon(m.type),
-                  color: Colors.white,
-                  size: 20,
-                ),
+  Widget _recentCard(VideoItem m) {
+    return GestureDetector(
+      onTap: () => _openItem(m),
+      child: SizedBox(
+        width: 140,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            VaultThumbnail(
+              item: m,
+              width: 140,
+              height: 104,
+              radius: AppRadius.lg,
+              iconSize: 30,
+            ),
+            const SizedBox(height: AppSpace.sm),
+            Text(
+              m.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      m.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: LiquidColors.textPrimary,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${m.type.toUpperCase()}  ·  ${MediaHelper.formatDate(m.id)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: LiquidColors.textTertiary,
-                        fontSize: 11.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${m.type.toUpperCase()}  ·  ${MediaHelper.formatDate(m.id)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
                 color: LiquidColors.textTertiary,
-                size: 22,
+                fontSize: 11,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
