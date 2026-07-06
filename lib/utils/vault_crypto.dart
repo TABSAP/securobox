@@ -206,6 +206,26 @@ class VaultCrypto {
     } catch (_) {}
   }
 
+  Future<int> _dirSize(Directory dir) async {
+    var total = 0;
+    try {
+      if (await dir.exists()) {
+        await for (final e in dir.list(recursive: true)) {
+          if (e is File) {
+            try {
+              total += await e.length();
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+    return total;
+  }
+
+  Future<int> currentVaultSize() async => _dirSize(await _vaultDir());
+
+  Future<int> tempCacheSize() async => _dirSize(await _tempDir());
+
   Future<void> revokeSession() async {
     _cachedRealKey = null;
     _cachedDecoyKey = null;

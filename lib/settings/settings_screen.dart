@@ -1,15 +1,23 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'package:video_player_app/history_screen/history_screen.dart';
-import 'package:video_player_app/security_settings/about_screen.dart';
+import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
 import 'package:video_player_app/security_settings/security_setting.dart';
-import 'package:video_player_app/security_settings/support_screen.dart';
+import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/responsive.dart';
+import 'package:video_player_app/utils/screen_security.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
+import 'package:video_player_app/utils/vault_crypto.dart';
+import 'package:video_player_app/widgets/app_card.dart';
 import 'package:video_player_app/widgets/app_section_header.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,38 +26,219 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _animationController = AnimationController(
-    duration: const Duration(milliseconds: 700),
-    vsync: this,
-  );
-  late final Animation<double> _fade = CurvedAnimation(
-    parent: _animationController,
-    curve: Curves.easeOut,
-  );
-  late final Animation<Offset> _slide =
-      Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(
-        CurvedAnimation(
-          parent: _animationController,
-          curve: Curves.easeOutCubic,
-        ),
-      );
+class _SettingsScreenState extends State<SettingsScreen> {
+  final LocalAuthentication _localAuth = LocalAuthentication();
+
+  bool _biometricEnabled = false;
+  bool _biometricAvailable = false;
+  bool _busyBiometric = false;
+  int _autoLockSeconds = 60;
+  int _vaultBytes = -1;
+  int _cacheBytes = -1;
 
   @override
   void initState() {
     super.initState();
-    _animationController.forward();
+    _load();
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bio =
+        (prefs.getBool('biometric') ?? false) ||
+        (prefs.getBool('biometric_face') ?? false);
+
+    bool available = false;
+    try {
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final list = await _localAuth.getAvailableBiometrics();
+      available = canCheck && list.isNotEmpty;
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _biometricEnabled = bio;
+      _biometricAvailable = available;
+      _autoLockSeconds = SessionManager.instance.autoLockSeconds;
+    });
+    _loadSizes();
+  }
+
+  Future<void> _loadSizes() async {
+    final vault = await VaultCrypto.instance.currentVaultSize();
+    final cache = await VaultCrypto.instance.tempCacheSize();
+    if (!mounted) return;
+    setState(() {
+      _vaultBytes = vault;
+      _cacheBytes = cache;
+    });
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    if (_busyBiometric) return;
+    HapticFeedback.selectionClick();
+    final prefs = await SharedPreferences.getInstance();
+
+    if (!value) {
+      await prefs.setBool('biometric', false);
+      await prefs.setBool('biometric_face', false);
+      await prefs.setBool('appLock', true);
+      if (mounted) setState(() => _biometricEnabled = false);
+      return;
+    }
+
+    setState(() => _busyBiometric = true);
+    SessionManager.instance.beginTrustedInteraction();
+    try {
+      final ok = await _localAuth.authenticate(
+        localizedReason: 'Enable biometric unlock for SecuroBox',
+        biometricOnly: true,
+        persistAcrossBackgrounding: true,
+      );
+      if (ok) {
+        final avail = await _localAuth.getAvailableBiometrics();
+        final hasFace = avail.contains(BiometricType.face);
+        final hasFingerprint = avail.contains(BiometricType.fingerprint);
+        if (hasFace && !hasFingerprint) {
+          await prefs.setBool('biometric_face', true);
+        } else {
+          await prefs.setBool('biometric', true);
+          if (hasFace) await prefs.setBool('biometric_face', true);
+        }
+        await prefs.setBool('appLock', true);
+        if (mounted) setState(() => _biometricEnabled = true);
+      }
+    } catch (_) {
+    } finally {
+      SessionManager.instance.endTrustedInteraction();
+      if (mounted) setState(() => _busyBiometric = false);
+    }
+  }
+
+  Future<void> _pickAutoLock() async {
+    HapticFeedback.selectionClick();
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: LiquidColors.backgroundMid,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: AppSpace.md),
+              Text(
+                'Auto-lock',
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              for (final entry in SessionManager.autoLockOptions.entries)
+                ListTile(
+                  onTap: () => Navigator.pop(context, entry.key),
+                  title: Text(
+                    entry.value,
+                    style: TextStyle(color: LiquidColors.textPrimary),
+                  ),
+                  trailing: entry.key == _autoLockSeconds
+                      ? Icon(Icons.check_rounded, color: LiquidColors.accentBlue)
+                      : null,
+                ),
+              const SizedBox(height: AppSpace.sm),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null) return;
+    await SessionManager.instance.setAutoLockSeconds(selected);
+    if (mounted) setState(() => _autoLockSeconds = selected);
+  }
+
+  void _openChangePin() {
+    HapticFeedback.lightImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const SecuritySettingsScreen()),
+    );
+  }
+
+  Future<void> _clearCache() async {
+    HapticFeedback.lightImpact();
+    await VaultCrypto.instance.wipeAllTempCache();
+    await _loadSizes();
+    if (!mounted) return;
+    FlushBarHelper.flushBarSuccessMessage('Cache cleared', context);
+  }
+
+  Future<void> _confirmWipe() async {
+    HapticFeedback.heavyImpact();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Delete all data?',
+          style: TextStyle(color: LiquidColors.textPrimary),
+        ),
+        content: Text(
+          'This permanently erases every file in your vault, your PIN, and all '
+          'settings. This cannot be undone.',
+          style: TextStyle(color: LiquidColors.textSecondary, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: LiquidColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Delete everything',
+              style: TextStyle(
+                color: LiquidColors.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await VaultCrypto.instance.resetAll();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+    } catch (_) {}
+    try {
+      const storage = FlutterSecureStorage(
+        aOptions: AndroidOptions(resetOnError: false),
+        iOptions: IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock_this_device,
+        ),
+      );
+      await storage.deleteAll();
+    } catch (_) {}
+
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+      (_) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark =
+        ThemeController.instance.effectiveBrightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -57,9 +246,10 @@ class _SettingsScreenState extends State<SettingsScreen>
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: LiquidColors.isDark
+        systemOverlayStyle: isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
+        titleSpacing: 20,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -69,58 +259,14 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ),
         ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.settings_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Settings',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: LiquidColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  Text(
-                    'Personalise SecuroBox to your taste',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: LiquidColors.textSecondary,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        title: Text(
+          'Settings',
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
         ),
       ),
       body: Container(
@@ -136,344 +282,229 @@ class _SettingsScreenState extends State<SettingsScreen>
             stops: const [0.0, 0.5, 1.0],
           ),
         ),
-        child: FadeTransition(
-          opacity: _fade,
-          child: SlideTransition(
-            position: _slide,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
-                context.contentInset(phone: 16),
-                0,
-                context.contentInset(phone: 16),
-                32,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const AppSectionHeader(label: 'Appearance'),
-                  const SizedBox(height: 10),
-                  _appearanceCard(),
-                  const SizedBox(height: 24),
-
-                  const AppSectionHeader(label: 'Privacy & Data'),
-                  const SizedBox(height: 10),
-                  _groupCard([
-                    _navRow(
-                      icon: Icons.shield_rounded,
-                      iconGradient: [
-                        LiquidColors.accentBlue,
-                        LiquidColors.primaryMid,
-                      ],
-                      title: 'Security',
-                      subtitle:
-                          'Locks, PIN, biometrics, recovery, decoy and more.',
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SecuritySettingsScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _rowDivider(),
-                    _navRow(
-                      icon: Icons.history_rounded,
-                      iconGradient: [
-                        LiquidColors.accentOrange,
-                        LiquidColors.accentPink,
-                      ],
-                      title: 'History',
-                      subtitle:
-                          'Files you saved out of the vault to the device.',
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const HistoryScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ]),
-                  const SizedBox(height: 24),
-
-                  const AppSectionHeader(label: 'Information'),
-                  const SizedBox(height: 10),
-                  _groupCard([
-                    _navRow(
-                      icon: Icons.info_outline_rounded,
-                      iconGradient: [
-                        LiquidColors.accentPurple,
-                        LiquidColors.accentPink,
-                      ],
-                      title: 'About SecuroBox',
-                      subtitle: 'Version, what makes it secure, and credits.',
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AboutScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                    _rowDivider(),
-                    _navRow(
-                      icon: Icons.help_outline_rounded,
-                      iconGradient: [
-                        LiquidColors.success,
-                        LiquidColors.accentBlue,
-                      ],
-                      title: 'Help & Support',
-                      subtitle: 'Send feedback, privacy policy, tips, and FAQs.',
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SupportScreen(),
-                          ),
-                        );
-                      },
-                    ),
-                  ]),
-                  const SizedBox(height: 26),
-                  _versionFooter(),
-                ],
-              ),
-            ),
+        child: ListView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(
+            context.contentInset(phone: 16),
+            AppSpace.sm,
+            context.contentInset(phone: 16),
+            AppSpace.xl,
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _appearanceCard() {
-    return ListenableBuilder(
-      listenable: ThemeController.instance,
-      builder: (context, _) {
-        final current = ThemeController.instance.mode;
-        return Container(
-          padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-          decoration: BoxDecoration(
-            color: LiquidColors.backgroundLight.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: _themeOption(current, ThemeMode.system, 'System'),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _themeOption(current, ThemeMode.light, 'Light'),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _themeOption(current, ThemeMode.dark, 'Dark'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _themeHint(current),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _themeOption(ThemeMode current, ThemeMode mode, String label) {
-    final selected = mode == current;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        if (selected) return;
-        HapticFeedback.selectionClick();
-        ThemeController.instance.setMode(mode);
-      },
-      child: Column(
-        children: [
-          AspectRatio(
-            aspectRatio: 0.78,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              curve: Curves.easeOut,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: selected
-                    ? LinearGradient(
-                        colors: [
-                          LiquidColors.accentBlue,
-                          LiquidColors.accentPurple,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : null,
-                color: selected
-                    ? null
-                    : LiquidColors.textPrimary.withValues(alpha: 0.08),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color:
-                              LiquidColors.accentBlue.withValues(alpha: 0.35),
-                          blurRadius: 16,
-                          spreadRadius: -3,
-                          offset: const Offset(0, 5),
-                        ),
-                      ]
-                    : null,
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(13),
-                    child: _themeMock(mode),
-                  ),
-                  if (selected)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Container(
-                        width: 20,
-                        height: 20,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: LiquidColors.accentBlue,
-                          border: Border.all(color: Colors.white, width: 1.5),
-                        ),
-                        child: const Icon(Icons.check_rounded,
-                            size: 12, color: Colors.white),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 9),
-          Text(
-            label,
-            style: TextStyle(
-              color: selected
-                  ? LiquidColors.textPrimary
-                  : LiquidColors.textSecondary,
-              fontSize: 12.5,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _themeMock(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return _miniScreen(Brightness.light);
-      case ThemeMode.dark:
-        return _miniScreen(Brightness.dark);
-      case ThemeMode.system:
-        return Stack(
-          fit: StackFit.expand,
           children: [
-            _miniScreen(Brightness.dark),
-            ClipPath(
-              clipper: _DiagonalClipper(),
-              child: _miniScreen(Brightness.light),
-            ),
-          ],
-        );
-    }
-  }
+            _statusHeader(),
+            const SizedBox(height: AppSpace.lg),
 
-  Widget _miniScreen(Brightness brightness) {
-    final isDark = brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF0F1626) : const Color(0xFFEDF1F7);
-    final surface = isDark ? const Color(0xFF1C2740) : Colors.white;
-    final line = isDark ? const Color(0xFF35426A) : const Color(0xFFD6DEEA);
-    return Container(
-      color: bg,
-      padding: const EdgeInsets.all(9),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 30,
-            height: 7,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  LiquidColors.accentBlue,
-                  LiquidColors.accentPurple,
-                ],
+            const AppSectionHeader(label: 'Security'),
+            const SizedBox(height: AppSpace.sm),
+            _group([
+              _tile(
+                icon: Icons.fingerprint_rounded,
+                color: LiquidColors.accentBlue,
+                title: 'Biometric unlock',
+                subtitle: _biometricAvailable
+                    ? 'Face or fingerprint'
+                    : 'Not available on this device',
+                trailing: _busyBiometric
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Switch.adaptive(
+                        value: _biometricEnabled,
+                        activeThumbColor: LiquidColors.accentBlue,
+                        onChanged: _biometricAvailable ? _toggleBiometric : null,
+                      ),
               ),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            height: 22,
-            decoration: BoxDecoration(
-              color: surface,
-              borderRadius: BorderRadius.circular(6),
-            ),
-          ),
-          const SizedBox(height: 7),
-          _mockLine(line, 1.0),
-          const SizedBox(height: 4),
-          _mockLine(line, 0.72),
-          const SizedBox(height: 4),
-          _mockLine(line, 0.86),
-        ],
-      ),
-    );
-  }
+              _divider(),
+              _tile(
+                icon: Icons.lock_clock_rounded,
+                color: LiquidColors.accentPurple,
+                title: 'Auto-lock',
+                subtitle: 'Lock the vault after inactivity',
+                trailing: _valueTrailing(_autoLockShort(_autoLockSeconds)),
+                onTap: _pickAutoLock,
+              ),
+              _divider(),
+              _tile(
+                icon: Icons.password_rounded,
+                color: LiquidColors.success,
+                title: 'Change PIN',
+                subtitle: 'Update your vault PIN',
+                trailing: _chevron(),
+                onTap: _openChangePin,
+              ),
+              if (Platform.isAndroid) ...[
+                _divider(),
+                _tile(
+                  icon: Icons.screenshot_monitor_rounded,
+                  color: LiquidColors.accentOrange,
+                  title: 'Block screenshots',
+                  subtitle: 'Also hides the app-switcher preview',
+                  trailing: ValueListenableBuilder<bool>(
+                    valueListenable: ScreenSecurity.enabled,
+                    builder: (context, on, _) => Switch.adaptive(
+                      value: on,
+                      activeThumbColor: LiquidColors.accentBlue,
+                      onChanged: (v) {
+                        HapticFeedback.selectionClick();
+                        ScreenSecurity.setEnabled(v);
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ]),
+            const SizedBox(height: AppSpace.lg),
 
-  Widget _mockLine(Color color, double widthFactor) {
-    return FractionallySizedBox(
-      alignment: Alignment.centerLeft,
-      widthFactor: widthFactor,
-      child: Container(
-        height: 5,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(3),
+            const AppSectionHeader(label: 'Storage'),
+            const SizedBox(height: AppSpace.sm),
+            _group([
+              _tile(
+                icon: Icons.pie_chart_rounded,
+                color: LiquidColors.success,
+                title: 'Storage used',
+                subtitle: 'Encrypted files in this vault',
+                trailing: _valueTrailing(
+                  _vaultBytes < 0 ? '—' : _fmtBytes(_vaultBytes),
+                  chevron: false,
+                ),
+              ),
+              _divider(),
+              _tile(
+                icon: Icons.cleaning_services_rounded,
+                color: LiquidColors.accentBlue,
+                title: 'Clear cache',
+                subtitle: _cacheBytes <= 0
+                    ? 'No temporary files'
+                    : '${_fmtBytes(_cacheBytes)} of temporary files',
+                trailing: _chevron(),
+                onTap: _cacheBytes <= 0 ? null : _clearCache,
+              ),
+            ]),
+            const SizedBox(height: AppSpace.lg),
+
+            const AppSectionHeader(label: 'Appearance'),
+            const SizedBox(height: AppSpace.sm),
+            _group([
+              _tile(
+                icon: isDark
+                    ? Icons.dark_mode_rounded
+                    : Icons.light_mode_rounded,
+                color: LiquidColors.accentPurple,
+                title: 'Dark mode',
+                subtitle: 'Use the dark theme',
+                trailing: Switch.adaptive(
+                  value: isDark,
+                  activeThumbColor: LiquidColors.accentBlue,
+                  onChanged: (v) {
+                    HapticFeedback.selectionClick();
+                    ThemeController.instance.setMode(
+                      v ? ThemeMode.dark : ThemeMode.light,
+                    );
+                  },
+                ),
+              ),
+            ]),
+            const SizedBox(height: AppSpace.lg),
+
+            const AppSectionHeader(label: 'Danger zone'),
+            const SizedBox(height: AppSpace.sm),
+            _group([
+              _tile(
+                icon: Icons.delete_forever_rounded,
+                color: LiquidColors.error,
+                title: 'Delete all data',
+                subtitle: 'Permanently wipe the vault',
+                titleColor: LiquidColors.error,
+                trailing: _chevron(color: LiquidColors.error),
+                onTap: _confirmWipe,
+              ),
+            ]),
+          ],
         ),
       ),
     );
   }
 
-  Widget _themeHint(ThemeMode mode) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: LiquidColors.accentBlue.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
+  Widget _statusHeader() {
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpace.md),
       child: Row(
         children: [
-          Icon(_themeIcon(mode), size: 15, color: LiquidColors.accentBlue),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              _themeBlurb(mode),
-              style: TextStyle(
-                color: LiquidColors.textSecondary,
-                fontSize: 11.5,
-                height: 1.35,
+          Container(
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: const Icon(
+              Icons.shield_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
+          ),
+          const SizedBox(width: AppSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'SecuroBox Vault',
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Encrypted · on this device',
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 12.5,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: LiquidColors.success.withValues(alpha: 0.15),
+                    borderRadius: AppRadius.rPill,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: LiquidColors.success,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Vault active',
+                        style: TextStyle(
+                          color: LiquidColors.success,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -481,43 +512,17 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  IconData _themeIcon(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return Icons.light_mode_rounded;
-      case ThemeMode.dark:
-        return Icons.dark_mode_rounded;
-      case ThemeMode.system:
-        return Icons.brightness_auto_rounded;
-    }
-  }
-
-  String _themeBlurb(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'Bright background — easier to read in daylight.';
-      case ThemeMode.dark:
-        return 'Dim background — easier on the eyes at night.';
-      case ThemeMode.system:
-        return 'SecuroBox follows your phone’s light or dark setting.';
-    }
-  }
-
-  Widget _groupCard(List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: LiquidColors.cardBorder),
-      ),
+  Widget _group(List<Widget> children) {
+    return AppCard(
+      padding: EdgeInsets.zero,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppRadius.rLg,
         child: Column(children: children),
       ),
     );
   }
 
-  Widget _rowDivider() {
+  Widget _divider() {
     return Padding(
       padding: const EdgeInsets.only(left: 66),
       child: Divider(
@@ -528,34 +533,32 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _navRow({
+  Widget _tile({
     required IconData icon,
-    required List<Color> iconGradient,
+    required Color color,
     required String title,
-    required String subtitle,
-    required VoidCallback onTap,
+    String? subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+    Color? titleColor,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(AppSpace.md - 2),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: iconGradient,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, color: Colors.white, size: 21),
+                child: Icon(icon, color: color, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -565,29 +568,29 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Text(
                       title,
                       style: TextStyle(
-                        color: LiquidColors.textPrimary,
+                        color: titleColor ?? LiquidColors.textPrimary,
                         fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.1,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: LiquidColors.textSecondary,
-                        fontSize: 12,
-                        height: 1.35,
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: LiquidColors.textTertiary,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: LiquidColors.textTertiary,
-                size: 22,
-              ),
+              if (trailing != null) ...[
+                const SizedBox(width: 8),
+                trailing,
+              ],
             ],
           ),
         ),
@@ -595,36 +598,64 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
-  Widget _versionFooter() {
-    return Center(
-      child: FutureBuilder<PackageInfo>(
-        future: PackageInfo.fromPlatform(),
-        builder: (context, snap) {
-          final v = snap.hasData
-              ? '${snap.data!.version} (${snap.data!.buildNumber})'
-              : '...';
-          return Text(
-            'SecuroBox · v$v',
-            style: TextStyle(
-              color: LiquidColors.textTertiary.withValues(alpha: 0.7),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-            ),
-          );
-        },
-      ),
+  Widget _valueTrailing(String value, {bool chevron = true}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: LiquidColors.textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (chevron) ...[
+          const SizedBox(width: 4),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: LiquidColors.textTertiary,
+            size: 20,
+          ),
+        ],
+      ],
     );
   }
-}
 
-class _DiagonalClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) => Path()
-    ..lineTo(size.width, 0)
-    ..lineTo(0, size.height)
-    ..close();
+  Widget _chevron({Color? color}) {
+    return Icon(
+      Icons.chevron_right_rounded,
+      color: color ?? LiquidColors.textTertiary,
+      size: 22,
+    );
+  }
 
-  @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+  String _autoLockShort(int seconds) {
+    switch (seconds) {
+      case 0:
+        return 'Immediately';
+      case 30:
+        return '30 sec';
+      case 60:
+        return '1 min';
+      case 300:
+        return '5 min';
+      case 900:
+        return '15 min';
+      default:
+        return '${seconds}s';
+    }
+  }
+
+  String _fmtBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var value = bytes.toDouble();
+    var i = 0;
+    while (value >= 1024 && i < units.length - 1) {
+      value /= 1024;
+      i++;
+    }
+    return '${value.toStringAsFixed(value >= 10 || i == 0 ? 0 : 1)} ${units[i]}';
+  }
 }
