@@ -45,6 +45,15 @@ class LiquidBottomNav extends StatelessWidget {
     final current = selectedIndex ?? 0;
     return DecoratedBox(
       decoration: BoxDecoration(
+          gradient: RadialGradient(
+            colors: [
+              LiquidColors.backgroundDeep,
+              LiquidColors.backgroundMid,
+              LiquidColors.backgroundLight,
+            ],
+            center: Alignment.center,
+            radius: 1.2,
+          ),
         color: LiquidColors.surface,
         border: Border(top: BorderSide(color: LiquidColors.cardBorder)),
         boxShadow: [

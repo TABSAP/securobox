@@ -14,8 +14,15 @@ import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onVideosChanged;
+  final String? typeFilter;
+  final VideoItem? autoOpen;
 
-  const HomeScreen({super.key, this.onVideosChanged});
+  const HomeScreen({
+    super.key,
+    this.onVideosChanged,
+    this.typeFilter,
+    this.autoOpen,
+  });
 
   @override
   State<HomeScreen> createState() => HomeScreenState();
@@ -87,6 +94,27 @@ class HomeScreenState extends State<HomeScreen>
         );
 
     _headerAnimationController.forward();
+
+    if (widget.autoOpen != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openMedia(widget.autoOpen!);
+      });
+    }
+  }
+
+  String _categoryLabel(String type) {
+    switch (type) {
+      case 'video':
+        return 'Videos';
+      case 'image':
+        return 'Images';
+      case 'audio':
+        return 'Audio';
+      case 'document':
+        return 'Documents';
+      default:
+        return 'Files';
+    }
   }
 
   @override
@@ -116,20 +144,23 @@ class HomeScreenState extends State<HomeScreen>
   void _filterMedia() {
     final query = _searchController.text.toLowerCase();
     final favoritesOnly = _selectedCategory == _favoritesFilter;
+    final typeFilter = widget.typeFilter;
 
     setState(() {
       _filteredMedia.clear();
 
-      if (query.isEmpty && _selectedCategory == "All") {
+      if (typeFilter == null && query.isEmpty && _selectedCategory == "All") {
         _filteredMedia.addAll(_allMedia);
         return;
       }
 
       final selectedCat = _selectedCategory.trim().toLowerCase();
       for (final media in _allMedia) {
+        if (typeFilter != null && media.type != typeFilter) continue;
         if (favoritesOnly && !media.isFavorite) continue;
 
         bool matchesCategory =
+            typeFilter != null ||
             favoritesOnly ||
             _selectedCategory == "All" ||
             media.category.trim().toLowerCase() == selectedCat;
@@ -857,12 +888,15 @@ class HomeScreenState extends State<HomeScreen>
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: LiquidColors.textPrimary),
         systemOverlayStyle: LiquidColors.isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
-        titleSpacing: 20,
+        titleSpacing: widget.typeFilter != null ? 4 : 20,
         title: Text(
-          'Library',
+          widget.typeFilter != null
+              ? _categoryLabel(widget.typeFilter!)
+              : 'Library',
           style: TextStyle(
             color: LiquidColors.textPrimary,
             fontSize: 22,
@@ -1010,8 +1044,10 @@ class HomeScreenState extends State<HomeScreen>
         children: [
           _buildSearchBar(),
           const SizedBox(height: AppSpace.md),
-          _buildCategoryFilter(),
-          const SizedBox(height: AppSpace.sm),
+          if (widget.typeFilter == null) ...[
+            _buildCategoryFilter(),
+            const SizedBox(height: AppSpace.sm),
+          ],
           _buildFilterInfo(),
         ],
       ),

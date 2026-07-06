@@ -9,7 +9,7 @@ import 'package:video_player_app/utils/vault_crypto.dart';
 import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
-import 'package:video_player_app/views/screens/home_screen/home_screen.dart';
+import 'package:video_player_app/views/screens/home_screen/home_dashboard.dart';
 import 'app_lock_screen/app_lock_screen.dart';
 import 'settings/settings_screen.dart';
 
@@ -23,7 +23,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen>
     with WidgetsBindingObserver {
   int _selectedIndex = 0;
-  final _libraryKey = GlobalKey<HomeScreenState>();
+  final _libraryKey = GlobalKey<HomeDashboardState>();
   final _intrusionKey = GlobalKey<IntrusionLogScreenState>();
 
   bool _wasPaused = false;
@@ -49,7 +49,7 @@ class _MainScreenState extends State<MainScreen>
     HapticFeedback.selectionClick();
     SessionManager.instance.markActive();
     setState(() => _selectedIndex = i);
-    if (i == 0) _libraryKey.currentState?.refreshVideos();
+    if (i == 0) _libraryKey.currentState?.refresh();
     if (i == 1) _intrusionKey.currentState?.reload();
   }
 
@@ -192,7 +192,7 @@ class _MainScreenState extends State<MainScreen>
                 children: [
                   TickerMode(
                     enabled: _selectedIndex == 0,
-                    child: HomeScreen(key: _libraryKey),
+                    child: HomeDashboard(key: _libraryKey),
                   ),
                   TickerMode(
                     enabled: _selectedIndex == 1,
