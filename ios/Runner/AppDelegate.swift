@@ -4,6 +4,9 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private var privacyView: UIView?
+  private var secureField: UITextField?
+  private var screenSecurityEnabled = false
+  private var screenChannel: FlutterMethodChannel?
 
   override func application(
     _ application: UIApplication,
@@ -11,7 +14,43 @@ import UIKit
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
     setSecureFileProtection()
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    if let controller = window?.rootViewController as? FlutterViewController {
+      let channel = FlutterMethodChannel(
+        name: "secure_player/screen_security",
+        binaryMessenger: controller.binaryMessenger
+      )
+      channel.setMethodCallHandler { [weak self] call, result in
+        switch call.method {
+        case "setSecure":
+          let on = (call.arguments as? Bool) ?? false
+          self?.setScreenSecure(on)
+          result(nil)
+        case "isCaptured":
+          result(UIScreen.main.isCaptured)
+        default:
+          result(FlutterMethodNotImplemented)
+        }
+      }
+      screenChannel = channel
+    }
+
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(handleScreenshot),
+      name: UIApplication.userDidTakeScreenshotNotification,
+      object: nil
+    )
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(handleCaptureChange),
+      name: UIScreen.capturedDidChangeNotification,
+      object: nil
+    )
+
+    return launched
   }
 
   private func setSecureFileProtection() {
@@ -34,6 +73,64 @@ import UIKit
     }
   }
 
+  // MARK: - Screen capture protection
+
+  private func keyWindow() -> UIWindow? {
+    return UIApplication.shared.windows.first(where: { $0.isKeyWindow })
+      ?? UIApplication.shared.windows.first
+  }
+
+  private func setScreenSecure(_ enabled: Bool) {
+    screenSecurityEnabled = enabled
+    DispatchQueue.main.async {
+      if enabled {
+        self.applySecureField()
+      } else {
+        self.removeSecureField()
+      }
+    }
+  }
+
+  // Marks the app window as secure so its contents are excluded from
+  // screenshots, screen recordings and the app-switcher snapshot — the iOS
+  // equivalent of Android's FLAG_SECURE.
+  private func applySecureField() {
+    guard secureField == nil, let window = keyWindow() else { return }
+    let field = UITextField()
+    field.isSecureTextEntry = true
+    field.isUserInteractionEnabled = false
+    field.translatesAutoresizingMaskIntoConstraints = false
+    window.addSubview(field)
+    NSLayoutConstraint.activate([
+      field.centerXAnchor.constraint(equalTo: window.centerXAnchor),
+      field.centerYAnchor.constraint(equalTo: window.centerYAnchor),
+    ])
+    window.layer.superlayer?.addSublayer(field.layer)
+    field.layer.sublayers?.first?.addSublayer(window.layer)
+    secureField = field
+  }
+
+  private func removeSecureField() {
+    secureField?.removeFromSuperview()
+    secureField = nil
+  }
+
+  @objc private func handleScreenshot() {
+    if screenSecurityEnabled {
+      screenChannel?.invokeMethod("onScreenshot", arguments: nil)
+    }
+  }
+
+  @objc private func handleCaptureChange() {
+    // Re-assert protection when a screen recording starts.
+    if screenSecurityEnabled && UIScreen.main.isCaptured {
+      DispatchQueue.main.async { self.applySecureField() }
+    }
+    screenChannel?.invokeMethod("onCaptureChange", arguments: UIScreen.main.isCaptured)
+  }
+
+  // MARK: - App-switcher privacy shield
+
   override func applicationWillResignActive(_ application: UIApplication) {
     super.applicationWillResignActive(application)
     showPrivacyView()
@@ -44,17 +141,13 @@ import UIKit
     showPrivacyView()
   }
 
-  override func applicationWillEnterForeground(_ application: UIApplication) {
-    super.applicationWillEnterForeground(application)
-  }
-
   override func applicationDidBecomeActive(_ application: UIApplication) {
     super.applicationDidBecomeActive(application)
     hidePrivacyView()
   }
 
   private func showPrivacyView() {
-    guard let window = UIApplication.shared.windows.first else { return }
+    guard let window = keyWindow() else { return }
     if privacyView != nil { return }
 
     let view = UIView(frame: window.bounds)
