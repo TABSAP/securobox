@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../../../../utils/liquid_colors.dart';
+import 'package:video_player_app/widgets/app_empty_state.dart';
 
 class LiquidDeletedEmptyState extends StatelessWidget {
   final bool hasSearch;
@@ -13,110 +15,15 @@ class LiquidDeletedEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TweenAnimationBuilder(
-              tween: Tween<double>(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.elasticOut,
-              builder: (context, double value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: Container(
-                    width: 140,
-                    height: 140,
-                    decoration: BoxDecoration(
-                      gradient: RadialGradient(
-                        colors: [
-                          LiquidColors.error.withValues(alpha: 0.2),
-                          LiquidColors.backgroundLight.withValues(alpha: 0.1),
-                        ],
-                        center: Alignment.center,
-                        radius: 0.8,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: LiquidColors.error.withValues(alpha: 0.3),
-                        width: 2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: LiquidColors.error.withValues(alpha: 0.2),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        hasSearch
-                            ? Icons.search_off_rounded
-                            : Icons.delete_outline_rounded,
-                        size: 60,
-                        color: LiquidColors.error,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            Text(
-              hasSearch ? 'No Deleted Files Found' : 'Trash is Empty',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: LiquidColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              hasSearch
-                  ? 'Try a different search term'
-                  : 'Deleted files will appear here',
-              style: TextStyle(color: LiquidColors.textSecondary, fontSize: 14),
-            ),
-            const SizedBox(height: 24),
-            TweenAnimationBuilder(
-              tween: Tween<double>(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.elasticOut,
-              builder: (context, double value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: ElevatedButton.icon(
-                    onPressed: onBackPressed,
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    label: const Text(
-                      'Back to Library',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: LiquidColors.accentBlue,
-                      foregroundColor: LiquidColors.textPrimary,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      elevation: 8,
-                      shadowColor: LiquidColors.accentBlue.withValues(
-                        alpha: 0.4,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
+    return AppEmptyState(
+      icon: hasSearch ? Icons.search_off_rounded : Icons.delete_outline_rounded,
+      title: hasSearch ? 'No deleted files found' : 'Trash is empty',
+      message: hasSearch
+          ? 'Try a different search term'
+          : 'Deleted files will appear here',
+      actionLabel: 'Back to Library',
+      onAction: onBackPressed,
+      accent: hasSearch ? LiquidColors.error : LiquidColors.accentBlue,
     );
   }
 }

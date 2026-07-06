@@ -7,6 +7,7 @@ import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/views/screens/secure_camera/secure_camera_screen.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
+import 'package:video_player_app/widgets/app_empty_state.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -1287,77 +1288,26 @@ class HomeScreenState extends State<HomeScreen>
         padding: EdgeInsets.zero,
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.55,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 40),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 96,
-                      height: 96,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            LiquidColors.accentBlue.withValues(alpha: 0.18),
-                            LiquidColors.accentBlue.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                      child: Icon(
-                        hasFilters
-                            ? Icons.search_off_rounded
-                            : Icons.lock_outline_rounded,
-                        size: 36,
-                        color: LiquidColors.accentBlue,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    Text(
-                      hasFilters ? 'No matches' : 'Your vault is empty',
-                      style: TextStyle(
-                        fontSize: 19,
-                        fontWeight: FontWeight.w800,
-                        color: LiquidColors.textPrimary,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      hasFilters
-                          ? 'Try a different search term or category to find what you\'re looking for.'
-                          : 'Files you import are encrypted and stored only on this device — never in the cloud.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: LiquidColors.textTertiary,
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
-                    if (!hasFilters)
-                      _PrimaryAction(
-                        icon: Icons.add_rounded,
-                        label: 'Add your first file',
-                        onTap: _openAddSheet,
-                      ),
-                    if (hasFilters)
-                      _PrimaryAction(
-                        icon: Icons.refresh_rounded,
-                        label: 'Clear filters',
-                        onTap: () {
-                          setState(() {
-                            _selectedCategory = "All";
-                            _searchController.clear();
-                          });
-                          _filterMedia();
-                        },
-                      ),
-                  ],
-                ),
-              ),
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: AppEmptyState(
+              icon: hasFilters
+                  ? Icons.search_off_rounded
+                  : Icons.lock_outline_rounded,
+              title: hasFilters ? 'No matches' : 'Your vault is empty',
+              message: hasFilters
+                  ? 'Try a different search term or category to find what you\'re looking for.'
+                  : 'Files you import are encrypted and stored only on this device — never in the cloud.',
+              actionLabel:
+                  hasFilters ? 'Clear filters' : 'Add your first file',
+              onAction: hasFilters
+                  ? () {
+                      setState(() {
+                        _selectedCategory = "All";
+                        _searchController.clear();
+                      });
+                      _filterMedia();
+                    }
+                  : _openAddSheet,
             ),
           ),
         ],
@@ -1578,60 +1528,6 @@ class _SkeletonCardState extends State<_SkeletonCard>
               LiquidColors.textPrimary.withValues(alpha: 0.0),
             ],
             stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrimaryAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _PrimaryAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-          decoration: BoxDecoration(
-            color: LiquidColors.accentBlue,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.35),
-                blurRadius: 18,
-                spreadRadius: -4,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
           ),
         ),
       ),
