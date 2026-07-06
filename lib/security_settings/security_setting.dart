@@ -21,6 +21,9 @@ import 'package:video_player_app/utils/recovery_service.dart';
 import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
+import 'package:video_player_app/widgets/app_card.dart';
+import 'package:video_player_app/widgets/app_section_header.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -1468,222 +1471,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildScreenshotCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.25),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      LiquidColors.accentBlue,
-                      LiquidColors.accentPurple,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.screenshot_monitor_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'BLOCK SCREENSHOTS & RECORDING',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: LiquidColors.textPrimary,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              ValueListenableBuilder<bool>(
-                valueListenable: ScreenSecurity.enabled,
-                builder: (context, on, _) => Switch(
-                  value: on,
-                  onChanged: (v) {
-                    HapticFeedback.lightImpact();
-                    ScreenSecurity.setEnabled(v);
-                  },
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: LiquidColors.accentBlue,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'When on, the system blocks screenshots and screen recording of the '
-            'app. Turn it off to allow capturing the screen.',
-            style: TextStyle(
-              fontSize: 12,
-              color: LiquidColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIntegrityLockCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.25),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.cloud_off_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'OFFLINE INTEGRITY LOCK',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: LiquidColors.textPrimary,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              Switch(
-                value: _offlineIntegrityLock,
-                onChanged: _toggleOfflineIntegrityLock,
-                activeThumbColor: Colors.white,
-                activeTrackColor: LiquidColors.accentBlue,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Keeps the vault sealed whenever the device is online. The instant '
-            'Wi-Fi or mobile data connects, the encryption session is revoked '
-            'and the app locks — so decrypted files are never exposed to a '
-            'network.',
-            style: TextStyle(
-              fontSize: 12,
-              color: LiquidColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'While this is on, the vault only opens in Airplane Mode.',
-            style: TextStyle(
-              fontSize: 11,
-              color: LiquidColors.textTertiary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          const SizedBox(height: 14),
-          ValueListenableBuilder<bool>(
-            valueListenable: NetworkGuard.instance.online,
-            builder: (context, online, _) {
-              final color = online
-                  ? LiquidColors.warning
-                  : LiquidColors.success;
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: color.withValues(alpha: 0.35)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      online ? Icons.public_rounded : Icons.public_off_rounded,
-                      size: 16,
-                      color: color,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        online
-                            ? 'Network detected — vault would be sealed'
-                            : 'Offline — vault can be unlocked',
-                        style: TextStyle(
-                          color: color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _toggleDeleteOriginals(bool value) async {
     HapticFeedback.lightImpact();
     if (value && Platform.isIOS) {
@@ -1985,74 +1772,23 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     return 'Biometric';
   }
 
-  Widget _buildBiometricStatus() {
-    if (!_biometricAvailable) {
-      return Row(
-        children: [
-          Icon(
-            Icons.info_outline_rounded,
-            color: LiquidColors.warning,
-            size: 14,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              'Biometric not available on this device',
-              style: TextStyle(fontSize: 11, color: LiquidColors.warning),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Icon(Icons.check_circle_rounded, color: LiquidColors.success, size: 14),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            '${_getBiometricTypeName()} available',
-            style: TextStyle(fontSize: 11, color: LiquidColors.success),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFaceStatus() {
-    final bothEnrolled = _faceAvailable && _fingerprintAvailable;
-    return Row(
-      children: [
-        Icon(
-          bothEnrolled
-              ? Icons.info_outline_rounded
-              : Icons.check_circle_rounded,
-          color: bothEnrolled ? LiquidColors.warning : LiquidColors.success,
-          size: 14,
-        ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            bothEnrolled
-                ? 'Uses your device unlock; fingerprint may still be offered by the system'
-                : 'Face recognition available on this device',
-            style: TextStyle(
-              fontSize: 11,
-              color: bothEnrolled ? LiquidColors.warning : LiquidColors.success,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: LiquidColors.isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -2062,78 +1798,19 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
           ),
         ),
-        title: TweenAnimationBuilder(
-          tween: Tween<double>(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.elasticOut,
-          builder: (context, double value, child) {
-            return Transform.scale(
-              scale: value,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 45,
-                    height: 45,
-                    decoration: BoxDecoration(
-                      gradient: LiquidColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: LiquidColors.primaryStart.withValues(
-                            alpha: .4,
-                          ),
-                          blurRadius: 12,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.security_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Flexible(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Security',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: LiquidColors.textPrimary,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        Text(
-                          'Keep your vault locked down',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: LiquidColors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+        title: Text(
+          'Security',
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
+          ),
         ),
         actions: [
           if (_isLoading)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: 12),
               child: SizedBox(
                 width: 20,
                 height: 20,
@@ -2143,7 +1820,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 ),
               ),
             ),
-          const SizedBox(width: 4),
         ],
       ),
       body: Container(
@@ -2159,176 +1835,525 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             stops: const [0.0, 0.5, 1.0],
           ),
         ),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  context.contentInset(phone: 16),
-                  0,
-                  context.contentInset(phone: 16),
-                  16,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.fromLTRB(
+                context.contentInset(phone: 16),
+                AppSpace.sm,
+                context.contentInset(phone: 16),
+                AppSpace.xl,
+              ),
+              children: [
+                _buildSecurityHeroCard(),
+                const SizedBox(height: AppSpace.lg),
+
+                const AppSectionHeader(
+                  label: 'Locks',
+                  caption: 'Choose how the app unlocks.',
                 ),
+                const SizedBox(height: AppSpace.sm),
+                _group([
+                  _tile(
+                    icon: Icons.lock_outline_rounded,
+                    color: LiquidColors.accentBlue,
+                    title: 'App Lock',
+                    subtitle: 'Require authentication to open the app',
+                    trailing: _switch(
+                      _appLockEnabled,
+                      (v) => _toggleSetting('appLock', v),
+                    ),
+                  ),
+                  if (!(_faceAvailable && !_fingerprintAvailable)) ...[
+                    _divider(),
+                    _tile(
+                      icon: _fingerprintAvailable
+                          ? Icons.fingerprint_rounded
+                          : _getBiometricIcon(),
+                      color: LiquidColors.accentPurple,
+                      title: _fingerprintAvailable
+                          ? 'Fingerprint Unlock'
+                          : 'Biometric Authentication',
+                      subtitle: _fingerprintAvailable
+                          ? 'Use your fingerprint to unlock'
+                          : 'Use ${_getBiometricTypeName().toLowerCase()} to unlock',
+                      trailing: _switch(
+                        _biometricEnabled,
+                        (v) => _toggleSetting('biometric', v),
+                      ),
+                    ),
+                  ],
+                  if (_faceAvailable) ...[
+                    _divider(),
+                    _tile(
+                      icon: Icons.face_retouching_natural,
+                      color: LiquidColors.accentPink,
+                      title: 'Face Unlock',
+                      subtitle: 'Use your face to unlock the app',
+                      trailing: _switch(
+                        _faceUnlockEnabled,
+                        (v) => _toggleSetting('biometric_face', v),
+                      ),
+                    ),
+                  ],
+                ]),
+                const SizedBox(height: AppSpace.lg),
+
+                const AppSectionHeader(
+                  label: 'Identity & PIN',
+                  caption: 'Enroll your face and manage your PIN.',
+                ),
+                const SizedBox(height: AppSpace.sm),
+                _group([
+                  _tile(
+                    icon: Icons.face_rounded,
+                    color: LiquidColors.accentPurple,
+                    title: 'In-app Face Unlock',
+                    subtitle: _faceRecogEnrolled
+                        ? 'Enrolled'
+                        : 'Set up face recognition',
+                    trailing: _switch(_faceRecogEnrolled, (v) {
+                      if (v) {
+                        _openFaceEnroll();
+                      } else {
+                        _disableFaceRecognition();
+                      }
+                    }),
+                  ),
+                  _divider(),
+                  _tile(
+                    icon: Icons.password_rounded,
+                    color: LiquidColors.success,
+                    title: 'Change PIN',
+                    subtitle: 'Update your vault PIN',
+                    trailing: _chevron(),
+                    onTap: _startPinChange,
+                  ),
+                  _divider(),
+                  _tile(
+                    icon: Icons.pin_rounded,
+                    color: LiquidColors.accentBlue,
+                    title: 'PIN length',
+                    subtitle: 'Switch between 4 and 6 digits',
+                    trailing: _valueTrailing('$_pinLength digits'),
+                    onTap: _onChangePinLengthTapped,
+                  ),
+                ]),
+                if (_changingPin) ...[
+                  const SizedBox(height: AppSpace.md),
+                  KeyedSubtree(
+                    key: _pinFlowKey,
+                    child: _choosingLength
+                        ? _buildPinLengthSelector()
+                        : LiquidPinInput(
+                            verifyOldMode: _verifyingOldPin,
+                            confirmMode: _confirmPinMode,
+                            oldPin: _oldPin,
+                            newPin: _newPin,
+                            confirmPin: _confirmPin,
+                            totalLength: _verifyingOldPin
+                                ? _pinLength
+                                : _newPinLength,
+                            error: _pinError,
+                            onNumberPressed: _onPinNumberPressed,
+                            onDelete: _onPinDelete,
+                            onCancel: _cancelPinChange,
+                          ),
+                  ),
+                ],
+                const SizedBox(height: AppSpace.lg),
+
+                const AppSectionHeader(
+                  label: 'Session & recovery',
+                  caption: 'Auto-lock timing and recovery email.',
+                ),
+                const SizedBox(height: AppSpace.sm),
+                _group([
+                  _tile(
+                    icon: Icons.lock_clock_rounded,
+                    color: LiquidColors.success,
+                    title: 'Auto-lock',
+                    subtitle: 'Lock the vault after inactivity',
+                    trailing: _valueTrailing(
+                      _autoLockShort(SessionManager.instance.autoLockSeconds),
+                    ),
+                    onTap: _pickAutoLock,
+                  ),
+                  _divider(),
+                  _tile(
+                    icon: Icons.mark_email_read_rounded,
+                    color: LiquidColors.accentBlue,
+                    title: 'Recovery email',
+                    subtitle: _recoveryEnabled
+                        ? (_recoveryEmail != null
+                              ? RecoveryService.mask(_recoveryEmail!)
+                              : 'Recovery is set up')
+                        : 'Add an email to reset a forgotten PIN',
+                    trailing: _chevron(),
+                    onTap: _recoveryEnabled
+                        ? _openRecoverySheet
+                        : _openRecoverySetup,
+                  ),
+                ]),
+                const SizedBox(height: AppSpace.lg),
+
+                const AppSectionHeader(
+                  label: 'Privacy & defence',
+                  caption: 'Decoy mode and break-in alerts.',
+                ),
+                const SizedBox(height: AppSpace.sm),
+                _group([
+                  _tile(
+                    icon: Icons.theater_comedy_rounded,
+                    color: LiquidColors.accentPurple,
+                    title: 'Decoy vault',
+                    subtitle: _decoyEnabled
+                        ? 'A fake PIN opens a decoy vault'
+                        : 'Set up a duress vault',
+                    trailing: _chevron(),
+                    onTap: _openDecoySetup,
+                  ),
+                  _divider(),
+                  _tile(
+                    icon: Icons.camera_front_rounded,
+                    color: LiquidColors.warning,
+                    title: 'Break-in detection',
+                    subtitle: 'Capture a photo on repeated wrong PINs',
+                    trailing: _switch(
+                      _intrusionEnabled,
+                      (v) => _toggleIntrusion(v),
+                    ),
+                  ),
+                  _divider(),
+                  _tile(
+                    icon: Icons.shield_moon_rounded,
+                    color: LiquidColors.error,
+                    title: 'Break-in log',
+                    subtitle: 'View captured intruder snapshots',
+                    trailing: _valueTrailing(
+                      _intrusionCount > 0 ? '$_intrusionCount' : '',
+                    ),
+                    onTap: _openIntrusionLog,
+                  ),
+                  if (Platform.isAndroid) ...[
+                    _divider(),
+                    _tile(
+                      icon: Icons.screenshot_monitor_rounded,
+                      color: LiquidColors.accentOrange,
+                      title: 'Block screenshots',
+                      subtitle: 'Also hides the app-switcher preview',
+                      trailing: ValueListenableBuilder<bool>(
+                        valueListenable: ScreenSecurity.enabled,
+                        builder: (context, on, _) =>
+                            _switch(on, (v) => ScreenSecurity.setEnabled(v)),
+                      ),
+                    ),
+                  ],
+                  _divider(),
+                  _tile(
+                    icon: Icons.wifi_off_rounded,
+                    color: LiquidColors.success,
+                    title: 'Offline Integrity Lock',
+                    subtitle: 'Seal the vault whenever the device is online',
+                    trailing: _switch(
+                      _offlineIntegrityLock,
+                      (v) => _toggleOfflineIntegrityLock(v),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: AppSpace.lg),
+
+                AppSectionHeader(
+                  label: Platform.isAndroid ? 'Import & disguise' : 'Import',
+                  caption: Platform.isAndroid
+                      ? 'Originals handling and home-screen disguise.'
+                      : 'Originals handling.',
+                ),
+                const SizedBox(height: AppSpace.sm),
+                _group([
+                  _tile(
+                    icon: Icons.drive_file_move_rounded,
+                    color: LiquidColors.accentBlue,
+                    title: 'Move originals into vault',
+                    subtitle: 'Remove the source file after import',
+                    trailing: _switch(
+                      _deleteOriginals,
+                      (v) => _toggleDeleteOriginals(v),
+                    ),
+                  ),
+                  if (Platform.isAndroid) ...[
+                    _divider(),
+                    _tile(
+                      icon: Icons.apps_rounded,
+                      color: LiquidColors.accentPurple,
+                      title: 'App disguise',
+                      subtitle: 'Change the home-screen icon and name',
+                      trailing: _chevron(),
+                      onTap: _openDisguiseSheet,
+                    ),
+                  ],
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _group(List<Widget> children) {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: AppRadius.rLg,
+        child: Column(children: children),
+      ),
+    );
+  }
+
+  Widget _divider() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 66),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+      ),
+    );
+  }
+
+  Widget _tile({
+    required IconData icon,
+    required Color color,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.md - 2),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSecurityHeroCard(),
-                    const SizedBox(height: 16),
-                    _sectionHeader(
-                      label: 'LOCKS',
-                      icon: Icons.lock_rounded,
-                      color: LiquidColors.accentBlue,
-                      caption: 'Choose how the app unlocks.',
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: LiquidColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    LiquidSecurityCard(
-                      icon: Icons.lock_outline_rounded,
-                      title: 'App Lock',
-                      subtitle: 'Require authentication to open the app',
-                      value: _appLockEnabled,
-                      gradient: [
-                        LiquidColors.accentBlue,
-                        LiquidColors.primaryMid,
-                      ],
-                      index: 0,
-                      onChanged: (value) => _toggleSetting('appLock', value),
-                    ),
-                    if (!(_faceAvailable && !_fingerprintAvailable)) ...[
-                      const SizedBox(height: 14),
-                      LiquidSecurityCard(
-                        icon: _fingerprintAvailable
-                            ? Icons.fingerprint_rounded
-                            : _getBiometricIcon(),
-                        title: _fingerprintAvailable
-                            ? 'Fingerprint Unlock'
-                            : 'Biometric Authentication',
-                        subtitle: _fingerprintAvailable
-                            ? 'Use your fingerprint to unlock the app'
-                            : 'Use ${_getBiometricTypeName().toLowerCase()} for authentication',
-                        value: _biometricEnabled,
-                        gradient: [
-                          LiquidColors.accentPurple,
-                          LiquidColors.accentPink,
-                        ],
-                        index: 2,
-                        onChanged: (value) =>
-                            _toggleSetting('biometric', value),
-                        statusWidget: _buildBiometricStatus(),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: LiquidColors.textTertiary,
+                          fontSize: 12,
+                          height: 1.3,
+                        ),
                       ),
                     ],
-                    if (_faceAvailable) ...[
-                      const SizedBox(height: 14),
-                      LiquidSecurityCard(
-                        icon: Icons.face_retouching_natural,
-                        title: 'Face Unlock',
-                        subtitle: 'Use your face to unlock the app',
-                        value: _faceUnlockEnabled,
-                        gradient: [
-                          LiquidColors.accentPink,
-                          LiquidColors.accentPurple,
-                        ],
-                        index: 3,
-                        onChanged: (value) =>
-                            _toggleSetting('biometric_face', value),
-                        statusWidget: _buildFaceStatus(),
-                      ),
-                    ],
-                    const SizedBox(height: 28),
-
-                    _sectionHeader(
-                      label: 'IDENTITY & PIN',
-                      icon: Icons.fingerprint_rounded,
-                      color: LiquidColors.accentPurple,
-                      caption: 'Enroll your face and manage your PIN.',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFaceRecognitionCard(),
-                    const SizedBox(height: 14),
-                    LiquidPinSection(
-                      isChanging: _changingPin,
-                      onStartChange: _startPinChange,
-                    ),
-                    const SizedBox(height: 14),
-                    _buildPinLengthControl(),
-                    if (_changingPin) ...[
-                      const SizedBox(height: 14),
-                      KeyedSubtree(
-                        key: _pinFlowKey,
-                        child: _choosingLength
-                            ? _buildPinLengthSelector()
-                            : LiquidPinInput(
-                                verifyOldMode: _verifyingOldPin,
-                                confirmMode: _confirmPinMode,
-                                oldPin: _oldPin,
-                                newPin: _newPin,
-                                confirmPin: _confirmPin,
-                                totalLength: _verifyingOldPin
-                                    ? _pinLength
-                                    : _newPinLength,
-                                error: _pinError,
-                                onNumberPressed: _onPinNumberPressed,
-                                onDelete: _onPinDelete,
-                                onCancel: _cancelPinChange,
-                              ),
-                      ),
-                    ],
-                    const SizedBox(height: 28),
-
-                    _sectionHeader(
-                      label: 'SESSION & RECOVERY',
-                      icon: Icons.timer_outlined,
-                      color: LiquidColors.success,
-                      caption: 'Auto-lock timing and add Email',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSessionCard(),
-                    const SizedBox(height: 14),
-                    _buildRecoveryCard(),
-                    const SizedBox(height: 28),
-
-                    _sectionHeader(
-                      label: 'PRIVACY & DEFENCE',
-                      icon: Icons.shield_rounded,
-                      color: LiquidColors.warning,
-                      caption: 'Decoy mode and break-in alerts.',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildDecoyCard(),
-                    const SizedBox(height: 14),
-                    _buildIntrusionCard(),
-                    if (Platform.isAndroid) ...[
-                      const SizedBox(height: 14),
-                      _buildScreenshotCard(),
-                    ],
-                    const SizedBox(height: 14),
-                    _buildIntegrityLockCard(),
-                    const SizedBox(height: 28),
-
-                    _sectionHeader(
-                      label: Platform.isAndroid ? 'IMPORT & DISGUISE' : 'IMPORT',
-                      icon: Icons.tune_rounded,
-                      color: LiquidColors.accentBlue,
-                      caption: Platform.isAndroid
-                          ? 'Originals handling and home-screen disguise.'
-                          : 'Originals handling.',
-                    ),
-                    const SizedBox(height: 12),
-                    _buildImportCard(),
-                    if (Platform.isAndroid) ...[
-                      const SizedBox(height: 14),
-                      _buildDisguiseCard(),
-                    ],
-                    const SizedBox(height: 28),
-
-                    const SizedBox(height: 40),
                   ],
                 ),
               ),
+              if (trailing != null) ...[const SizedBox(width: 8), trailing],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _switch(bool value, ValueChanged<bool> onChanged) {
+    return Switch.adaptive(
+      value: value,
+      activeThumbColor: LiquidColors.accentBlue,
+      onChanged: (v) {
+        HapticFeedback.selectionClick();
+        onChanged(v);
+      },
+    );
+  }
+
+  Widget _chevron() {
+    return Icon(
+      Icons.chevron_right_rounded,
+      color: LiquidColors.textTertiary,
+      size: 22,
+    );
+  }
+
+  Widget _valueTrailing(String value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (value.isNotEmpty)
+          Text(
+            value,
+            style: TextStyle(
+              color: LiquidColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
+        const SizedBox(width: 4),
+        Icon(
+          Icons.chevron_right_rounded,
+          color: LiquidColors.textTertiary,
+          size: 20,
+        ),
+      ],
+    );
+  }
+
+  String _autoLockShort(int seconds) {
+    switch (seconds) {
+      case 0:
+        return 'Immediately';
+      case 30:
+        return '30 sec';
+      case 60:
+        return '1 min';
+      case 300:
+        return '5 min';
+      case 900:
+        return '15 min';
+      default:
+        return '${seconds}s';
+    }
+  }
+
+  Future<void> _pickAutoLock() async {
+    HapticFeedback.selectionClick();
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: LiquidColors.backgroundMid,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: AppSpace.md),
+              Text(
+                'Auto-lock',
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: AppSpace.sm),
+              for (final entry in SessionManager.autoLockOptions.entries)
+                ListTile(
+                  onTap: () => Navigator.pop(context, entry.key),
+                  title: Text(
+                    entry.value,
+                    style: TextStyle(color: LiquidColors.textPrimary),
+                  ),
+                  trailing:
+                      entry.key == SessionManager.instance.autoLockSeconds
+                      ? Icon(Icons.check_rounded, color: LiquidColors.accentBlue)
+                      : null,
+                ),
+              const SizedBox(height: AppSpace.sm),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected == null) return;
+    await SessionManager.instance.setAutoLockSeconds(selected);
+    if (mounted) setState(() {});
+  }
+
+  void _openRecoverySheet() {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: LiquidColors.backgroundMid,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: AppSpace.sm),
+            ListTile(
+              leading: Icon(
+                Icons.refresh_rounded,
+                color: LiquidColors.accentBlue,
+              ),
+              title: Text(
+                'Re-issue recovery code',
+                style: TextStyle(color: LiquidColors.textPrimary),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _openRecoverySetup();
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.delete_outline_rounded,
+                color: LiquidColors.error,
+              ),
+              title: Text(
+                'Remove recovery email',
+                style: TextStyle(color: LiquidColors.error),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmRemoveRecovery();
+              },
+            ),
+            const SizedBox(height: AppSpace.sm),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openDisguiseSheet() {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: LiquidColors.backgroundMid,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpace.md),
+          child: _buildDisguiseCard(),
         ),
       ),
     );
@@ -2571,278 +2596,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  Widget _buildImportCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.accentPurple.withValues(alpha: 0.25),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      LiquidColors.accentPurple,
-                      LiquidColors.accentPink,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.move_to_inbox_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'IMPORT',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: LiquidColors.textPrimary,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              Switch(
-                value: _deleteOriginals,
-                onChanged: _toggleDeleteOriginals,
-                activeThumbColor: Colors.white,
-                activeTrackColor: LiquidColors.accentPurple,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Move originals into the vault',
-            style: TextStyle(
-              color: LiquidColors.textPrimary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'When enabled, files you import are removed from your device after they are encrypted into the vault.',
-            style: TextStyle(
-              fontSize: 12,
-              color: LiquidColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: LiquidColors.warning.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: LiquidColors.warning.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: LiquidColors.warning,
-                  size: 14,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    Platform.isIOS
-                        ? 'On iOS, photos and videos can only be removed via the system confirmation dialog after each import.'
-                        : 'Some files (especially on Android 13+) may need to be removed manually because of OS storage rules.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: LiquidColors.textSecondary,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDecoyCard() {
-    final accent = _decoyEnabled
-        ? LiquidColors.accentPurple
-        : LiquidColors.accentBlue;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withValues(alpha: 0.25), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _decoyEnabled
-                        ? [LiquidColors.accentPurple, LiquidColors.accentPink]
-                        : [LiquidColors.accentBlue, LiquidColors.accentPurple],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.theater_comedy_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'DECOY MODE',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: LiquidColors.textPrimary,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: accent.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  _decoyEnabled ? 'ON' : 'OFF',
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _decoyEnabled
-                ? 'A second, fully separate vault opens when you enter the decoy PIN at the lock screen. Your real files use a different key and stay hidden.'
-                : 'Set a decoy PIN that opens a harmless-looking fake vault. Hand it over under pressure — your real encrypted vault never appears and stays cryptographically isolated.',
-            style: TextStyle(
-              fontSize: 12,
-              color: LiquidColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton.icon(
-              onPressed: _openDecoySetup,
-              icon: Icon(
-                _decoyEnabled
-                    ? Icons.tune_rounded
-                    : Icons.add_moderator_outlined,
-                size: 18,
-                color: Colors.white,
-              ),
-              label: Text(
-                _decoyEnabled ? 'Manage decoy mode' : 'Set up decoy PIN',
-                style: TextStyle(color: Colors.white),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accent,
-                foregroundColor: LiquidColors.textPrimary,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: LiquidColors.warning.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: LiquidColors.warning.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: LiquidColors.warning,
-                  size: 14,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'The decoy PIN must differ from your real PIN. Opening the decoy vault silently captures a break-in photo and is logged.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: LiquidColors.textSecondary,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _openFaceEnroll() async {
     final ok = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -2952,439 +2705,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     await _loadSecuritySettings();
     if (!mounted) return;
     FlushBarHelper.flushBarSuccessMessage('Face Unlock turned off', context);
-  }
-
-  Widget _buildFaceRecognitionCard() {
-    final enrolled = _faceRecogEnrolled;
-    final accent = enrolled ? LiquidColors.success : LiquidColors.accentBlue;
-    final iconGradient = enrolled
-        ? [LiquidColors.success, LiquidColors.accentBlue]
-        : [LiquidColors.accentBlue, LiquidColors.accentPurple];
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: accent.withValues(alpha: 0.28), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.12),
-            blurRadius: 24,
-            spreadRadius: -6,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: iconGradient,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: iconGradient.first.withValues(alpha: 0.4),
-                      blurRadius: 14,
-                      spreadRadius: -2,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.face_retouching_natural,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'In-App Face Unlock',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: LiquidColors.textPrimary,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Front-camera unlock · on-device',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        color: LiquidColors.textTertiary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _faceStatusPill(enrolled, accent),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Text(
-            enrolled
-                ? 'Tap "Scan Face" on the lock screen to unlock with your front camera. Your PIN still works any time.'
-                : 'Unlock with your front camera instead of typing your PIN. Face matching runs entirely on this device.',
-            style: TextStyle(
-              fontSize: 12.5,
-              color: LiquidColors.textSecondary,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _faceFeatureChip(Icons.memory_rounded, 'On-device AI'),
-              const SizedBox(width: 8),
-              _faceFeatureChip(Icons.cloud_off_rounded, 'Never uploaded'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: enrolled
-                ? OutlinedButton.icon(
-                    onPressed: _disableFaceRecognition,
-                    icon: const Icon(Icons.lock_reset_rounded, size: 18),
-                    label: const Text('Turn off Face Unlock'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: LiquidColors.error,
-                      side: BorderSide(
-                        color: LiquidColors.error.withValues(alpha: 0.5),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                  )
-                : _faceSetupButton(),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: LiquidColors.warning.withValues(alpha: 0.09),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: LiquidColors.warning.withValues(alpha: 0.25),
-              ),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  color: LiquidColors.warning,
-                  size: 14,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Face Unlock is a convenience shortcut — weaker than your '
-                    'PIN and can be fooled by a photo or look-alike. Your PIN '
-                    'always works as a fallback.',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: LiquidColors.textSecondary,
-                      height: 1.45,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _faceStatusPill(bool enrolled, Color accent) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: accent),
-          ),
-          const SizedBox(width: 6),
-          Text(
-            enrolled ? 'Active' : 'Not set up',
-            style: TextStyle(
-              color: accent,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _faceFeatureChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: LiquidColors.textPrimary.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: LiquidColors.textPrimary.withValues(alpha: 0.07),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: LiquidColors.accentBlue),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: LiquidColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _faceSetupButton() {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: LiquidColors.accentBlue.withValues(alpha: 0.35),
-            blurRadius: 14,
-            spreadRadius: -3,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _openFaceEnroll,
-          borderRadius: BorderRadius.circular(14),
-          child: const Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.face_retouching_natural,
-                  size: 19,
-                  color: Colors.white,
-                ),
-                SizedBox(width: 10),
-                Text(
-                  'Set up Face Unlock',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIntrusionCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.warning.withValues(alpha: 0.25),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [LiquidColors.warning, LiquidColors.error],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.camera_front_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'BREAK-IN DETECTION',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: LiquidColors.textPrimary,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              Switch(
-                value: _intrusionEnabled,
-                onChanged: _toggleIntrusion,
-                activeThumbColor: Colors.white,
-                activeTrackColor: LiquidColors.warning,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Captures a front-camera photo on every wrong PIN attempt. Photos are encrypted and stored only inside this app.',
-            style: TextStyle(
-              fontSize: 12,
-              color: LiquidColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Note: iOS shows a green status-bar indicator while the camera is active.',
-            style: TextStyle(
-              fontSize: 11,
-              color: LiquidColors.textTertiary,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: _openIntrusionLog,
-              borderRadius: BorderRadius.circular(14),
-              child: Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: LiquidColors.backgroundDeep,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: LiquidColors.warning.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: LiquidColors.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.history_rounded,
-                        color: LiquidColors.warning,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Intrusion Log',
-                        style: TextStyle(
-                          color: LiquidColors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _intrusionCount > 0
-                            ? LiquidColors.error.withValues(alpha: 0.2)
-                            : LiquidColors.textTertiary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '$_intrusionCount',
-                        style: TextStyle(
-                          color: _intrusionCount > 0
-                              ? LiquidColors.error
-                              : LiquidColors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: LiquidColors.textTertiary,
-                      size: 20,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _openRecoverySetup() async {
@@ -3846,382 +3166,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     FlushBarHelper.flushBarSuccessMessage('Recovery removed', context);
   }
 
-  Widget _buildRecoveryCard() {
-    final accent = _recoveryEnabled
-        ? LiquidColors.success
-        : LiquidColors.accentBlue;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withValues(alpha: 0.25), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: _recoveryEnabled
-                        ? [LiquidColors.success, LiquidColors.accentBlue]
-                        : [LiquidColors.accentBlue, LiquidColors.accentPurple],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.restore_rounded,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'ADD EMAIL',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: LiquidColors.textPrimary,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: accent.withValues(alpha: 0.4)),
-                ),
-                child: Text(
-                  _recoveryEnabled ? 'ON' : 'OFF',
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _recoveryEnabled
-                ? 'Use your emailed code to reset the PIN if you forget it. Vault contents stay encrypted and intact.'
-                : 'Set up an email-based recovery code so a forgotten PIN doesn\'t mean wiping your vault.',
-            style: TextStyle(
-              fontSize: 12,
-              color: LiquidColors.textSecondary,
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 14),
-          if (_recoveryEnabled) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: LiquidColors.backgroundDeep,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: accent.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.alternate_email_rounded, color: accent, size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _recoveryEmail == null
-                          ? 'unknown'
-                          : RecoveryService.mask(_recoveryEmail!),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: LiquidColors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'monospace',
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _openRecoverySetup,
-                    icon: Icon(Icons.refresh_rounded, size: 16, color: accent),
-                    label: Text(
-                      'Re-issue code',
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: BorderSide(color: accent.withValues(alpha: 0.4)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _confirmRemoveRecovery,
-                    icon: Icon(
-                      Icons.delete_outline_rounded,
-                      size: 16,
-                      color: LiquidColors.error,
-                    ),
-                    label: Text(
-                      'Remove',
-                      style: TextStyle(
-                        color: LiquidColors.error,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: BorderSide(
-                        color: LiquidColors.error.withValues(alpha: 0.4),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ] else ...[
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _openRecoverySetup,
-                icon: const Icon(
-                  Icons.add_rounded,
-                  size: 18,
-                  color: Colors.white,
-                ),
-                label: const Text(
-                  'Set up recovery',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: LiquidColors.accentBlue,
-                  foregroundColor: LiquidColors.textPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSessionCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: .9),
-            LiquidColors.backgroundMid.withValues(alpha: .95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.timer_outlined,
-                    color: Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'SESSION',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: LiquidColors.textPrimary,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Auto-lock when inactive',
-            style: TextStyle(
-              color: LiquidColors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-            decoration: BoxDecoration(
-              color: LiquidColors.backgroundDeep,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.3),
-              ),
-            ),
-            child: DropdownButton<int>(
-              value: SessionManager.instance.autoLockSeconds,
-              isExpanded: true,
-              dropdownColor: LiquidColors.backgroundLight,
-              style: TextStyle(color: LiquidColors.textPrimary, fontSize: 14),
-              underline: const SizedBox(),
-              icon: Icon(
-                Icons.arrow_drop_down_rounded,
-                color: LiquidColors.accentBlue,
-              ),
-              items: SessionManager.autoLockOptions.entries
-                  .map(
-                    (e) => DropdownMenuItem<int>(
-                      value: e.key,
-                      child: Text(e.value),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) async {
-                if (value == null) return;
-                HapticFeedback.selectionClick();
-                await SessionManager.instance.setAutoLockSeconds(value);
-                if (mounted) setState(() {});
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  Widget _buildPinLengthControl() {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'PIN length',
-                style: TextStyle(
-                  color: LiquidColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$_pinLength digits',
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-        GestureDetector(
-          onTap: _changingPin ? null : _onChangePinLengthTapped,
-          child: Opacity(
-            opacity: _changingPin ? 0.5 : 1.0,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-              decoration: BoxDecoration(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: LiquidColors.accentBlue.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
-                    size: 16,
-                    color: LiquidColors.accentBlue,
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    'Change',
-                    style: TextStyle(
-                      color: LiquidColors.accentBlue,
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Future<void> _onChangePinLengthTapped() async {
     HapticFeedback.selectionClick();
     final hasPin = await PinCrypto.instance.hasPin();
@@ -4598,51 +3542,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  Widget _sectionHeader({
-    required String label,
-    required IconData icon,
-    required Color color,
-    String? caption,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 14, color: color),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-          if (caption != null) ...[
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.only(left: 22),
-              child: Text(
-                caption,
-                style: TextStyle(
-                  color: LiquidColors.textTertiary,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                  height: 1.3,
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }
 
 class _Protection {
