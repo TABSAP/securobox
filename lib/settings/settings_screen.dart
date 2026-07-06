@@ -124,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: LiquidColors.backgroundDeep,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -132,15 +132,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
         titleSpacing: 20,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
         title: Text(
           'Settings',
           style: TextStyle(

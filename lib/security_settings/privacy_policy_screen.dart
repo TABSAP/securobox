@@ -15,22 +15,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: LiquidColors.backgroundDeep,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: LiquidColors.backgroundDeep,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: LiquidColors.isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),

@@ -669,17 +669,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: LiquidColors.backgroundDeep,
         elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
         leading: TweenAnimationBuilder(
           tween: Tween<double>(begin: 0, end: 1),
           duration: const Duration(milliseconds: 600),

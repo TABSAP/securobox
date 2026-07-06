@@ -838,7 +838,7 @@ class _HistoryScreenState extends State<HistoryScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: LiquidColors.backgroundDeep,
         elevation: 0,
         titleSpacing: 6,
         leadingWidth: 58,
@@ -848,15 +848,6 @@ class _HistoryScreenState extends State<HistoryScreen>
             icon: Icons.arrow_back_rounded,
             tooltip: 'Back',
             onTap: () => Navigator.pop(context),
-          ),
-        ),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
           ),
         ),
         title: Row(

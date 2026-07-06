@@ -235,7 +235,7 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
     return Scaffold(
       backgroundColor: LiquidColors.backgroundDeep,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: LiquidColors.backgroundDeep,
         elevation: 0,
         iconTheme: IconThemeData(color: LiquidColors.textPrimary),
         title: Row(

@@ -853,7 +853,7 @@ class HomeScreenState extends State<HomeScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: LiquidColors.backgroundDeep,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -861,15 +861,6 @@ class HomeScreenState extends State<HomeScreen>
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
         titleSpacing: 20,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
         title: Text(
           'Library',
           style: TextStyle(

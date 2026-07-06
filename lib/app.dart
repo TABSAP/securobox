@@ -69,9 +69,10 @@ class MyApp extends StatelessWidget {
         decorationColor: textPrimary,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: bg,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         foregroundColor: textPrimary,
         iconTheme: IconThemeData(color: textPrimary),
         titleTextStyle: TextStyle(
