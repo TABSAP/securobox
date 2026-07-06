@@ -88,6 +88,45 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
+  void _openRecent() {
+    HapticFeedback.selectionClick();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const HomeScreen(screenTitle: 'Recently Added'),
+      ),
+    );
+  }
+
+  Widget _seeAll(VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Row(
+            children: [
+              Text(
+                'See all',
+                style: TextStyle(
+                  color: LiquidColors.accentBlue,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: LiquidColors.accentBlue,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _openAddSheet() async {
     HapticFeedback.lightImpact();
     await AddToVaultSheet.show(context, onImported: () async {});
@@ -179,9 +218,10 @@ class HomeDashboardState extends State<HomeDashboard> {
         if (recent.isNotEmpty) ...[
           Padding(
             padding: EdgeInsets.symmetric(horizontal: inset),
-            child: const AppSectionHeader(
+            child: AppSectionHeader(
               label: 'Recently added',
               caption: 'Your latest additions',
+              trailing: _seeAll(_openRecent),
             ),
           ),
           const SizedBox(height: AppSpace.sm),

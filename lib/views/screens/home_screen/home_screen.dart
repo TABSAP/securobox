@@ -16,12 +16,14 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback? onVideosChanged;
   final String? typeFilter;
   final VideoItem? autoOpen;
+  final String? screenTitle;
 
   const HomeScreen({
     super.key,
     this.onVideosChanged,
     this.typeFilter,
     this.autoOpen,
+    this.screenTitle,
   });
 
   @override
@@ -892,11 +894,12 @@ class HomeScreenState extends State<HomeScreen>
         systemOverlayStyle: LiquidColors.isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
-        titleSpacing: widget.typeFilter != null ? 4 : 20,
+        titleSpacing:
+            (widget.typeFilter != null || widget.screenTitle != null) ? 4 : 20,
         title: Text(
           widget.typeFilter != null
               ? _categoryLabel(widget.typeFilter!)
-              : 'Library',
+              : (widget.screenTitle ?? 'Library'),
           style: TextStyle(
             color: LiquidColors.textPrimary,
             fontSize: 22,
@@ -1044,7 +1047,7 @@ class HomeScreenState extends State<HomeScreen>
         children: [
           _buildSearchBar(),
           const SizedBox(height: AppSpace.md),
-          if (widget.typeFilter == null) ...[
+          if (widget.typeFilter == null && widget.screenTitle == null) ...[
             _buildCategoryFilter(),
             const SizedBox(height: AppSpace.sm),
           ],

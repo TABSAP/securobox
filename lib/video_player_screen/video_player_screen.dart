@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -20,7 +19,6 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   late VideoPlayerController _videoPlayerController;
-  ChewieController? _chewieController;
   bool _isInitialized = false;
   bool _isFullScreen = false;
   bool _showOverlay = true;
@@ -51,7 +49,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     ]);
 
     _videoPlayerController.dispose();
-    _chewieController?.dispose();
     super.dispose();
   }
 
@@ -61,42 +58,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     try {
       await _videoPlayerController.initialize();
 
-      if (mounted) {
-        _chewieController = ChewieController(
-          videoPlayerController: _videoPlayerController,
-          autoPlay: true,
-          looping: false,
-          allowFullScreen: true,
-          fullScreenByDefault: false,
-          deviceOrientationsAfterFullScreen: [
-            DeviceOrientation.portraitUp,
-            DeviceOrientation.portraitDown,
-            DeviceOrientation.landscapeLeft,
-            DeviceOrientation.landscapeRight,
-          ],
-          showControls: false,
-          materialProgressColors: ChewieProgressColors(
-            playedColor: const Color(0xFF4788FF),
-            handleColor: const Color(0xFF4788FF),
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            bufferedColor: Colors.white.withValues(alpha: 0.1),
-          ),
-          placeholder: Container(
-            color: const Color(0xFF0A0A1F),
-            child: const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF4788FF),
-              ),
-            ),
-          ),
-          overlay: Container(),
-          autoInitialize: true,
-        );
-
-        setState(() {
-          _isInitialized = true;
-        });
+      if (!mounted) {
+        _videoPlayerController.dispose();
+        return;
       }
+
+      await _videoPlayerController.setLooping(false);
+      setState(() {
+        _isInitialized = true;
+      });
+
+      // Start playback immediately — the UI renders a raw VideoPlayer with
+      // custom controls, so the controller must be told to play directly.
+      await _videoPlayerController.play();
+      _hideOverlayAfterDelay();
     } catch (_) {
       _errorDetail =
           'Unable to play this file. It may be in an unsupported format.';
