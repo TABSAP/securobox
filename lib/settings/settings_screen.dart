@@ -36,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSizes() async {
     final vault = await VaultCrypto.instance.currentVaultSize();
-    final cache = await VaultCrypto.instance.tempCacheSize();
+    final cache = await VaultCrypto.instance.appCacheSize();
     if (!mounted) return;
     setState(() {
       _vaultBytes = vault;
@@ -51,7 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _clearCache() async {
     HapticFeedback.lightImpact();
-    await VaultCrypto.instance.wipeAllTempCache();
+    await VaultCrypto.instance.wipeAppCache();
     await _loadSizes();
     if (!mounted) return;
     FlushBarHelper.flushBarSuccessMessage('Cache cleared', context);
@@ -208,10 +208,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: LiquidColors.accentBlue,
                 title: 'Clear cache',
                 subtitle: _cacheBytes <= 0
-                    ? 'No temporary files'
+                    ? 'Free up temporary space'
                     : '${_fmtBytes(_cacheBytes)} of temporary files',
                 trailing: _chevron(),
-                onTap: _cacheBytes <= 0 ? null : _clearCache,
+                onTap: _clearCache,
               ),
             ]),
             const SizedBox(height: AppSpace.lg),

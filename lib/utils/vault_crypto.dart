@@ -226,6 +226,26 @@ class VaultCrypto {
 
   Future<int> tempCacheSize() async => _dirSize(await _tempDir());
 
+  Future<int> appCacheSize() async {
+    try {
+      return await _dirSize(await getTemporaryDirectory());
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  Future<void> wipeAppCache() async {
+    _plainCache.clear();
+    try {
+      final tmp = await getTemporaryDirectory();
+      await for (final entity in tmp.list(recursive: true)) {
+        try {
+          if (entity is File) await entity.delete();
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
   Future<void> revokeSession() async {
     _cachedRealKey = null;
     _cachedDecoyKey = null;
