@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -18,7 +20,6 @@ import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
 import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
-import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
@@ -2049,7 +2050,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      bottomNavigationBar: const LiquidBottomNav(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -2168,14 +2168,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
               child: Padding(
                 padding: EdgeInsets.fromLTRB(
                   context.contentInset(phone: 16),
-                  16,
+                  0,
                   context.contentInset(phone: 16),
                   16,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 8),
                     _buildSecurityHeroCard(),
                     const SizedBox(height: 16),
                     _sectionHeader(
@@ -3504,7 +3503,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     fontWeight: FontWeight.w600,
                   ),
                   decoration: InputDecoration(
-                    hintText: 'previous@gmail.com',
+                    hintText: 'previous@example.com',
                     hintStyle: TextStyle(
                       color: LiquidColors.textTertiary,
                       fontSize: 13,
@@ -4420,28 +4419,18 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         : allGood
         ? 'Every protection is active. Nice work.'
         : '${total - active} more protection${total - active == 1 ? '' : 's'} available below.';
+    final status = isCritical
+        ? 'At risk'
+        : allGood
+        ? 'Strong'
+        : 'Good';
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: 0.72),
-            LiquidColors.backgroundMid.withValues(alpha: 0.55),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accent.withValues(alpha: 0.28), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.14),
-            blurRadius: 26,
-            spreadRadius: -6,
-            offset: const Offset(0, 14),
-          ),
-        ],
+        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: LiquidColors.cardBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4460,11 +4449,34 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: accent,
+                          ),
+                        ),
+                        const SizedBox(width: 7),
+                        Text(
+                          status,
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     Text(
                       headline,
                       style: TextStyle(
                         color: LiquidColors.textPrimary,
-                        fontSize: 16,
+                        fontSize: 15.5,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.2,
                       ),
@@ -4478,24 +4490,25 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        '$active of $total active',
-                        style: TextStyle(
-                          color: accent,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.2,
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: ratio,
+                        minHeight: 6,
+                        backgroundColor: LiquidColors.textPrimary.withValues(
+                          alpha: 0.07,
                         ),
+                        valueColor: AlwaysStoppedAnimation<Color>(accent),
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      '$active of $total protections active',
+                      style: TextStyle(
+                        color: LiquidColors.textTertiary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -4654,92 +4667,119 @@ class _SecurityScoreRing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double size = 80;
+    const double size = 86;
     return SizedBox(
       width: size,
       height: size,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0, end: ratio),
-        duration: const Duration(milliseconds: 700),
+        duration: const Duration(milliseconds: 900),
         curve: Curves.easeOutCubic,
         builder: (context, value, _) {
-          return Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: size - 14,
-                height: size - 14,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: accent.withValues(alpha: 0.22),
-                      blurRadius: 18,
-                      spreadRadius: -4,
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: size,
-                height: size,
-                child: CircularProgressIndicator(
-                  value: 1,
-                  strokeWidth: 7,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    LiquidColors.textPrimary.withValues(alpha: 0.07),
-                  ),
-                ),
-              ),
-              ShaderMask(
-                shaderCallback: (rect) => LinearGradient(
-                  colors: [accent, accentSoft],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ).createShader(rect),
-                child: SizedBox(
-                  width: size,
-                  height: size,
-                  child: CircularProgressIndicator(
-                    value: value,
-                    strokeWidth: 7,
-                    strokeCap: StrokeCap.round,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Colors.white,
-                    ),
-                    backgroundColor: Colors.transparent,
-                  ),
-                ),
-              ),
-              Column(
+          return CustomPaint(
+            painter: _ScoreRingPainter(
+              value: value,
+              trackColor: LiquidColors.textPrimary.withValues(alpha: 0.08),
+              start: accent,
+              end: accentSoft,
+            ),
+            child: Center(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     '${(value * 100).round()}',
                     style: TextStyle(
                       color: LiquidColors.textPrimary,
-                      fontSize: 23,
+                      fontSize: 25,
                       fontWeight: FontWeight.w900,
                       height: 1.0,
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     'SCORE',
                     style: TextStyle(
                       color: accent,
                       fontSize: 8,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 1.4,
+                      letterSpacing: 2.0,
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           );
         },
       ),
     );
   }
+}
+
+class _ScoreRingPainter extends CustomPainter {
+  final double value;
+  final Color trackColor;
+  final Color start;
+  final Color end;
+
+  const _ScoreRingPainter({
+    required this.value,
+    required this.trackColor,
+    required this.start,
+    required this.end,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 8.0;
+    final center = size.center(Offset.zero);
+    final radius = (size.width - stroke) / 2;
+    final arcRect = Rect.fromCircle(center: center, radius: radius);
+    const startAngle = -math.pi / 2;
+    final sweep = 2 * math.pi * value.clamp(0.0, 1.0);
+
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = trackColor;
+    canvas.drawCircle(center, radius, track);
+
+    if (value <= 0) return;
+
+    final shader = SweepGradient(
+      colors: [start, end],
+      transform: const GradientRotation(-math.pi / 2),
+    ).createShader(arcRect);
+
+    final glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = end.withValues(alpha: 0.32)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+    canvas.drawArc(arcRect, startAngle, sweep, false, glow);
+
+    final arc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = shader;
+    canvas.drawArc(arcRect, startAngle, sweep, false, arc);
+
+    final headAngle = startAngle + sweep;
+    final head = Offset(
+      center.dx + radius * math.cos(headAngle),
+      center.dy + radius * math.sin(headAngle),
+    );
+    canvas.drawCircle(head, stroke / 2 + 1.5, Paint()..color = end);
+    canvas.drawCircle(head, stroke / 2 - 1.0, Paint()..color = Colors.white);
+  }
+
+  @override
+  bool shouldRepaint(_ScoreRingPainter old) =>
+      old.value != value ||
+      old.start != start ||
+      old.end != end ||
+      old.trackColor != trackColor;
 }

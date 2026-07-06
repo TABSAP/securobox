@@ -8,11 +8,6 @@ class MediaHelper {
     "Photos",
     "Audio",
     "Documents",
-    "Educational",
-    "Personal",
-    "Work",
-    "Sports",
-    "Travel",
     "Others"
   ];
 

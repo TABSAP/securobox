@@ -49,6 +49,7 @@ class _MainScreenState extends State<MainScreen>
     HapticFeedback.selectionClick();
     SessionManager.instance.markActive();
     setState(() => _selectedIndex = i);
+    if (i == 0) _libraryKey.currentState?.refreshVideos();
     if (i == 1) _intrusionKey.currentState?.reload();
   }
 

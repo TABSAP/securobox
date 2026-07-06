@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -38,14 +36,14 @@ class _LiquidBottomNavState extends State<LiquidBottomNav>
     _NavItem(
       Icons.shield_moon_outlined,
       Icons.shield_moon_rounded,
-      'Intrusions',
+      'Logs',
     ),
     _NavItem(Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
   ];
 
   static const double _barHeight = 56;
-  static const double _blobW = 58;
-  static const double _blobH = 42;
+  static const double _pillMargin = 10;
+  static const double _pillHeight = 46;
 
   late final AnimationController _slide = AnimationController(
     vsync: this,
@@ -114,45 +112,34 @@ class _LiquidBottomNavState extends State<LiquidBottomNav>
               builder: (context, c) {
                 final n = _navItems.length;
                 final cell = c.maxWidth / n;
-                double leftFor(int i) => i * cell + (cell - _blobW) / 2;
+                final pillW = cell - _pillMargin * 2;
+                double leftFor(int i) => i * cell + _pillMargin;
 
                 return AnimatedBuilder(
                   animation: _slide,
                   builder: (context, _) {
                     final t = Curves.easeOutCubic.transform(_slide.value);
-                    final wave = math.sin(_slide.value * math.pi);
-                    final bw = _blobW * (1 + wave * 0.5);
-                    final bh = _blobH * (1 - wave * 0.18);
                     final from = _prev >= 0 ? _prev : _curr;
-                    final blobLeft = _curr >= 0
+                    final pillLeft = _curr >= 0
                         ? _lerp(leftFor(from), leftFor(_curr), t)
-                        : 0.0;
+                        : leftFor(0);
 
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
                         if (_curr >= 0)
                           Positioned(
-                            left: blobLeft - (bw - _blobW) / 2,
-                            top: (_barHeight - bh) / 2,
-                            width: bw,
-                            height: bh,
+                            left: pillLeft,
+                            top: (_barHeight - _pillHeight) / 2,
+                            width: pillW,
+                            height: _pillHeight,
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(bh / 2),
-                                gradient: RadialGradient(
-                                  colors: [
-                                    accent.withValues(alpha: 0.32),
-                                    accent.withValues(alpha: 0.10),
-                                  ],
+                                borderRadius: BorderRadius.circular(15),
+                                color: accent.withValues(alpha: 0.12),
+                                border: Border.all(
+                                  color: accent.withValues(alpha: 0.20),
                                 ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: accent.withValues(alpha: 0.30),
-                                    blurRadius: 22,
-                                    spreadRadius: -2,
-                                  ),
-                                ],
                               ),
                             ),
                           ),
@@ -168,7 +155,7 @@ class _LiquidBottomNavState extends State<LiquidBottomNav>
                             }
                             final pressed = _pressed == i;
                             final iconScale =
-                                _lerp(0.9, 1.12, sel) * (pressed ? 0.86 : 1.0);
+                                _lerp(0.95, 1.06, sel) * (pressed ? 0.88 : 1.0);
                             final color = Color.lerp(
                               LiquidColors.textTertiary,
                               accent,

@@ -310,11 +310,13 @@ class _AppLockScreenState extends State<AppLockScreen>
     if (_padDisabled) return;
     if (_enteredPin.length < _pinLength) {
       HapticFeedback.lightImpact();
+      final complete = _enteredPin.length + 1 == _pinLength;
       setState(() {
         _enteredPin += number;
         _hasError = false;
+        if (complete) _isUnlocking = true;
       });
-      if (_enteredPin.length == _pinLength) _checkPin();
+      if (complete) _checkPin();
     }
   }
 
@@ -356,6 +358,7 @@ class _AppLockScreenState extends State<AppLockScreen>
     setState(() {
       _enteredPin = '';
       _hasError = true;
+      _isUnlocking = false;
     });
     _errorController.forward(from: 0);
     await _refreshCooldown();
@@ -364,6 +367,7 @@ class _AppLockScreenState extends State<AppLockScreen>
   Future<void> _unlockApp() async {
     if (NetworkGuard.instance.blockUnlock) {
       HapticFeedback.heavyImpact();
+      if (mounted) setState(() => _isUnlocking = false);
       return;
     }
     if (mounted) setState(() => _isUnlocking = true);

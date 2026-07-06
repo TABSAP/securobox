@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/security_settings/decoy_setup_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/widgets/app_brand_icon.dart';
-import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -17,8 +16,56 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      bottomNavigationBar: const LiquidBottomNav(),
-      appBar: _appBar(context),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: LiquidColors.isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: LiquidColors.primaryGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.info_outline_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'About',
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -34,7 +81,7 @@ class AboutScreen extends StatelessWidget {
         ),
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -49,59 +96,6 @@ class AboutScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _appBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-      ),
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      title: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LiquidColors.primaryGradient,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: LiquidColors.primaryStart.withValues(alpha: 0.4),
-                  blurRadius: 10,
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.info_outline_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'About',
-            style: TextStyle(
-              color: LiquidColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
       ),
     );
   }

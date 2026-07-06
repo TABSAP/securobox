@@ -61,6 +61,7 @@ class HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     _loadMedia();
+    MediaService.revision.addListener(_onLibraryRevision);
 
     _searchController.addListener(_onSearchChanged);
     _searchFocusNode.addListener(_onSearchFocusChanged);
@@ -87,6 +88,7 @@ class HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    MediaService.revision.removeListener(_onLibraryRevision);
     _searchDebounce?.cancel();
     _scrollController.dispose();
     _searchController.removeListener(_onSearchChanged);
@@ -141,8 +143,12 @@ class HomeScreenState extends State<HomeScreen>
     });
   }
 
+  void _onLibraryRevision() {
+    if (mounted) _loadMedia(silent: true);
+  }
+
   Future<void> refreshVideos() async {
-    await _loadMedia();
+    await _loadMedia(silent: true);
   }
 
   Future<void> _openAddSheet() async {
@@ -150,7 +156,6 @@ class HomeScreenState extends State<HomeScreen>
     await AddToVaultSheet.show(
       context,
       onImported: () async {
-        await _loadMedia();
         widget.onVideosChanged?.call();
       },
     );
@@ -163,17 +168,19 @@ class HomeScreenState extends State<HomeScreen>
       MaterialPageRoute(builder: (_) => const SecureCameraScreen()),
     );
     if (mounted) {
-      await _loadMedia();
+      await _loadMedia(silent: true);
       widget.onVideosChanged?.call();
     }
   }
 
-  Future<void> _loadMedia() async {
+  Future<void> _loadMedia({bool silent = false}) async {
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       final results = await Future.wait([
@@ -222,7 +229,7 @@ class HomeScreenState extends State<HomeScreen>
   Future<void> _updateMediaCategory(VideoItem media, String newCategory) async {
     final success = await _mediaService.updateMediaCategory(media, newCategory);
     if (success) {
-      await _loadMedia();
+      await _loadMedia(silent: true);
     }
   }
 
@@ -235,7 +242,7 @@ class HomeScreenState extends State<HomeScreen>
       FlushBarHelper.flushBarErrorMessage('Could not update favorite', context);
       return;
     }
-    await _loadMedia();
+    await _loadMedia(silent: true);
     if (!mounted) return;
     FlushBarHelper.flushBarSuccessMessage(
       newValue ? 'Added to Favorites' : 'Removed from Favorites',
@@ -456,7 +463,7 @@ class HomeScreenState extends State<HomeScreen>
         setState(() => _isLoading = false);
 
         if (success) {
-          await _loadMedia();
+          await _loadMedia(silent: true);
           if (widget.onVideosChanged != null) {
             widget.onVideosChanged!();
           }
@@ -503,7 +510,7 @@ class HomeScreenState extends State<HomeScreen>
         onConfirm: () async {
           await _mediaService.softDeleteMedia(media);
           if (!mounted) return;
-          await _loadMedia();
+          await _loadMedia(silent: true);
           widget.onVideosChanged?.call();
           if (!mounted) return;
           FlushBarHelper.flushBarSuccessMessage('Moved to trash', context);
@@ -671,19 +678,7 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _onRefresh() async {
-    try {
-      if (!mounted) return;
-      setState(() => _isLoading = true);
-      await _loadMedia();
-      if (!mounted) return;
-      FlushBarHelper.flushBarSuccessMessage(
-        'Refreshed ${_filteredMedia.length} files',
-        context,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      FlushBarHelper.flushBarErrorMessage('Refresh failed', context);
-    }
+    await _loadMedia(silent: true);
   }
 
   Future<void> _openMedia(VideoItem media) async {
@@ -710,18 +705,10 @@ class HomeScreenState extends State<HomeScreen>
     String playPath = media.path;
     if (media.encrypted) {
       try {
-        if (!mounted) return;
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) => const Center(child: LiquidCircularProgress(size: 96)),
-        );
         playPath = await VaultCrypto.instance.decryptToTemp(media.path);
         if (!mounted) return;
-        Navigator.of(context, rootNavigator: true).pop();
       } catch (e) {
         if (mounted) {
-          Navigator.of(context, rootNavigator: true).pop();
           FlushBarHelper.flushBarErrorMessage(
             'Failed to decrypt file',
             context,
@@ -740,9 +727,8 @@ class HomeScreenState extends State<HomeScreen>
             builder: (context) =>
                 VideoPlayerScreen(videoPath: playPath, videoTitle: media.title),
           ),
-        ).then((_) async {
-          if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
-          if (mounted) _loadMedia();
+        ).then((_) {
+          if (mounted) _loadMedia(silent: true);
         });
         break;
 
@@ -794,9 +780,7 @@ class HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
-        ).then((_) async {
-          if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
-        });
+        );
         break;
 
       case 'audio':
@@ -807,9 +791,7 @@ class HomeScreenState extends State<HomeScreen>
             builder: (context) =>
                 AudioPlayerScreen(filePath: playPath, fileName: media.title),
           ),
-        ).then((_) async {
-          if (media.encrypted) await VaultCrypto.instance.wipeTempCache();
-        });
+        );
         break;
 
       case 'pdf':
@@ -1085,7 +1067,7 @@ class HomeScreenState extends State<HomeScreen>
           ),
         ),
       ),
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Column(
         children: [
           _buildSearchBar(),

@@ -53,7 +53,12 @@ class _SettingsScreenState extends State<SettingsScreen>
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: LiquidColors.isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -67,18 +72,16 @@ class _SettingsScreenState extends State<SettingsScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
-                gradient: LiquidColors.primaryGradient,
-                borderRadius: BorderRadius.circular(13),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.primaryStart.withValues(alpha: 0.4),
-                    blurRadius: 12,
-                    spreadRadius: 1,
-                  ),
-                ],
+                gradient: LinearGradient(
+                  colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
                 Icons.settings_rounded,
@@ -86,7 +89,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 size: 22,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Flexible(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -97,10 +100,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
+                      color: LiquidColors.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: LiquidColors.textPrimary,
-                      letterSpacing: 0.4,
+                      letterSpacing: 0.3,
                     ),
                   ),
                   Text(
@@ -108,8 +111,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 12,
-                      color: LiquidColors.textTertiary,
+                      color: LiquidColors.textSecondary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -139,97 +143,100 @@ class _SettingsScreenState extends State<SettingsScreen>
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.fromLTRB(
                 context.contentInset(phone: 16),
-                12,
+                0,
                 context.contentInset(phone: 16),
                 32,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
-                  _sectionLabel('APP THEME'),
+                  _sectionLabel('APPEARANCE'),
                   const SizedBox(height: 10),
                   _appearanceCard(),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 24),
 
-                  _sectionLabel('PRIVACY'),
+                  _sectionLabel('PRIVACY & DATA'),
                   const SizedBox(height: 10),
-                  _navTile(
-                    icon: Icons.shield_rounded,
-                    iconGradient: [
-                      LiquidColors.accentBlue,
-                      LiquidColors.primaryMid,
-                    ],
-                    title: 'Security',
-                    subtitle:
-                        'Locks, PIN, biometrics, recovery, decoy and more.',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const SecuritySettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _navTile(
-                    icon: Icons.history_rounded,
-                    iconGradient: [
-                      LiquidColors.accentOrange,
-                      LiquidColors.accentPink,
-                    ],
-                    title: 'History',
-                    subtitle:
-                        'Files you saved out of the vault to the device.',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const HistoryScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 26),
+                  _groupCard([
+                    _navRow(
+                      icon: Icons.shield_rounded,
+                      iconGradient: [
+                        LiquidColors.accentBlue,
+                        LiquidColors.primaryMid,
+                      ],
+                      title: 'Security',
+                      subtitle:
+                          'Locks, PIN, biometrics, recovery, decoy and more.',
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SecuritySettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _rowDivider(),
+                    _navRow(
+                      icon: Icons.history_rounded,
+                      iconGradient: [
+                        LiquidColors.accentOrange,
+                        LiquidColors.accentPink,
+                      ],
+                      title: 'History',
+                      subtitle:
+                          'Files you saved out of the vault to the device.',
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const HistoryScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ]),
+                  const SizedBox(height: 24),
 
                   _sectionLabel('INFORMATION'),
                   const SizedBox(height: 10),
-                  _navTile(
-                    icon: Icons.info_outline_rounded,
-                    iconGradient: [
-                      LiquidColors.accentPurple,
-                      LiquidColors.accentPink,
-                    ],
-                    title: 'About SecuroBox',
-                    subtitle:
-                        'Version, what makes it secure, and credits.',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AboutScreen()),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  _navTile(
-                    icon: Icons.help_outline_rounded,
-                    iconGradient: [
-                      LiquidColors.success,
-                      LiquidColors.accentBlue,
-                    ],
-                    title: 'Help & Support',
-                    subtitle:
-                        'Send feedback, privacy policy, tips, and FAQs.',
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const SupportScreen(),
-                        ),
-                      );
-                    },
-                  ),
+                  _groupCard([
+                    _navRow(
+                      icon: Icons.info_outline_rounded,
+                      iconGradient: [
+                        LiquidColors.accentPurple,
+                        LiquidColors.accentPink,
+                      ],
+                      title: 'About SecuroBox',
+                      subtitle: 'Version, what makes it secure, and credits.',
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AboutScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _rowDivider(),
+                    _navRow(
+                      icon: Icons.help_outline_rounded,
+                      iconGradient: [
+                        LiquidColors.success,
+                        LiquidColors.accentBlue,
+                      ],
+                      title: 'Help & Support',
+                      subtitle: 'Send feedback, privacy policy, tips, and FAQs.',
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SupportScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ]),
                   const SizedBox(height: 26),
                   _versionFooter(),
                 ],
@@ -510,7 +517,32 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
-  Widget _navTile({
+  Widget _groupCard(List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: LiquidColors.cardBorder),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Column(children: children),
+      ),
+    );
+  }
+
+  Widget _rowDivider() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 66),
+      child: Divider(
+        height: 1,
+        thickness: 1,
+        color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+      ),
+    );
+  }
+
+  Widget _navRow({
     required IconData icon,
     required List<Color> iconGradient,
     required String title,
@@ -521,41 +553,25 @@ class _SettingsScreenState extends State<SettingsScreen>
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
-          decoration: BoxDecoration(
-            color: LiquidColors.backgroundLight.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-              width: 1,
-            ),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: iconGradient,
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(13),
-                  boxShadow: [
-                    BoxShadow(
-                      color: iconGradient.first.withValues(alpha: 0.35),
-                      blurRadius: 14,
-                      spreadRadius: -2,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: Colors.white, size: 22),
+                child: Icon(icon, color: Colors.white, size: 21),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,7 +581,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       style: TextStyle(
                         color: LiquidColors.textPrimary,
                         fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                         letterSpacing: 0.1,
                       ),
                     ),
@@ -575,7 +591,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       style: TextStyle(
                         color: LiquidColors.textSecondary,
                         fontSize: 12,
-                        height: 1.4,
+                        height: 1.35,
                       ),
                     ),
                   ],
@@ -584,6 +600,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               Icon(
                 Icons.chevron_right_rounded,
                 color: LiquidColors.textTertiary,
+                size: 22,
               ),
             ],
           ),

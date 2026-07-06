@@ -5,7 +5,6 @@ import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
-import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 import 'package:video_player_app/views/screens/deleted_video_screen/widgets/view.dart';
 
 class DeletedVideosScreen extends StatefulWidget {
@@ -669,7 +668,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      bottomNavigationBar: const LiquidBottomNav(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -827,7 +825,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     final hasQuery = _searchController.text.isNotEmpty;
     final active = hasQuery || _searchFocusNode.hasFocus;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,

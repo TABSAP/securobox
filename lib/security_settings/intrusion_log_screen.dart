@@ -308,7 +308,7 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
             .map((e) => e.timestamp)
             .reduce((a, b) => a > b ? a : b);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(

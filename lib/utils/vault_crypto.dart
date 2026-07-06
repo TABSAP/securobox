@@ -46,6 +46,8 @@ class VaultCrypto {
   Uint8List? _cachedRealKey;
   Uint8List? _cachedDecoyKey;
 
+  final Map<String, String> _plainCache = {};
+
   Uint8List _randomBytes(int length) {
     final r = Random.secure();
     return Uint8List.fromList(List<int>.generate(length, (_) => r.nextInt(256)));
@@ -135,6 +137,11 @@ class VaultCrypto {
     String encryptedPath, {
     bool forceReal = false,
   }) async {
+    final cached = _plainCache[encryptedPath];
+    if (cached != null && await File(cached).exists()) {
+      return cached;
+    }
+
     final key = await _getMasterKey(forceReal: forceReal);
     final encFile = File(encryptedPath);
     final raf = await encFile.open();
@@ -161,10 +168,15 @@ class VaultCrypto {
       authenticated: authenticated,
     );
 
+    _plainCache[encryptedPath] = outPath;
     return outPath;
   }
 
+  bool hasCachedPlaintext(String encryptedPath) =>
+      _plainCache.containsKey(encryptedPath);
+
   Future<void> wipeTempCache() async {
+    _plainCache.clear();
     try {
       final temp = await _tempDir();
       if (await temp.exists()) {
@@ -178,6 +190,7 @@ class VaultCrypto {
   }
 
   Future<void> wipeAllTempCache() async {
+    _plainCache.clear();
     try {
       final tmp = await getTemporaryDirectory();
       for (final name in _allTempDirNames) {

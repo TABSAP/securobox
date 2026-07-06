@@ -6,7 +6,6 @@ import 'package:video_player_app/security_settings/send_feedback_screen.dart';
 import 'package:video_player_app/utils/app_rating.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/responsive.dart';
-import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
@@ -15,8 +14,60 @@ class SupportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      bottomNavigationBar: const LiquidBottomNav(),
-      appBar: _appBar(context),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: LiquidColors.isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+        ),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.help_outline_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Help & Support',
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -34,7 +85,7 @@ class SupportScreen extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             context.contentInset(phone: 20),
-            12,
+            0,
             context.contentInset(phone: 20),
             32,
           ),
@@ -52,63 +103,6 @@ class SupportScreen extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _appBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [LiquidColors.backgroundDeep, LiquidColors.backgroundMid],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-      ),
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      title: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: LiquidColors.accentBlue.withValues(alpha: 0.4),
-                  blurRadius: 10,
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.help_outline_rounded,
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            'Help & Support',
-            style: TextStyle(
-              color: LiquidColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
       ),
     );
   }

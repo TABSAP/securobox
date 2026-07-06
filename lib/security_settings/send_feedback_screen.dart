@@ -649,7 +649,12 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: LiquidColors.isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -668,6 +673,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
             Container(
               width: 40,
               height: 40,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
@@ -675,16 +681,11 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.accentBlue.withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    spreadRadius: -2,
-                  ),
-                ],
               ),
-              child: Center(
-                child: Icon(Icons.send_rounded, color: Colors.white, size: 20),
+              child: const Icon(
+                Icons.send_rounded,
+                color: Colors.white,
+                size: 20,
               ),
             ),
             const SizedBox(width: 12),

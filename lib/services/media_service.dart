@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -10,9 +11,22 @@ import '../models/app_models.dart';
 import '../utils/session_manager.dart';
 import '../utils/vault_context.dart';
 
+List<VideoItem> _parseActiveMedia(List<String> raw) {
+  final list = <VideoItem>[];
+  for (final data in raw) {
+    final item = VideoItem.fromStorageString(data);
+    if (!item.isDeleted) list.add(item);
+  }
+  list.sort((a, b) => b.id.compareTo(a.id));
+  return list;
+}
+
 class MediaService {
   String get _storageKey => VaultContext.instance.libraryKey;
   String get _downloadHistoryKey => VaultContext.instance.downloadHistoryKey;
+
+  static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+  static void notifyChanged() => revision.value++;
 
   static const String galleryAlbum = 'SecuroBox';
 
@@ -24,13 +38,11 @@ class MediaService {
   Future<List<VideoItem>> loadMedia() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final raw = prefs.getStringList(_storageKey) ?? [];
 
-      final loadedList = mediaList
-          .map((data) => VideoItem.fromStorageString(data))
-          .where((item) => !item.isDeleted)
-          .toList()
-        ..sort((a, b) => b.id.compareTo(a.id));
+      final loadedList = raw.length > 250
+          ? await compute(_parseActiveMedia, raw)
+          : _parseActiveMedia(raw);
 
       _mediaList = loadedList;
       return loadedList;

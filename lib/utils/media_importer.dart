@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:video_player_app/services/media_service.dart';
 import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/title_helper.dart';
 import 'package:video_player_app/utils/vault_context.dart';
@@ -25,7 +26,13 @@ class PickedMedia {
   final File file;
   final String? identifier;
   final String? galleryAssetId;
-  const PickedMedia(this.file, {this.identifier, this.galleryAssetId});
+  final String? originalName;
+  const PickedMedia(
+    this.file, {
+    this.identifier,
+    this.galleryAssetId,
+    this.originalName,
+  });
 }
 
 class MediaImporter {
@@ -97,7 +104,10 @@ class MediaImporter {
         final encrypted = await VaultCrypto.instance.importEncrypted(f);
         final fileType = detectTypeFromPath(f.path);
         final cat = category ?? defaultCategoryForType(fileType);
-        final title = TitleHelper.smartName(f.path, type: fileType);
+        final original = items[i].originalName;
+        final title = (original != null && original.trim().isNotEmpty)
+            ? TitleHelper.originalName(original, type: fileType)
+            : TitleHelper.smartName(f.path, type: fileType);
         final ts = DateTime.now().millisecondsSinceEpoch + i;
         list.add(
           '$ts|$title|$encrypted|$fileType|false|$cat|false||true|false',
@@ -128,6 +138,7 @@ class MediaImporter {
     }
 
     await prefs.setStringList(libKey, list);
+    if (added > 0) MediaService.notifyChanged();
 
     if (deleteOriginals && pendingGalleryIds.isNotEmpty) {
       final removed = await ImportSettings.instance.deleteGalleryAssets(

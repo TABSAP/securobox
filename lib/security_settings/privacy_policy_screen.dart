@@ -16,7 +16,12 @@ class PrivacyPolicyScreen extends StatelessWidget {
       backgroundColor: LiquidColors.backgroundDeep,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: LiquidColors.isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -35,6 +40,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [LiquidColors.success, LiquidColors.accentBlue],
@@ -42,20 +48,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.success.withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    spreadRadius: -2,
-                  ),
-                ],
               ),
-              child: Center(
-                child: Icon(
-                  Icons.privacy_tip_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+              child: const Icon(
+                Icons.privacy_tip_rounded,
+                color: Colors.white,
+                size: 22,
               ),
             ),
             const SizedBox(width: 12),
@@ -90,7 +87,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             physics: const BouncingScrollPhysics(),
             padding: EdgeInsets.fromLTRB(
               context.contentInset(phone: 20),
-              16,
+              0,
               context.contentInset(phone: 20),
               40,
             ),

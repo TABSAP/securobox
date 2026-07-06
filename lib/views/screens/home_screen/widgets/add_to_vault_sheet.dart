@@ -44,11 +44,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     'Photos',
     'Audio',
     'Documents',
-    'Educational',
-    'Personal',
-    'Work',
-    'Sports',
-    'Travel',
     'Others',
   ];
 
@@ -152,7 +147,12 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       for (final a in assets) {
         final f = await a.file;
         if (f != null && await f.exists()) {
-          items.add(PickedMedia(f, galleryAssetId: a.id));
+          final name = await a.titleAsync;
+          items.add(PickedMedia(
+            f,
+            galleryAssetId: a.id,
+            originalName: name.isNotEmpty ? name : a.title,
+          ));
         }
       }
     } catch (_) {
@@ -199,7 +199,11 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
           file = await _materializePick(pf);
         }
         if (file != null) {
-          items.add(PickedMedia(file, identifier: pf.identifier));
+          items.add(PickedMedia(
+            file,
+            identifier: pf.identifier,
+            originalName: pf.name,
+          ));
         }
       }
     } catch (e) {

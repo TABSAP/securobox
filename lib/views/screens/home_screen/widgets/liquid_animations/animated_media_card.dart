@@ -52,7 +52,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       begin: const Offset(0, 0.08),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _entry, curve: Curves.easeOutCubic));
-    final delayMs = widget.index.clamp(0, 12) * 55;
+    final delayMs = widget.index.clamp(0, 6) * 28;
     Future.delayed(Duration(milliseconds: delayMs), () {
       if (mounted) _entry.forward();
     });

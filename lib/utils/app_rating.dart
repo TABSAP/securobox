@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:in_app_review/in_app_review.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -6,8 +8,7 @@ class AppRating {
   AppRating._();
 
   static const _packageId = 'app.securobox.vault';
-  static const _storeUrl =
-      'https://play.google.com/store/apps/details?id=$_packageId';
+  static const _appStoreId = '';
 
   static const _kImportCountKey = 'rating_import_count';
   static const _kAskedKey = 'rating_asked_v1';
@@ -16,26 +17,43 @@ class AppRating {
   static final InAppReview _review = InAppReview.instance;
 
   static Future<void> rateNow() async {
-    try {
-      if (await _review.isAvailable()) {
-        await _review.requestReview();
-        return;
-      }
-    } catch (_) {}
+    if (Platform.isIOS) {
+      try {
+        if (await _review.isAvailable()) {
+          await _review.requestReview();
+          return;
+        }
+      } catch (_) {}
+    }
     await openStore();
   }
 
   static Future<void> openStore() async {
-    try {
-      await _review.openStoreListing();
+    if (Platform.isIOS) {
+      if (_appStoreId.isNotEmpty) {
+        final launched = await _launch(
+          Uri.parse('https://apps.apple.com/app/id$_appStoreId?action=write-review'),
+        );
+        if (launched) return;
+        try {
+          await _review.openStoreListing(appStoreId: _appStoreId);
+        } catch (_) {}
+      }
       return;
-    } catch (_) {}
+    }
+
+    if (await _launch(Uri.parse('market://details?id=$_packageId'))) return;
+    await _launch(
+      Uri.parse('https://play.google.com/store/apps/details?id=$_packageId'),
+    );
+  }
+
+  static Future<bool> _launch(Uri uri) async {
     try {
-      await launchUrl(
-        Uri.parse(_storeUrl),
-        mode: LaunchMode.externalApplication,
-      );
-    } catch (_) {}
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      return false;
+    }
   }
 
   static Future<void> recordImportAndMaybeAsk() async {

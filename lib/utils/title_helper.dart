@@ -78,6 +78,15 @@ class TitleHelper {
     return name;
   }
 
+  static String originalName(String filename, {String? type}) {
+    var name = p.basenameWithoutExtension(filename).trim();
+    name = name.replaceAll(RegExp(r'[|\r\n\t]'), ' ');
+    name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (name.isEmpty) return _typedFallback(type);
+    if (name.length > 60) name = '${name.substring(0, 57).trim()}…';
+    return name;
+  }
+
   static String prettyTitleFromFilename(String filename) =>
       smartName(filename);
 

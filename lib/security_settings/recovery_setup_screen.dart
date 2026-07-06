@@ -49,9 +49,6 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
       r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$',
     ).hasMatch(value);
     if (!ok) return 'That doesn\'t look like a valid email';
-    if (!value.toLowerCase().endsWith('@gmail.com')) {
-      return 'Recovery email must be a Gmail address (end with @gmail.com)';
-    }
     return null;
   }
 
@@ -167,7 +164,12 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
       backgroundColor: LiquidColors.backgroundDeep,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        systemOverlayStyle: LiquidColors.isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -184,30 +186,29 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
         title: Row(
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Center(
-                child: Icon(
-                  Icons.restore_rounded,
-                  color: Colors.white,
-                  size: 18,
-                ),
+              child: const Icon(
+                Icons.restore_rounded,
+                color: Colors.white,
+                size: 20,
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Text(
               'Set Up Recovery',
               style: TextStyle(
                 color: LiquidColors.textPrimary,
-                fontSize: 17,
+                fontSize: 18,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.2,
               ),
@@ -277,7 +278,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           icon: Icons.shield_outlined,
           title: 'How this works',
           bullets: const [
-            'Only Gmail addresses (@gmail.com) are accepted',
+            'Any valid email works — Gmail, work, or custom domains',
             'You\'ll see a recovery code on the next screen',
             'You email it to yourself from your own email app',
             'Only a hash of the code is stored on this device',
@@ -326,7 +327,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                       : FontWeight.normal,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'you@gmail.com',
+                  hintText: 'you@example.com',
                   suffixIcon: _reissueMode
                       ? Icon(
                           Icons.lock_outline_rounded,

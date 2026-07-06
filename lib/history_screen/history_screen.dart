@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/responsive.dart';
-import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
@@ -707,10 +706,7 @@ class _HistoryScreenState extends State<HistoryScreen>
       );
     }
 
-    setState(() => _isLoading = true);
     await _loadDownloads();
-    if (!mounted) return;
-    FlushBarHelper.flushBarSuccessMessage('History refreshed', context);
   }
 
   Future<void> _clearDownloads() async {
@@ -851,7 +847,6 @@ class _HistoryScreenState extends State<HistoryScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      bottomNavigationBar: const LiquidBottomNav(),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -1021,7 +1016,7 @@ class _HistoryScreenState extends State<HistoryScreen>
 
   Widget _buildActiveSection() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
         decoration: BoxDecoration(
@@ -1116,7 +1111,7 @@ class _HistoryScreenState extends State<HistoryScreen>
     final sizeText = withSize > 0 ? _formatBytes(totalBytes) : '—';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
