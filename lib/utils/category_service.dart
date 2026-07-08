@@ -66,6 +66,10 @@ class CategoryService {
     ('Photos', 'image'),
     ('Audio', 'audio'),
     ('Documents', 'document'),
+    ('Archives', 'archive'),
+    ('Code', 'code'),
+    ('eBooks', 'ebook'),
+    ('Fonts', 'font'),
     ('Others', 'other'),
   ];
 

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>AppGroupId</key>
+    <string>$(CUSTOM_GROUP_ID)</string>
+    <key>CFBundleVersion</key>
+    <string>$(FLUTTER_BUILD_NUMBER)</string>
+    <key>NSExtension</key>
+    <dict>
+      <key>NSExtensionAttributes</key>
+      <dict>
+        <key>PHSupportedMediaTypes</key>
+        <array>
+          <string>Video</string>
+          <string>Image</string>
+        </array>
+        <key>NSExtensionActivationRule</key>
+        <dict>
+          <!-- Appear in the iOS share sheet for every supported kind: text,
+               URLs, images, videos and any other file (documents, archives,
+               code, ebooks, fonts). High max counts enable multi-file sharing. -->
+          <key>NSExtensionActivationSupportsText</key>
+          <true/>
+          <key>NSExtensionActivationSupportsWebURLWithMaxCount</key>
+          <integer>1</integer>
+          <key>NSExtensionActivationSupportsImageWithMaxCount</key>
+          <integer>100</integer>
+          <key>NSExtensionActivationSupportsMovieWithMaxCount</key>
+          <integer>100</integer>
+          <key>NSExtensionActivationSupportsFileWithMaxCount</key>
+          <integer>100</integer>
+        </dict>
+      </dict>
+      <key>NSExtensionMainStoryboard</key>
+      <string>MainInterface</string>
+      <key>NSExtensionPointIdentifier</key>
+      <string>com.apple.share-services</string>
+    </dict>
+  </dict>
+</plist>

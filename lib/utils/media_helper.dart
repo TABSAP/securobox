@@ -21,6 +21,14 @@ class MediaHelper {
         return Icons.music_note_rounded;
       case 'document':
         return Icons.description_rounded;
+      case 'archive':
+        return Icons.folder_zip_rounded;
+      case 'code':
+        return Icons.code_rounded;
+      case 'ebook':
+        return Icons.menu_book_rounded;
+      case 'font':
+        return Icons.text_fields_rounded;
       default:
         return Icons.insert_drive_file_rounded;
     }

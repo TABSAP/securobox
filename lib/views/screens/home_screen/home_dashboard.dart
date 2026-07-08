@@ -14,6 +14,7 @@ import 'package:video_player_app/utils/category_style.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_helper.dart';
+import 'package:video_player_app/utils/media_opener.dart';
 import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/notification_service.dart';
 import 'package:video_player_app/utils/responsive.dart';
@@ -118,13 +119,11 @@ class HomeDashboardState extends State<HomeDashboard> {
     if (mounted) _load();
   }
 
-  void _openItem(VideoItem item) {
+  Future<void> _openItem(VideoItem item) async {
     HapticFeedback.selectionClick();
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => HomeScreen(typeFilter: item.type, autoOpen: item),
-      ),
-    );
+    // Open the viewer directly on top of the dashboard so Back returns here
+    // (to Recently Added) instead of a filtered list the user never opened.
+    await openVaultMedia(context, item, onChanged: _load);
   }
 
   void _openRecent() {

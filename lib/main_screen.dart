@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:video_player_app/share_import/share_intake.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
@@ -37,6 +38,9 @@ class _MainScreenState extends State<MainScreen>
     _startInactivityTimer();
     AppNav.tab.value = 0;
     AppNav.tab.addListener(_onTabRequested);
+    // The vault is unlocked once we reach the main screen — release any files
+    // that were shared into the app while it was locked.
+    ShareIntake.instance.markUnlocked();
   }
 
   void _onTabRequested() {
@@ -50,6 +54,7 @@ class _MainScreenState extends State<MainScreen>
 
   @override
   void dispose() {
+    ShareIntake.instance.markLocked();
     SessionManager.instance.shouldLock.removeListener(_onLockRequested);
     AppNav.tab.removeListener(_onTabRequested);
     WidgetsBinding.instance.removeObserver(this);

@@ -18,6 +18,10 @@ class CategoryStyle {
   static const Color _audio = Color(0xFF8B5CF6); // violet
   static const Color _documents = Color(0xFFF59E0B); // amber
   static const Color _favorites = Color(0xFFF43F5E); // rose
+  static const Color _archives = Color(0xFF0EA5E9); // sky
+  static const Color _code = Color(0xFF14B8A6); // teal
+  static const Color _ebooks = Color(0xFFF97316); // orange
+  static const Color _fonts = Color(0xFFEC4899); // pink
   static const Color _others = Color(0xFF64748B); // slate
 
   // Palette used to give custom categories a stable, distinct colour derived
@@ -48,6 +52,14 @@ class CategoryStyle {
         return _documents;
       case 'favorites':
         return _favorites;
+      case 'archives':
+        return _archives;
+      case 'code':
+        return _code;
+      case 'ebooks':
+        return _ebooks;
+      case 'fonts':
+        return _fonts;
       case 'others':
         return _others;
     }
@@ -71,6 +83,14 @@ class CategoryStyle {
         return _audio;
       case 'document':
         return _documents;
+      case 'archive':
+        return _archives;
+      case 'code':
+        return _code;
+      case 'ebook':
+        return _ebooks;
+      case 'font':
+        return _fonts;
     }
     if (item.isFavorite) return _favorites;
     return forCategory(item.category);

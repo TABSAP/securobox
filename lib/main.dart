@@ -11,6 +11,7 @@ import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
+import 'package:video_player_app/share_import/share_intake.dart';
 import 'app.dart';
 
 void main() async {
@@ -49,6 +50,10 @@ void main() async {
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
 
   unawaited(VaultCrypto.instance.wipeAllTempCache());
+
+  // Start listening for files shared into the app (Android Sharesheet / iOS
+  // Share Extension). Presentation is gated on the vault being unlocked.
+  unawaited(ShareIntake.instance.init());
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:video_player_app/models/app_models.dart';
 import 'package:video_player_app/services/media_service.dart';
+import 'package:video_player_app/utils/file_type_registry.dart';
 import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/thumbnail_cache.dart';
 import 'package:video_player_app/utils/title_helper.dart';
@@ -47,55 +47,20 @@ class MediaImporter {
   MediaImporter._();
   static final MediaImporter instance = MediaImporter._();
 
-  static const _videoExts = {
-    'mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'm4v', 'webm', '3gp', 'mpg',
-    'mpeg', 'ts', 'mts', 'm2ts',
-  };
-  static const _imageExts = {
-    'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'heic', 'heif', 'tiff', 'tif',
-    'svg', 'ico',
-  };
-  static const _audioExts = {
-    'mp3', 'wav', 'aac', 'flac', 'ogg', 'oga', 'm4a', 'm4b', 'm4p', 'wma',
-    'aiff', 'aif', 'alac', 'opus', 'amr', 'mka', 'mid', 'midi', 'ape', 'ac3',
-    'dts', 'ra', 'rm', '3ga', 'caf',
-  };
-  static const _docExts = {
-    'pdf', 'doc', 'docx', 'txt', 'ppt', 'pptx', 'xls', 'xlsx', 'rtf', 'csv',
-    'odt', 'ods', 'odp', 'xml', 'html', 'htm', 'epub', 'mobi', 'tex', 'md',
-  };
-
   /// Document file extensions (no leading dots, lowercase), exposed so the
   /// file picker can restrict a Documents import to real document types.
-  static List<String> get docExtensions => _docExts.toList();
+  static List<String> get docExtensions =>
+      FileTypeRegistry.extensionsFor('document').toList();
 
-  String detectTypeFromPath(String path) {
-    final ext = p.extension(path).toLowerCase().replaceFirst('.', '');
-    if (_videoExts.contains(ext)) return 'video';
-    if (_imageExts.contains(ext)) return 'image';
-    if (_audioExts.contains(ext)) return 'audio';
-    if (_docExts.contains(ext)) return 'document';
-    return 'other';
-  }
+  String detectTypeFromPath(String path) => FileTypeRegistry.kindForPath(path);
 
-  String defaultCategoryForType(String type) {
-    switch (type) {
-      case 'video':
-        return 'Videos';
-      case 'image':
-        return 'Photos';
-      case 'audio':
-        return 'Audio';
-      case 'document':
-        return 'Documents';
-      default:
-        return 'Others';
-    }
-  }
+  String defaultCategoryForType(String type) =>
+      FileTypeRegistry.categoryForKind(type);
 
   Future<ImportResult> importFiles({
     required List<PickedMedia> items,
     String? category,
+    bool encrypt = true,
     void Function(int done, int total)? onProgress,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -115,7 +80,9 @@ class MediaImporter {
     for (int i = 0; i < items.length; i++) {
       final f = items[i].file;
       try {
-        final encrypted = await VaultCrypto.instance.importEncrypted(f);
+        final storedPath = encrypt
+            ? await VaultCrypto.instance.importEncrypted(f)
+            : await VaultCrypto.instance.importPlain(f);
         final fileType = detectTypeFromPath(f.path);
         final cat = category ?? defaultCategoryForType(fileType);
         final original = items[i].originalName;
@@ -126,11 +93,11 @@ class MediaImporter {
         final item = VideoItem(
           id: '$ts',
           title: title,
-          path: encrypted,
+          path: storedPath,
           type: fileType,
           isLocked: false,
           category: cat,
-          encrypted: true,
+          encrypted: encrypt,
           origin: items[i].origin ?? '',
           originAlbum: items[i].originAlbum ?? '',
         );
@@ -184,6 +151,20 @@ class MediaImporter {
       deletedOriginals: deletedOriginals,
       deleteOriginalsRequested: deleteOriginals,
     );
+  }
+
+  /// Lowercased titles of everything currently in the vault, so an import
+  /// preview can flag incoming files whose name already exists.
+  Future<Set<String>> existingTitlesLower() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
+    final set = <String>{};
+    for (final s in list) {
+      try {
+        set.add(VideoItem.fromStorageString(s).title.toLowerCase());
+      } catch (_) {}
+    }
+    return set;
   }
 
   Future<int> moveCategoryItems(String from, String to) async {

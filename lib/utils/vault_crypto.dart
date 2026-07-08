@@ -139,6 +139,27 @@ class VaultCrypto {
     return outPath;
   }
 
+  /// Copies [source] into the vault's private storage WITHOUT encrypting it,
+  /// returning the stored path. Used when the user opts out of encryption for a
+  /// shared import; the file still lives in the app's protected sandbox, just in
+  /// plaintext, so existing viewers (which honour `VideoItem.encrypted`) can
+  /// open it directly.
+  Future<String> importPlain(
+    File source, {
+    String? subdir,
+    bool forceReal = false,
+  }) async {
+    final baseDir = await _vaultDir(forceReal: forceReal);
+    final outDir = subdir == null
+        ? baseDir
+        : await Directory(p.join(baseDir.path, subdir)).create(recursive: true);
+    final ext = p.extension(source.path);
+    final outName = '${const Uuid().v4()}$ext';
+    final outPath = p.join(outDir.path, outName);
+    await source.copy(outPath);
+    return outPath;
+  }
+
   Future<String> decryptToTemp(
     String encryptedPath, {
     bool forceReal = false,
