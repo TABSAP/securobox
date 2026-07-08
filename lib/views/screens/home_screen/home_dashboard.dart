@@ -273,7 +273,7 @@ class HomeDashboardState extends State<HomeDashboard> {
     return Column(
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(inset, AppSpace.sm, inset, AppSpace.sm),
+          padding: EdgeInsets.fromLTRB(inset, 0, inset, AppSpace.sm),
           child: _searchBar(),
         ),
         Expanded(
@@ -289,7 +289,7 @@ class HomeDashboardState extends State<HomeDashboard> {
     final recent = _all.take(8).toList();
     return ListView(
       physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.only(top: AppSpace.xs, bottom: AppSpace.xl + 40),
+      padding: EdgeInsets.only(bottom: AppSpace.xl + 40),
       children: [
         // Recently added — a compact strip shown only when the vault has files.
         if (recent.isNotEmpty) ...[

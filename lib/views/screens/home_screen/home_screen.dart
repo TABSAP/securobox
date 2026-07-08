@@ -1339,7 +1339,7 @@ class HomeScreenState extends State<HomeScreen>
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpace.md,
-        AppSpace.sm,
+        0,
         AppSpace.md,
         AppSpace.sm,
       ),

@@ -35,8 +35,14 @@ class _Pbkdf2Worker {
     int dkLen,
   ) async {
     try {
-      await _ensureStarted();
+      // Bound the worker-startup handshake: if the isolate spawns but never
+      // reports back (rare, but would otherwise hang forever), fall back to a
+      // one-shot compute() so hashing never blocks indefinitely.
+      await _ensureStarted().timeout(const Duration(seconds: 5));
     } catch (_) {
+      return compute(_pbkdf2Entry, (password, salt, iterations, dkLen));
+    }
+    if (_sendPort == null) {
       return compute(_pbkdf2Entry, (password, salt, iterations, dkLen));
     }
     final id = _nextId++;

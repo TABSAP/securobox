@@ -41,6 +41,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   bool _enablingBiometric = false;
   String? _recoveryKey;
   bool _recoveryKeySaved = false;
+  bool _saving = false;
 
   late AnimationController _ctrl;
   late Animation<double> _fade;
@@ -174,6 +175,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _confirmAndSave() async {
+    // Guard against re-entry from rapid taps while the PIN is being saved.
+    if (_saving) return;
+
     if (_newPin != _confirmPin) {
       HapticFeedback.heavyImpact();
       _errorController.forward().then((_) {
@@ -190,25 +194,47 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       return;
     }
 
-    final pin = _newPin;
-    await PinCrypto.instance.setPin(pin);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('appLock', true);
-    await prefs.setBool('hasOnboarded', true);
+    // Show a processing state — the PIN + Recovery Key hashing (off the UI
+    // thread) can take a moment on slower devices; never leave it looking
+    // frozen, and never double-process.
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
 
-    // Generate and persist a fresh Recovery Key once, before showing it.
-    if (_recoveryKey == null) {
-      final code = RecoveryService.instance.generateCode();
-      await RecoveryService.instance.save(code: code);
+    try {
+      final pin = _newPin;
+      await PinCrypto.instance.setPin(pin);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('appLock', true);
+      await prefs.setBool('hasOnboarded', true);
+
+      // Generate and persist a fresh Recovery Key once, before showing it.
+      if (_recoveryKey == null) {
+        final code = RecoveryService.instance.generateCode();
+        await RecoveryService.instance.save(code: code);
+        _recoveryKey = code;
+      }
+
       if (!mounted) return;
-      _recoveryKey = code;
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _saving = false;
+        _step = _Step.recovery;
+      });
+      _animateForward();
+    } catch (_) {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _saving = false;
+        _error = 'Something went wrong — please try again';
+        _newPin = '';
+        _confirmPin = '';
+        _step = _Step.setPin;
+      });
+      _animateForward();
     }
-
-    HapticFeedback.mediumImpact();
-    if (!mounted) return;
-
-    setState(() => _step = _Step.recovery);
-    _animateForward();
   }
 
   Future<void> _copyRecoveryKey() async {
@@ -273,12 +299,27 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       body: Container(
         decoration: BoxDecoration(gradient: LiquidColors.backgroundGradient),
         child: SafeArea(
-          child: FadeTransition(
-            opacity: _fade,
-            child: SlideTransition(
-              position: _slide,
-              child: _buildStep(),
-            ),
+          child: Stack(
+            children: [
+              FadeTransition(
+                opacity: _fade,
+                child: SlideTransition(
+                  position: _slide,
+                  child: _buildStep(),
+                ),
+              ),
+              if (_saving)
+                Positioned.fill(
+                  child: Container(
+                    color: LiquidColors.scrim,
+                    alignment: Alignment.center,
+                    child: const AppLoader(
+                      size: 56,
+                      label: 'Securing your vault…',
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),
