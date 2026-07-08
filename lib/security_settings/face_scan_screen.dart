@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -696,14 +697,7 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                               Container(
                                 color: LiquidColors.backgroundLight,
                                 alignment: Alignment.center,
-                                child: const SizedBox(
-                                  width: 30,
-                                  height: 30,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.6,
-                                    color: _kGreenBright,
-                                  ),
-                                ),
+                                child: const AppLoader(size: 30),
                               ),
                             if (_phase == _Phase.scanning && _cameraReady)
                               AnimatedBuilder(

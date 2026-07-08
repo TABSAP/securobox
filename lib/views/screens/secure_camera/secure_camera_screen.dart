@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
@@ -368,7 +369,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
                 ? _errorView()
                 : (_initializing || _controller == null)
                     ? const Center(
-                        child: CircularProgressIndicator(color: Colors.white),
+                        child: AppLoader(color: Colors.white),
                       )
                     : _cameraView(),
       ),
@@ -678,12 +679,8 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
           shape: BoxShape.circle,
           color: Colors.white54,
         ),
-        child: Padding(
-          padding: EdgeInsets.all(16),
-          child: CircularProgressIndicator(
-            strokeWidth: 2.6,
-            color: Colors.black,
-          ),
+        child: Center(
+          child: AppLoader(size: 26),
         ),
       );
     } else if (_mode == _CaptureMode.photo) {
@@ -924,14 +921,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         ),
         child: Center(
           child: _saving
-              ? const SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: Colors.white,
-                  ),
-                )
+              ? const AppLoader(size: 22, color: Colors.white)
               : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

@@ -99,6 +99,8 @@ class MediaService {
 
       final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
       if (localIndex != -1) _mediaList[localIndex] = updatedMedia;
+      // Let listeners (e.g. the dashboard Favorites count) update in real time.
+      notifyChanged();
       return updatedMedia;
     } catch (e) {
       return null;
@@ -477,6 +479,100 @@ class MediaService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Saves a (decrypted) file to the device gallery (making it visible again)
+  /// and marks the item as unlocked/in-gallery. For photos and videos this
+  /// records the created asset id so the item can be hidden again later; other
+  /// file types are exported via [downloadFile]. Returns the updated item.
+  Future<VideoItem?> saveToGallery(
+    VideoItem media,
+    String decryptedPath,
+    String fileName,
+  ) async {
+    try {
+      final file = File(decryptedPath);
+      if (!await file.exists()) return null;
+
+      final ext = fileName.contains('.')
+          ? fileName.split('.').last.toLowerCase()
+          : '';
+      String assetId = '';
+
+      if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'm4v', 'mpg', 'mpeg']
+          .contains(ext)) {
+        final permission = await PhotoManager.requestPermissionExtend();
+        if (!permission.isAuth) return null;
+        final asset = await PhotoManager.editor.saveVideo(
+          file,
+          title: fileName,
+          relativePath: 'Movies/$galleryAlbum',
+        );
+        assetId = asset.id;
+      } else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif']
+          .contains(ext)) {
+        final permission = await PhotoManager.requestPermissionExtend();
+        if (!permission.isAuth) return null;
+        final asset = await PhotoManager.editor.saveImage(
+          await file.readAsBytes(),
+          title: fileName,
+          relativePath: 'Pictures/$galleryAlbum',
+          filename: fileName,
+        );
+        assetId = asset.id;
+      } else {
+        // Audio / documents / other — not gallery media; export a copy.
+        final ok = await downloadFile(
+          filePath: decryptedPath,
+          fileName: fileName,
+        );
+        if (!ok) return null;
+      }
+
+      final updated = media.copyWith(inGallery: true, galleryId: assetId);
+      await _persistUpdate(updated);
+      await _addToDownloadHistory(
+        fileName: fileName,
+        filePath: decryptedPath,
+        fileSize: _formatBytes(await file.length()),
+      );
+      return updated;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Removes a previously-unlocked item from the device gallery (hides it
+  /// again) and clears the stored asset id. Returns the updated item.
+  Future<VideoItem?> removeFromGallery(VideoItem media) async {
+    try {
+      if (media.galleryId.isNotEmpty) {
+        final permission = await PhotoManager.requestPermissionExtend();
+        if (permission.isAuth) {
+          try {
+            await PhotoManager.editor.deleteWithIds([media.galleryId]);
+          } catch (_) {}
+        }
+      }
+      final updated = media.copyWith(inGallery: false, galleryId: '');
+      await _persistUpdate(updated);
+      return updated;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Writes an updated item back to storage and the in-memory list.
+  Future<bool> _persistUpdate(VideoItem updated) async {
+    final prefs = await SharedPreferences.getInstance();
+    final mediaList = prefs.getStringList(_storageKey) ?? [];
+    final index = mediaList.indexWhere((item) => item.startsWith(updated.id));
+    if (index == -1) return false;
+    mediaList[index] = updated.toStorageString();
+    await prefs.setStringList(_storageKey, mediaList);
+    final localIndex = _mediaList.indexWhere((item) => item.id == updated.id);
+    if (localIndex != -1) _mediaList[localIndex] = updated;
+    return true;
   }
 
   Future<void> _addToDownloadHistory({

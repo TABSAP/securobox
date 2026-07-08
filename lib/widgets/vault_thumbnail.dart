@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
 
 import 'package:video_player_app/models/app_models.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
@@ -9,11 +11,12 @@ import 'package:video_player_app/utils/vault_crypto.dart';
 
 /// A rounded media thumbnail for a vault item.
 ///
-/// Images that are not individually locked are decrypted to a temp file
-/// (reusing [VaultCrypto.decryptToTemp]'s session cache, wiped on lock) and
-/// shown as a real preview. Everything else — videos, audio, documents,
-/// files, and any locked item — shows a type-appropriate gradient icon, so a
-/// preview never leaks a locked item's contents.
+/// Images and videos that are not individually locked are decrypted to a temp
+/// file (reusing [VaultCrypto.decryptToTemp]'s session cache, wiped on lock);
+/// images show a real preview and videos show an extracted first-frame preview
+/// (generated once per session and cached in memory). Audio, documents and any
+/// locked item show a type-appropriate gradient icon, so a preview never leaks
+/// a locked item's contents.
 class VaultThumbnail extends StatefulWidget {
   final VideoItem item;
   final double width;
@@ -35,10 +38,15 @@ class VaultThumbnail extends StatefulWidget {
 }
 
 class _VaultThumbnailState extends State<VaultThumbnail> {
+  // Generated video first-frame thumbnails, cached for the session so we only
+  // decrypt + extract once per video (keyed by item id).
+  static final Map<String, File> _videoThumbCache = {};
+
   File? _image;
 
-  bool get _canPreview =>
-      widget.item.type == 'image' && !widget.item.isLocked;
+  bool get _isImage => widget.item.type == 'image';
+  bool get _isVideo => widget.item.type == 'video';
+  bool get _canPreview => (_isImage || _isVideo) && !widget.item.isLocked;
 
   @override
   void initState() {
@@ -58,6 +66,11 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
 
   Future<void> _load() async {
     try {
+      if (_isVideo) {
+        await _loadVideoThumb();
+        return;
+      }
+      // Image: decrypt the file and show it directly.
       final path = widget.item.encrypted
           ? await VaultCrypto.instance.decryptToTemp(widget.item.path)
           : widget.item.path;
@@ -68,6 +81,32 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
       }
     } catch (_) {
       // Keep the fallback icon on any decrypt/read failure.
+    }
+  }
+
+  Future<void> _loadVideoThumb() async {
+    final cached = _videoThumbCache[widget.item.id];
+    if (cached != null && await cached.exists()) {
+      if (mounted) setState(() => _image = cached);
+      return;
+    }
+    // Extract a first frame from the (decrypted) video into a temp jpeg.
+    final videoPath = widget.item.encrypted
+        ? await VaultCrypto.instance.decryptToTemp(widget.item.path)
+        : widget.item.path;
+    final tmpDir = await getTemporaryDirectory();
+    final String? thumbPath = await VideoThumbnail.thumbnailFile(
+      video: videoPath,
+      thumbnailPath: tmpDir.path,
+      imageFormat: ImageFormat.JPEG,
+      maxWidth: 256,
+      quality: 55,
+    );
+    if (thumbPath == null) return;
+    final thumb = File(thumbPath);
+    if (await thumb.exists()) {
+      _videoThumbCache[widget.item.id] = thumb;
+      if (mounted) setState(() => _image = thumb);
     }
   }
 
@@ -114,7 +153,7 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
               _iconLayer(type),
             if (widget.item.isLocked)
               _badge(Icons.lock_rounded)
-            else if (type == 'video' && _image == null)
+            else if (type == 'video')
               Center(child: _playBadge()),
           ],
         ),

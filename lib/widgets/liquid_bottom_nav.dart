@@ -27,7 +27,6 @@ class LiquidBottomNav extends StatelessWidget {
       Icons.video_library_rounded,
       'Library',
     ),
-    _NavItem(Icons.shield_moon_outlined, Icons.shield_moon_rounded, 'Logs'),
     _NavItem(Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
   ];
 
@@ -43,29 +42,24 @@ class LiquidBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = selectedIndex ?? 0;
+    // Clean, flat navigation bar: theme-adaptive surface with a single hairline
+    // divider on top — no pills or heavy shadows.
     return DecoratedBox(
       decoration: BoxDecoration(
         color: LiquidColors.backgroundDeep,
-        border: Border(top: BorderSide(color: LiquidColors.cardBorder)),
-        boxShadow: [
-          BoxShadow(
-            color: LiquidColors.shadow,
-            blurRadius: 16,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        border: Border(top: BorderSide(color: LiquidColors.divider)),
       ),
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 62,
+          height: 52,
           child: Row(
             children: List.generate(_navItems.length, (i) {
               return Expanded(
                 child: _NavButton(
                   item: _navItems[i],
                   selected: i == current,
-                  showBadge: i == 1,
+                  showBadge: false,
                   onTap: () => _onTap(context, i),
                 ),
               );
@@ -92,8 +86,9 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = LiquidColors.accentBlue;
-    final color = selected ? accent : LiquidColors.textTertiary;
+    // Selected uses the single brand indigo; unselected uses an adaptive
+    // secondary colour (dark in light theme, light in dark theme).
+    final color = selected ? LiquidColors.indigo : LiquidColors.textSecondary;
 
     Widget icon = Icon(
       selected ? item.activeIcon : item.icon,
@@ -150,31 +145,17 @@ class _NavButton extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            width: 58,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: selected
-                  ? accent.withValues(alpha: 0.14)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: icon,
-          ),
-          const SizedBox(height: 4),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 200),
+          icon,
+          const SizedBox(height: 3),
+          Text(
+            item.label,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 11,
               height: 1,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: color,
               letterSpacing: 0.1,
             ),
-            child: Text(item.label),
           ),
         ],
       ),

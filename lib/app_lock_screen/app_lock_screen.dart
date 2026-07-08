@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_action_button.dart';
@@ -22,7 +23,6 @@ import 'package:video_player_app/widgets/biometric_auth_sheet.dart';
 
 import '../main_screen.dart';
 import '../utils/liquid_colors.dart';
-import '../utils/liquid_circular_progress.dart';
 
 class AppLockScreen extends StatefulWidget {
   final bool isOverlay;
@@ -624,14 +624,7 @@ class _AppLockScreenState extends State<AppLockScreen>
                   ),
                   alignment: Alignment.center,
                   child: _isAuthenticating
-                      ? const SizedBox(
-                          width: 30,
-                          height: 30,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.6,
-                            color: Colors.white,
-                          ),
-                        )
+                      ? const AppLoader(size: 30, color: Colors.white)
                       : Icon(icon, color: Colors.white, size: 48),
                 ),
               );
@@ -717,7 +710,7 @@ class _AppLockScreenState extends State<AppLockScreen>
     if (_isUnlocking) {
       return Scaffold(
         backgroundColor: LiquidColors.backgroundDeep,
-        body: const Center(child: LiquidCircularProgress(size: 64)),
+        body: const Center(child: AppLoader(size: 56)),
       );
     }
 
@@ -1119,13 +1112,7 @@ class _BioTileState extends State<_BioTile> {
                       .withValues(alpha: 0.18),
                 ),
                 child: widget.busy
-                    ? Padding(
-                        padding: const EdgeInsets.all(11),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: fg,
-                        ),
-                      )
+                    ? Center(child: AppLoader(size: 20, color: fg))
                     : Icon(widget.icon, color: fg, size: 23),
               ),
               const SizedBox(height: 9),

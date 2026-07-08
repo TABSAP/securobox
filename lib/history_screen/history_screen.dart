@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/responsive.dart';
@@ -1019,14 +1020,7 @@ class _HistoryScreenState extends State<HistoryScreen>
           children: [
             Row(
               children: [
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.8,
-                    color: LiquidColors.accentBlue,
-                  ),
-                ),
+                AppLoader(size: 18),
                 const SizedBox(width: 8),
                 Text(
                   'SAVING TO YOUR DEVICE',
@@ -1531,11 +1525,7 @@ class _ActiveJobCard extends StatelessWidget {
       );
     }
     if (job.indeterminate) {
-      return SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(strokeWidth: 2, color: tint),
-      );
+      return AppLoader(size: 22);
     }
     return Text(
       '$pct%',

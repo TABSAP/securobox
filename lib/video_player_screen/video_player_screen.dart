@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
+import 'package:video_player_app/utils/liquid_colors.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoPath;
@@ -149,7 +150,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         bool showDetails = false;
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) => Dialog(
-            backgroundColor: const Color(0xFF1A1A3E),
+            backgroundColor: LiquidColors.backgroundLight,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -172,21 +173,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
+                  Text(
                     'Can\'t play this video',
                     style: TextStyle(
                       fontSize: 19,
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: LiquidColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     'This file may be damaged or in a format that isn\'t '
                     'supported.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: LiquidColors.textSecondary,
                       fontSize: 13,
                       height: 1.5,
                     ),
@@ -198,14 +199,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       constraints: const BoxConstraints(maxHeight: 200),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.35),
+                        color: LiquidColors.textPrimary.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: SingleChildScrollView(
                         child: SelectableText(
                           _errorDetail ?? 'No additional details.',
-                          style: const TextStyle(
-                            color: Colors.white54,
+                          style: TextStyle(
+                            color: LiquidColors.textTertiary,
                             fontFamily: 'monospace',
                             fontSize: 11,
                           ),
@@ -222,7 +223,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           ? 'Hide technical details'
                           : 'Show technical details',
                       style: const TextStyle(
-                        color: Color(0xFF4788FF),
+                        color: Color(0xFF6366F1),
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -237,7 +238,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         if (mounted) Navigator.of(context).pop();
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4788FF),
+                        backgroundColor: const Color(0xFF6366F1),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -434,12 +435,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4788FF),
+                          color: const Color(0xFF6366F1),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: const Color(
-                                0xFF4788FF,
+                                0xFF6366F1,
                               ).withValues(alpha: 0.35),
                               blurRadius: 22,
                               spreadRadius: -4,
@@ -495,7 +496,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     _videoPlayerController,
                     allowScrubbing: true,
                     colors: const VideoProgressColors(
-                      playedColor: Color(0xFF4788FF),
+                      playedColor: Color(0xFF6366F1),
                       bufferedColor: Colors.white30,
                       backgroundColor: Colors.white24,
                     ),
@@ -578,7 +579,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void _showPlaybackSpeedDialog() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A3E),
+      backgroundColor: LiquidColors.backgroundLight,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -587,10 +588,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Playback Speed',
               style: TextStyle(
-                color: Colors.white,
+                color: LiquidColors.textPrimary,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
@@ -616,13 +617,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   child: Container(
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF4788FF)
-                          : const Color(0xFF141432),
+                          ? const Color(0xFF6366F1)
+                          : LiquidColors.surfaceMuted,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isSelected
-                            ? const Color(0xFF4788FF)
-                            : Colors.white.withValues(alpha: 0.1),
+                            ? const Color(0xFF6366F1)
+                            : LiquidColors.cardBorder,
                         width: 2,
                       ),
                     ),
@@ -630,7 +631,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       child: Text(
                         '${speed}x',
                         style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.grey.shade400,
+                          color: isSelected
+                              ? Colors.white
+                              : LiquidColors.textSecondary,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -662,7 +665,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(
-              color: Color(0xFF4788FF),
+              color: Color(0xFF6366F1),
               strokeWidth: 3,
             ),
             SizedBox(height: 20),
@@ -713,7 +716,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: LiquidColors.backgroundDeep,
       body: _buildVideoPlayerWithOrientationHandler(),
     );
   }

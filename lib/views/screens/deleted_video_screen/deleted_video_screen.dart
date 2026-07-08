@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
-import 'package:video_player_app/utils/liquid_circular_progress.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 import 'package:video_player_app/views/screens/deleted_video_screen/widgets/view.dart';
@@ -932,16 +932,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             builder: (context, double value, child) {
               return Transform.scale(
                 scale: value,
-                child: LiquidCircularProgress(
-                  size: 96,
-                  strokeWidth: 6,
-                  colors: [
-                    LiquidColors.error,
-                    LiquidColors.accentOrange,
-                    LiquidColors.warning,
-                  ],
-                  glowColor: LiquidColors.error,
-                ),
+                child: const AppLoader(size: 64),
               );
             },
           ),

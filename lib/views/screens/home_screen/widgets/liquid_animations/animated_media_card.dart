@@ -10,12 +10,16 @@ class AnimatedMediaCard extends StatefulWidget {
   final VoidCallback? onTap;
   final VoidCallback? onCategoryTap;
   final VoidCallback? onDownloadTap;
+  final VoidCallback? onGalleryToggle;
   final VoidCallback? onDeleteTap;
   final VoidCallback? onRenameTap;
   final Function(String)? onCategorySelected;
   final VoidCallback? onFavoriteToggle;
+  final VoidCallback? onLongPress;
   final List<String> categories;
   final int index;
+  final bool selectionMode;
+  final bool selected;
 
   const AnimatedMediaCard({
     super.key,
@@ -23,12 +27,16 @@ class AnimatedMediaCard extends StatefulWidget {
     this.onTap,
     this.onCategoryTap,
     this.onDownloadTap,
+    this.onGalleryToggle,
     this.onDeleteTap,
     this.onCategorySelected,
     this.onFavoriteToggle,
+    this.onLongPress,
     required this.categories,
     required this.index,
     required this.onRenameTap,
+    this.selectionMode = false,
+    this.selected = false,
   });
 
   @override
@@ -78,6 +86,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
+          onLongPress: widget.onLongPress,
           onTapDown: (_) => setState(() => _pressed = true),
           onTapUp: (_) => setState(() => _pressed = false),
           onTapCancel: () => setState(() => _pressed = false),
@@ -93,25 +102,49 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   }
 
   Widget _buildCard(BuildContext context) {
+    final selected = widget.selectionMode && widget.selected;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpace.sm + 2),
       padding: const EdgeInsets.all(AppSpace.sm + 2),
       decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight.withValues(
-          alpha: _pressed ? 0.78 : 0.55,
-        ),
+        color: selected
+            ? LiquidColors.indigo.withValues(alpha: 0.10)
+            : LiquidColors.backgroundLight.withValues(
+                alpha: _pressed ? 0.78 : 0.55,
+              ),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: LiquidColors.cardBorder),
+        border: Border.all(
+          color: selected
+              ? LiquidColors.indigo.withValues(alpha: 0.5)
+              : LiquidColors.cardBorder,
+          width: selected ? 1.4 : 1,
+        ),
       ),
       child: Row(
         children: [
+          if (widget.selectionMode) ...[
+            _buildSelectionIndicator(),
+            const SizedBox(width: 10),
+          ],
           _buildThumbnail(),
           const SizedBox(width: 12),
           Expanded(child: _buildInfo()),
-          const SizedBox(width: 4),
-          _buildActions(context),
+          if (!widget.selectionMode) ...[
+            const SizedBox(width: 4),
+            _buildActions(context),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildSelectionIndicator() {
+    return Icon(
+      widget.selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+      size: 24,
+      color: widget.selected
+          ? LiquidColors.indigo
+          : LiquidColors.textTertiary,
     );
   }
 
@@ -280,11 +313,13 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           'Change category',
           LiquidColors.success,
         ),
+        // Every item is hidden from the device gallery by default. "Unlock"
+        // makes it visible in the gallery again; once visible it can be hidden.
         _menuItem(
-          'download',
-          Icons.download_rounded,
-          'Save to gallery',
-          LiquidColors.accentPurple,
+          'gallery',
+          _m.inGallery ? Icons.lock_open_rounded : Icons.lock_rounded,
+          _m.inGallery ? 'Hide from gallery' : 'Unlock',
+          LiquidColors.indigo,
         ),
         const PopupMenuDivider(height: 6),
         _menuItem(
@@ -309,6 +344,9 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
         break;
       case 'download':
         widget.onDownloadTap?.call();
+        break;
+      case 'gallery':
+        widget.onGalleryToggle?.call();
         break;
       case 'delete':
         widget.onDeleteTap?.call();

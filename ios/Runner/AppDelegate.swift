@@ -2,9 +2,9 @@ import Flutter
 import UIKit
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
-  private var privacyView: UIView?
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private var secureField: UITextField?
+  private weak var securedHostView: UIView?
   private var screenSecurityEnabled = false
   private var screenChannel: FlutterMethodChannel?
 
@@ -12,30 +12,7 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
     setSecureFileProtection()
-
-    let launched = super.application(application, didFinishLaunchingWithOptions: launchOptions)
-
-    if let controller = window?.rootViewController as? FlutterViewController {
-      let channel = FlutterMethodChannel(
-        name: "secure_player/screen_security",
-        binaryMessenger: controller.binaryMessenger
-      )
-      channel.setMethodCallHandler { [weak self] call, result in
-        switch call.method {
-        case "setSecure":
-          let on = (call.arguments as? Bool) ?? false
-          self?.setScreenSecure(on)
-          result(nil)
-        case "isCaptured":
-          result(UIScreen.main.isCaptured)
-        default:
-          result(FlutterMethodNotImplemented)
-        }
-      }
-      screenChannel = channel
-    }
 
     NotificationCenter.default.addObserver(
       self,
@@ -50,7 +27,33 @@ import UIKit
       object: nil
     )
 
-    return launched
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  // Called once the implicit FlutterEngine (created by the storyboard's
+  // FlutterViewController) is ready. Under the UIScene lifecycle the window and
+  // root view controller no longer exist in didFinishLaunchingWithOptions, so
+  // plugin registration and application-level method channels are set up here.
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+
+    let channel = FlutterMethodChannel(
+      name: "secure_player/screen_security",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    channel.setMethodCallHandler { [weak self] call, result in
+      switch call.method {
+      case "setSecure":
+        let on = (call.arguments as? Bool) ?? false
+        self?.setScreenSecure(on)
+        result(nil)
+      case "isCaptured":
+        result(UIScreen.main.isCaptured)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    screenChannel = channel
   }
 
   private func setSecureFileProtection() {
@@ -76,8 +79,10 @@ import UIKit
   // MARK: - Screen capture protection
 
   private func keyWindow() -> UIWindow? {
-    return UIApplication.shared.windows.first(where: { $0.isKeyWindow })
-      ?? UIApplication.shared.windows.first
+    let windows = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap { $0.windows }
+    return windows.first(where: { $0.isKeyWindow }) ?? windows.first
   }
 
   private func setScreenSecure(_ enabled: Bool) {
@@ -91,28 +96,43 @@ import UIKit
     }
   }
 
-  // Marks the app window as secure so its contents are excluded from
-  // screenshots, screen recordings and the app-switcher snapshot — the iOS
-  // equivalent of Android's FLAG_SECURE.
+  // Marks the app content as secure so it is excluded from screenshots, screen
+  // recordings and the app-switcher snapshot — the iOS equivalent of Android's
+  // FLAG_SECURE. The trick reparents the host view's layer into the hidden
+  // secure canvas of an `isSecureTextEntry` UITextField, so the content still
+  // renders full-screen but the system refuses to capture it.
+  //
+  // It MUST be applied to a full-size subview (the root view controller's
+  // view), not the UIWindow: a window's layer has no superlayer, so anchoring
+  // the trick there collapses all content into the text field's tiny frame.
   private func applySecureField() {
-    guard secureField == nil, let window = keyWindow() else { return }
+    guard secureField == nil,
+          let hostView = keyWindow()?.rootViewController?.view else { return }
     let field = UITextField()
     field.isSecureTextEntry = true
     field.isUserInteractionEnabled = false
     field.translatesAutoresizingMaskIntoConstraints = false
-    window.addSubview(field)
+    hostView.addSubview(field)
     NSLayoutConstraint.activate([
-      field.centerXAnchor.constraint(equalTo: window.centerXAnchor),
-      field.centerYAnchor.constraint(equalTo: window.centerYAnchor),
+      field.centerXAnchor.constraint(equalTo: hostView.centerXAnchor),
+      field.centerYAnchor.constraint(equalTo: hostView.centerYAnchor),
     ])
-    window.layer.superlayer?.addSublayer(field.layer)
-    field.layer.sublayers?.first?.addSublayer(window.layer)
+    hostView.layer.superlayer?.addSublayer(field.layer)
+    field.layer.sublayers?.last?.addSublayer(hostView.layer)
     secureField = field
+    securedHostView = hostView
   }
 
   private func removeSecureField() {
+    // Restore the host view's layer to the window before tearing down the
+    // field, otherwise removing the field would also remove the content layer
+    // that was reparented beneath it.
+    if let hostView = securedHostView, let window = hostView.window {
+      window.layer.addSublayer(hostView.layer)
+    }
     secureField?.removeFromSuperview()
     secureField = nil
+    securedHostView = nil
   }
 
   @objc private func handleScreenshot() {
@@ -127,77 +147,5 @@ import UIKit
       DispatchQueue.main.async { self.applySecureField() }
     }
     screenChannel?.invokeMethod("onCaptureChange", arguments: UIScreen.main.isCaptured)
-  }
-
-  // MARK: - App-switcher privacy shield
-
-  override func applicationWillResignActive(_ application: UIApplication) {
-    super.applicationWillResignActive(application)
-    showPrivacyView()
-  }
-
-  override func applicationDidEnterBackground(_ application: UIApplication) {
-    super.applicationDidEnterBackground(application)
-    showPrivacyView()
-  }
-
-  override func applicationDidBecomeActive(_ application: UIApplication) {
-    super.applicationDidBecomeActive(application)
-    hidePrivacyView()
-  }
-
-  private func showPrivacyView() {
-    guard let window = keyWindow() else { return }
-    if privacyView != nil { return }
-
-    let view = UIView(frame: window.bounds)
-    view.backgroundColor = UIColor(red: 0x0A/255.0, green: 0x0A/255.0, blue: 0x1F/255.0, alpha: 1.0)
-    view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-
-    let badge = UIView()
-    badge.translatesAutoresizingMaskIntoConstraints = false
-    badge.layer.cornerRadius = 28
-    badge.layer.masksToBounds = true
-
-    let gradient = CAGradientLayer()
-    gradient.colors = [
-      UIColor(red: 0x41/255.0, green: 0x58/255.0, blue: 0xD0/255.0, alpha: 1.0).cgColor,
-      UIColor(red: 0xC8/255.0, green: 0x50/255.0, blue: 0xC0/255.0, alpha: 1.0).cgColor,
-      UIColor(red: 0xFF/255.0, green: 0xCC/255.0, blue: 0x70/255.0, alpha: 1.0).cgColor
-    ]
-    gradient.startPoint = CGPoint(x: 0, y: 0)
-    gradient.endPoint = CGPoint(x: 1, y: 1)
-    gradient.frame = CGRect(x: 0, y: 0, width: 110, height: 110)
-    badge.layer.insertSublayer(gradient, at: 0)
-
-    if #available(iOS 13.0, *) {
-      let icon = UIImageView(image: UIImage(systemName: "shield.fill"))
-      icon.tintColor = .white
-      icon.contentMode = .scaleAspectFit
-      icon.translatesAutoresizingMaskIntoConstraints = false
-      badge.addSubview(icon)
-      NSLayoutConstraint.activate([
-        icon.centerXAnchor.constraint(equalTo: badge.centerXAnchor),
-        icon.centerYAnchor.constraint(equalTo: badge.centerYAnchor),
-        icon.widthAnchor.constraint(equalToConstant: 60),
-        icon.heightAnchor.constraint(equalToConstant: 60),
-      ])
-    }
-
-    view.addSubview(badge)
-    NSLayoutConstraint.activate([
-      badge.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-      badge.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-      badge.widthAnchor.constraint(equalToConstant: 110),
-      badge.heightAnchor.constraint(equalToConstant: 110),
-    ])
-
-    window.addSubview(view)
-    privacyView = view
-  }
-
-  private func hidePrivacyView() {
-    privacyView?.removeFromSuperview()
-    privacyView = nil
   }
 }

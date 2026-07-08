@@ -208,7 +208,7 @@ class SupportScreen extends StatelessWidget {
       'Enable biometric authentication for faster, secure access.',
       'Lock individual videos for extra protection on sensitive files.',
       'Change your PIN every few months for better security.',
-      'Set up a recovery email so a forgotten PIN doesn\'t mean wiping the vault.',
+      'Set up a Recovery Key so a forgotten PIN doesn\'t mean wiping the vault.',
     ];
     return _sectionCard(
       icon: Icons.lightbulb_outline_rounded,
@@ -235,9 +235,9 @@ class SupportScreen extends StatelessWidget {
       ),
       _Faq(
         q: 'What happens if I forget my PIN?',
-        a: 'If you set up a recovery email, paste the recovery code from that '
-            'email on the Forgot PIN screen. Without recovery, the only option '
-            'is to wipe the vault.',
+        a: 'If you set up a Recovery Key, enter it on the Forgot PIN screen to '
+            'reset your PIN. Without your Recovery Key, the only option is to '
+            'wipe the vault.',
       ),
       _Faq(
         q: 'Does SecuroBox work without internet?',

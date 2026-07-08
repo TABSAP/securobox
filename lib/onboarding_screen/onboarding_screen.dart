@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/main_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/session_manager.dart';
-import 'package:video_player_app/security_settings/recovery_setup_screen.dart';
+import 'package:video_player_app/utils/recovery_service.dart';
+import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
@@ -37,6 +39,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   String? _error;
   bool _biometricAvailable = false;
   bool _enablingBiometric = false;
+  String? _recoveryKey;
+  bool _recoveryKeySaved = false;
 
   late AnimationController _ctrl;
   late Animation<double> _fade;
@@ -192,6 +196,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     await prefs.setBool('appLock', true);
     await prefs.setBool('hasOnboarded', true);
 
+    // Generate and persist a fresh Recovery Key once, before showing it.
+    if (_recoveryKey == null) {
+      final code = RecoveryService.instance.generateCode();
+      await RecoveryService.instance.save(code: code);
+      if (!mounted) return;
+      _recoveryKey = code;
+    }
+
     HapticFeedback.mediumImpact();
     if (!mounted) return;
 
@@ -199,18 +211,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _animateForward();
   }
 
-  Future<void> _addRecoveryEmail() async {
+  Future<void> _copyRecoveryKey() async {
+    if (_recoveryKey == null) return;
     HapticFeedback.lightImpact();
-    final saved = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const RecoverySetupScreen()),
-    );
+    await Clipboard.setData(ClipboardData(text: _recoveryKey!));
     if (!mounted) return;
-    if (saved == true) _afterRecovery();
-  }
-
-  void _skipRecovery() {
-    HapticFeedback.lightImpact();
-    _afterRecovery();
+    FlushBarHelper.flushBarSuccessMessage(
+      'Recovery Key copied — paste it somewhere safe',
+      context,
+    );
   }
 
   void _afterRecovery() {
@@ -665,37 +674,41 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _recoveryPrompt() {
+    final key = _recoveryKey ?? '';
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 44),
-            Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.accentBlue.withValues(alpha: 0.4),
-                    blurRadius: 30,
-                    spreadRadius: 4,
+            const SizedBox(height: 40),
+            Center(
+              child: Container(
+                width: 110,
+                height: 110,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: LiquidColors.accentBlue.withValues(alpha: 0.4),
+                      blurRadius: 30,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: Icon(Icons.vpn_key_rounded,
+                    color: Colors.white, size: 56),
               ),
-              child: Icon(Icons.mark_email_read_rounded,
-                  color: Colors.white, size: 56),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
             Text(
-              'Add a Recovery Email',
+              'Save Your Recovery Key',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 24,
@@ -705,10 +718,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'Link an email address so you can reset your PIN if you ever '
-              'forget it. SecuroBox creates a one-time recovery code for you '
-              'to email to yourself — your files and email are never uploaded '
-              'anywhere.',
+              'This is the only way to regain access if you forget your PIN. '
+              'It can\'t be recovered for you. Copy it now and store it '
+              'somewhere safe.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -717,6 +729,58 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
             ),
             const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    LiquidColors.accentBlue.withValues(alpha: 0.16),
+                    LiquidColors.accentPurple.withValues(alpha: 0.08),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: LiquidColors.accentBlue.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Center(
+                child: SelectableText(
+                  key,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 4,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _copyRecoveryKey,
+                icon: Icon(Icons.copy_rounded,
+                    size: 16, color: LiquidColors.textSecondary),
+                label: Text('Copy',
+                    style: TextStyle(
+                      color: LiquidColors.textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    )),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  side: BorderSide(color: LiquidColors.textTertiary),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -733,9 +797,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'If you don\'t add an email, a forgotten PIN cannot be '
-                      'recovered — you may permanently lose access to your '
-                      'vault and everything inside it.',
+                      'If you lose this key and forget your PIN, your vault and '
+                      'everything inside it become permanently inaccessible. '
+                      'We can\'t recover it for you.',
                       style: TextStyle(
                         color: LiquidColors.textSecondary,
                         fontSize: 12,
@@ -746,31 +810,44 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
+            CheckboxListTile(
+              value: _recoveryKeySaved,
+              onChanged: (v) =>
+                  setState(() => _recoveryKeySaved = v ?? false),
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              activeColor: LiquidColors.indigo,
+              checkColor: Colors.white,
+              title: Text(
+                'I have saved my Recovery Key',
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _addRecoveryEmail,
+                onPressed: _recoveryKeySaved ? _afterRecovery : null,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   backgroundColor: LiquidColors.accentBlue,
+                  disabledBackgroundColor:
+                      LiquidColors.accentBlue.withValues(alpha: 0.4),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: Text('Add Recovery Email',
+                child: Text('Continue',
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.white)),
               ),
-            ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: _skipRecovery,
-              child: Text('Skip — I understand the risk',
-                  style: TextStyle(
-                      color: LiquidColors.textSecondary, fontSize: 14)),
             ),
             const SizedBox(height: 24),
           ],
@@ -825,14 +902,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 elevation: 0,
               ),
               child: _enablingBiometric
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
+                  ? const AppLoader(size: 22, color: Colors.white)
                   : Text('Enable Biometric',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
             ),

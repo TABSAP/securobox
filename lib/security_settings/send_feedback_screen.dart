@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1258,14 +1259,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (_sending)
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: LiquidColors.textPrimary,
-                ),
-              )
+              AppLoader(size: 22, color: Colors.white)
             else
               Icon(Icons.send_rounded, size: 18, color: Colors.white),
             const SizedBox(width: 10),

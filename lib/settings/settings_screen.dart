@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'package:video_player_app/history_screen/history_screen.dart';
 import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
 import 'package:video_player_app/security_settings/about_screen.dart';
 import 'package:video_player_app/security_settings/security_setting.dart';
@@ -178,15 +177,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: _chevron(),
                 onTap: () => _open(const SecuritySettingsScreen()),
               ),
-              _divider(),
-              _tile(
-                icon: Icons.history_rounded,
-                color: LiquidColors.accentOrange,
-                title: 'History',
-                subtitle: 'Files you exported out of the vault',
-                trailing: _chevron(),
-                onTap: () => _open(const HistoryScreen()),
-              ),
             ]),
             const SizedBox(height: AppSpace.lg),
 
@@ -220,22 +210,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: AppSpace.sm),
             _group([
               _tile(
-                icon: isDark
-                    ? Icons.dark_mode_rounded
-                    : Icons.light_mode_rounded,
-                color: LiquidColors.accentPurple,
-                title: 'Dark mode',
-                subtitle: 'Use the dark theme',
-                trailing: Switch.adaptive(
-                  value: isDark,
-                  activeThumbColor: LiquidColors.accentBlue,
-                  onChanged: (v) {
-                    HapticFeedback.selectionClick();
-                    ThemeController.instance.setMode(
-                      v ? ThemeMode.dark : ThemeMode.light,
-                    );
-                  },
-                ),
+                icon: _themeIcon(ThemeController.instance.mode),
+                color: LiquidColors.indigo,
+                title: 'Theme',
+                subtitle: _themeSubtitle(ThemeController.instance.mode),
+                trailing: _chevron(),
+                onTap: _openThemeDialog,
               ),
             ]),
             const SizedBox(height: AppSpace.lg),
@@ -373,6 +353,101 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: ClipRRect(
         borderRadius: AppRadius.rLg,
         child: Column(children: children),
+      ),
+    );
+  }
+
+  IconData _themeIcon(ThemeMode m) {
+    switch (m) {
+      case ThemeMode.light:
+        return Icons.light_mode_rounded;
+      case ThemeMode.dark:
+        return Icons.dark_mode_rounded;
+      case ThemeMode.system:
+        return Icons.brightness_auto_rounded;
+    }
+  }
+
+  String _themeSubtitle(ThemeMode m) =>
+      m == ThemeMode.system ? 'System default' : '${ThemeController.label(m)} mode';
+
+  // Opens a clean popup dialog to choose Light / Dark / System.
+  Future<void> _openThemeDialog() async {
+    HapticFeedback.selectionClick();
+    const options = <(ThemeMode, String, String)>[
+      (ThemeMode.light, 'Light', 'Always light'),
+      (ThemeMode.dark, 'Dark', 'Always dark'),
+      (ThemeMode.system, 'System default', 'Follow device setting'),
+    ];
+    final chosen = await showDialog<ThemeMode>(
+      context: context,
+      builder: (ctx) {
+        final current = ThemeController.instance.mode;
+        return AlertDialog(
+          title: const Text('Theme'),
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final o in options)
+                _themeDialogRow(ctx, o.$1, o.$2, o.$3, current),
+            ],
+          ),
+        );
+      },
+    );
+    if (chosen != null && chosen != ThemeController.instance.mode) {
+      await ThemeController.instance.setMode(chosen);
+      if (mounted) setState(() {});
+    }
+  }
+
+  Widget _themeDialogRow(
+    BuildContext ctx,
+    ThemeMode mode,
+    String title,
+    String subtitle,
+    ThemeMode current,
+  ) {
+    final selected = mode == current;
+    return InkWell(
+      onTap: () => Navigator.of(ctx).pop(mode),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Icon(
+              _themeIcon(mode),
+              size: 22,
+              color: selected ? LiquidColors.indigo : LiquidColors.textSecondary,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: LiquidColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: LiquidColors.textTertiary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check_rounded, size: 20, color: LiquidColors.indigo),
+          ],
+        ),
       ),
     );
   }

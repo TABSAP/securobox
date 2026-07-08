@@ -12,55 +12,63 @@ class LiquidColors {
 
   static Color _pick(Color dark, Color light) => _dark ? dark : light;
 
-  static const Color primaryStart = Color(0xFF4158D0);
-  static const Color primaryMid = Color(0xFFC850C0);
-  static const Color primaryEnd = Color(0xFFFFCC70);
+  // ── Brand: a single indigo, expressed as light→deep shades so gradients keep
+  // depth without introducing extra hues. Everything interactive uses indigo;
+  // green (success) and red (error) remain purely as functional signals.
+  static const Color indigo = Color(0xFF6366F1); // indigo-500
+  static const Color indigoDeep = Color(0xFF4F46E5); // indigo-600
+  static const Color indigoDeeper = Color(0xFF4338CA); // indigo-700
+  static const Color indigoSoft = Color(0xFF818CF8); // indigo-400
 
-  static const Color secondaryStart = Color(0xFF0093E9);
-  static const Color secondaryEnd = Color(0xFF80D0C7);
+  static const Color primaryStart = indigoSoft;
+  static const Color primaryMid = indigoDeep;
+  static const Color primaryEnd = indigoDeeper;
 
+  static const Color secondaryStart = indigo;
+  static const Color secondaryEnd = indigoDeep;
+
+  // Backgrounds are primarily black & white: pure white in Light mode, a clean
+  // near-black in Dark mode. The brand indigo is used only as a sparing accent.
   static Color get backgroundDeep =>
-      _pick(const Color(0xFF0A0F1E), const Color(0xFFF4F6FB));
+      _pick(const Color(0xFF0B0B0F), const Color(0xFFFFFFFF));
 
   static Color get backgroundMid =>
-      _pick(const Color(0xFF141B2B), const Color(0xFFFFFFFF));
+      _pick(const Color(0xFF121216), const Color(0xFFFFFFFF));
 
   static Color get backgroundLight =>
-      _pick(const Color(0xFF1E2738), const Color(0xFFF1F4FA));
+      _pick(const Color(0xFF1A1A20), const Color(0xFFF3F4F6));
 
   static Color get surface =>
-      _pick(const Color(0xFF1A1F2E), const Color(0xFFFFFFFF));
+      _pick(const Color(0xFF141418), const Color(0xFFFFFFFF));
 
   static Color get surfaceMuted =>
-      _pick(const Color(0x14FFFFFF), const Color(0xFFEDF0F7));
+      _pick(const Color(0x14FFFFFF), const Color(0xFFF1F2F4));
 
   static Color get cardBorder =>
-      _pick(const Color(0x12FFFFFF), const Color(0xFFE1E6EF));
+      _pick(const Color(0x1AFFFFFF), const Color(0xFFE6E8EC));
 
   static Color get divider =>
-      _pick(const Color(0x0FFFFFFF), const Color(0xFFE6EAF1));
+      _pick(const Color(0x14FFFFFF), const Color(0xFFEDEEF1));
 
   static Color get shadow =>
-      _pick(const Color(0x4D000000), const Color(0x14000000));
+      _pick(const Color(0x66000000), const Color(0x0F000000));
 
   static Color get scrim =>
-      _pick(const Color(0x99000000), const Color(0x66000000));
+      _pick(const Color(0xB3000000), const Color(0x66000000));
 
   static Color get textPrimary =>
-      _pick(const Color(0xFFFFFFFF), const Color(0xFF1A1F2E));
+      _pick(const Color(0xFFFFFFFF), const Color(0xFF0A0A0C));
   static Color get textSecondary =>
-      _pick(const Color(0xFF9CA3AF), const Color(0xFF5B6472));
+      _pick(const Color(0xFFA0A4AB), const Color(0xFF5B5F66));
   static Color get textTertiary =>
-      _pick(const Color(0xFF6B7280), const Color(0xFF8A93A3));
+      _pick(const Color(0xFF6B7078), const Color(0xFF9AA0A8));
 
-  static Color get accentBlue =>
-      _pick(const Color(0xFF3B82F6), const Color(0xFF2563EB));
-  static Color get accentPurple =>
-      _pick(const Color(0xFF8B5CF6), const Color(0xFF7C3AED));
-  static Color get accentPink =>
-      _pick(const Color(0xFFEC4899), const Color(0xFFDB2777));
-  static Color get accentOrange =>
-      _pick(const Color(0xFFF59E0B), const Color(0xFFD97706));
+  // All former accents now resolve to the one indigo brand color (with a
+  // slightly deeper shade for two-stop gradients so they keep subtle depth).
+  static Color get accentBlue => _pick(indigo, indigoDeep);
+  static Color get accentPurple => _pick(indigoDeep, indigoDeeper);
+  static Color get accentPink => _pick(indigo, indigoDeep);
+  static Color get accentOrange => _pick(indigo, indigoDeep);
 
   static Color get success =>
       _pick(const Color(0xFF10B981), const Color(0xFF059669));
@@ -90,7 +98,7 @@ class LiquidColors {
       );
 
   static Gradient get liquidFlowGradient => const RadialGradient(
-        colors: [primaryStart, primaryMid, primaryEnd],
+        colors: [indigoSoft, indigoDeep, indigoDeeper],
         center: Alignment(-0.3, -0.3),
         radius: 1.5,
         stops: [0.0, 0.5, 1.0],
@@ -112,62 +120,13 @@ class LiquidColors {
           end: Alignment.bottomRight,
         );
 
-  static Color getMediaColor(String type) {
-    switch (type) {
-      case 'video':
-        return accentBlue;
-      case 'image':
-        return success;
-      case 'audio':
-        return accentPurple;
-      case 'document':
-        return accentOrange;
-      default:
-        return accentPink;
-    }
-  }
+  // Media types are no longer colour-coded — a single indigo keeps the UI
+  // calm and consistent; the media icon alone distinguishes the type.
+  static Color getMediaColor(String type) => _pick(indigo, indigoDeep);
 
-  static Gradient getMediaGradient(String type) {
-    switch (type) {
-      case 'video':
-        return LinearGradient(
-          colors: [accentBlue, accentPurple],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'image':
-        return LinearGradient(
-          colors: [
-            success,
-            _pick(const Color(0xFF34D399), const Color(0xFF10B981)),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'audio':
-        return LinearGradient(
-          colors: [accentPurple, accentPink],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'document':
-        return LinearGradient(
-          colors: [
-            accentOrange,
-            _pick(const Color(0xFFF97316), const Color(0xFFEA580C)),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      default:
-        return LinearGradient(
-          colors: [
-            accentPink,
-            _pick(const Color(0xFFF43F5E), const Color(0xFFE11D48)),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-    }
-  }
+  static Gradient getMediaGradient(String type) => LinearGradient(
+        colors: [_pick(indigo, indigoDeep), _pick(indigoDeep, indigoDeeper)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
 }

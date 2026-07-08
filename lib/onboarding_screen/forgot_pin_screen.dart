@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
@@ -16,80 +17,49 @@ class ForgotPinScreen extends StatefulWidget {
   State<ForgotPinScreen> createState() => _ForgotPinScreenState();
 }
 
-enum _CodeStage { confirmEmail, enterCode }
-
 class _ForgotPinScreenState extends State<ForgotPinScreen> {
   final TextEditingController _codeController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
   bool _resetting = false;
   String? _error;
   String? _codeError;
-  String? _emailError;
   bool _recoveryEnabled = false;
-  String? _recoveryEmail;
-  _CodeStage _codeStage = _CodeStage.confirmEmail;
 
   @override
   void initState() {
     super.initState();
-    _codeController.addListener(() {
-      if (_codeError != null) {
-        setState(() => _codeError = null);
-      }
-    });
-    _emailController.addListener(() {
-      if (_emailError != null) {
-        setState(() => _emailError = null);
-      }
-    });
+    _codeController.addListener(_onCodeChanged);
     _loadRecoveryState();
   }
 
   @override
   void dispose() {
+    _codeController.removeListener(_onCodeChanged);
     _codeController.dispose();
-    _emailController.dispose();
     super.dispose();
+  }
+
+  int _normalizedLength(String raw) =>
+      raw.replaceAll(RegExp(r'[\s\-]'), '').length;
+
+  void _onCodeChanged() {
+    if (_codeError != null || _error != null) {
+      setState(() {
+        _codeError = null;
+        _error = null;
+      });
+    }
+    // Real-time verification: once a full-length key is entered, verify it.
+    if (!_resetting && _normalizedLength(_codeController.text) >= 16) {
+      _verifyCodeAndReset();
+    }
   }
 
   Future<void> _loadRecoveryState() async {
     try {
       final enabled = await RecoveryService.instance.isEnabled();
-      final email = enabled ? await RecoveryService.instance.getEmail() : null;
       if (!mounted) return;
-      setState(() {
-        _recoveryEnabled = enabled;
-        _recoveryEmail = email;
-      });
+      setState(() => _recoveryEnabled = enabled);
     } catch (_) {}
-  }
-
-  void _confirmEmail() {
-    final stored = (_recoveryEmail ?? '').trim();
-    if (stored.isEmpty || _resetting) return;
-
-    final entered = _emailController.text.trim();
-    if (entered.isEmpty) {
-      setState(() => _emailError = 'Enter your recovery email');
-      HapticFeedback.heavyImpact();
-      return;
-    }
-    if (entered.toLowerCase() != stored.toLowerCase()) {
-      setState(
-        () => _emailError = 'Email doesn\'t match the one set up for recovery.',
-      );
-      HapticFeedback.heavyImpact();
-      return;
-    }
-
-    HapticFeedback.lightImpact();
-    setState(() {
-      _codeStage = _CodeStage.enterCode;
-      _emailError = null;
-      _codeError = null;
-      _error = null;
-      _codeController.clear();
-    });
   }
 
   Future<void> _verifyCodeAndReset() async {
@@ -97,7 +67,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
 
     final entered = _codeController.text.trim();
     if (entered.isEmpty) {
-      setState(() => _codeError = 'Enter the recovery code from your email');
+      setState(() => _codeError = 'Enter your Recovery Key');
       HapticFeedback.heavyImpact();
       return;
     }
@@ -108,10 +78,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
       _error = null;
     });
 
-    final ok = await RecoveryService.instance.verifyEmailAndCode(
-      email: _emailController.text.trim(),
-      code: entered,
-    );
+    final ok = await RecoveryService.instance.verify(entered);
     if (!mounted) return;
 
     if (!ok) {
@@ -119,7 +86,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
       setState(() {
         _resetting = false;
         _codeError =
-            'Code doesn\'t match. Check the email you received when you set up recovery.';
+            'That Recovery Key doesn\'t match. Check the key you saved when you set up recovery.';
       });
       return;
     }
@@ -182,7 +149,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                       const SizedBox(height: 22),
                       _buildLossList(),
                       const SizedBox(height: 22),
-                      _buildEmailGate(),
+                      _buildKeyGate(),
                       if (_error != null) ...[
                         const SizedBox(height: 12),
                         _buildError(_error!),
@@ -282,8 +249,8 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
       _LossItem(
         icon: Icons.tune_rounded,
         text: Platform.isAndroid
-            ? 'Custom categories, disguise mode, and recovery email'
-            : 'Custom categories and recovery email',
+            ? 'Custom categories, disguise mode, and Recovery Key'
+            : 'Custom categories and Recovery Key',
       ),
     ];
     return Container(
@@ -359,14 +326,11 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     );
   }
 
-  Widget _buildEmailGate() {
-    if (!_recoveryEnabled || (_recoveryEmail ?? '').trim().isEmpty) {
+  Widget _buildKeyGate() {
+    if (!_recoveryEnabled) {
       return _buildNoRecoveryWarning();
     }
-    if (_codeStage == _CodeStage.confirmEmail) {
-      return _buildConfirmEmailStage();
-    }
-    return _buildEnterCodeStage();
+    return _buildEnterKeyStage();
   }
 
   Widget _buildNoRecoveryWarning() {
@@ -391,7 +355,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Recovery email not set up',
+                  'Recovery Key not set up',
                   style: TextStyle(
                     color: LiquidColors.textPrimary,
                     fontSize: 14,
@@ -400,7 +364,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'PIN reset requires a recovery email. To enable it, open Settings → PIN Recovery → Set up recovery, then come back here.',
+                  'PIN reset requires your Recovery Key. Without it, the only option is to wipe the vault.',
                   style: TextStyle(
                     color: LiquidColors.textSecondary,
                     fontSize: 12,
@@ -415,191 +379,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     );
   }
 
-  Widget _buildConfirmEmailStage() {
-    final masked = RecoveryService.mask(_recoveryEmail!.trim());
-    final hasEmailError = _emailError != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: LiquidColors.textPrimary.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-            ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: LiquidColors.accentBlue.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.alternate_email_rounded,
-                  color: LiquidColors.accentBlue,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Confirm your recovery email',
-                      style: TextStyle(
-                        color: LiquidColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Enter the email you registered when you set up recovery. Once it matches we\'ll ask for the recovery code you received then.',
-                      style: TextStyle(
-                        color: LiquidColors.textSecondary,
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            'RECOVERY EMAIL',
-            style: TextStyle(
-              color: LiquidColors.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.6,
-            ),
-          ),
-        ),
-        TextField(
-          controller: _emailController,
-          autofocus: true,
-          autocorrect: false,
-          enableSuggestions: false,
-          keyboardType: TextInputType.emailAddress,
-          enabled: !_resetting,
-          cursorColor: LiquidColors.accentBlue,
-          onSubmitted: (_) => _confirmEmail(),
-          style: TextStyle(
-            color: LiquidColors.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-          decoration: InputDecoration(
-            hintText: masked,
-            hintStyle: TextStyle(
-              color: LiquidColors.textTertiary,
-              fontSize: 13,
-              fontFamily: 'monospace',
-            ),
-            filled: true,
-            fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
-            prefixIcon: Icon(
-              Icons.alternate_email_rounded,
-              color: hasEmailError
-                  ? LiquidColors.error
-                  : LiquidColors.textTertiary,
-              size: 18,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 16,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: hasEmailError
-                    ? LiquidColors.error
-                    : LiquidColors.textPrimary.withValues(alpha: 0.08),
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: hasEmailError
-                    ? LiquidColors.error
-                    : LiquidColors.accentBlue,
-                width: 1.4,
-              ),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(
-                color: LiquidColors.textPrimary.withValues(alpha: 0.04),
-              ),
-            ),
-          ),
-        ),
-        if (hasEmailError) ...[
-          const SizedBox(height: 8),
-          _buildError(_emailError!),
-        ],
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _resetting ? null : _confirmEmail,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: LiquidColors.accentBlue,
-              disabledBackgroundColor: LiquidColors.accentBlue.withValues(
-                alpha: 0.4,
-              ),
-              foregroundColor: LiquidColors.textPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 18,
-                  color: Colors.white,
-                ),
-                SizedBox(width: 10),
-                Text(
-                  'Continue',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.2,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEnterCodeStage() {
-    final masked = RecoveryService.mask(_recoveryEmail!.trim());
+  Widget _buildEnterKeyStage() {
     final hasCodeError = _codeError != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -631,7 +411,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  Icons.mark_email_read_outlined,
+                  Icons.vpn_key_rounded,
                   color: LiquidColors.accentBlue,
                   size: 20,
                 ),
@@ -642,7 +422,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Enter your recovery code',
+                      'Enter your Recovery Key',
                       style: TextStyle(
                         color: LiquidColors.textPrimary,
                         fontSize: 14,
@@ -651,7 +431,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Open the email at $masked sent when you set up recovery and paste the code below.',
+                      'Type or paste the Recovery Key you saved when you set up recovery. It\'s verified as you enter it.',
                       style: TextStyle(
                         color: LiquidColors.textSecondary,
                         fontSize: 12,
@@ -668,7 +448,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
-            'RECOVERY CODE',
+            'RECOVERY KEY',
             style: TextStyle(
               color: LiquidColors.textSecondary,
               fontSize: 11,
@@ -764,14 +544,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_resetting)
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: LiquidColors.textPrimary,
-                    ),
-                  )
+                  AppLoader(size: 22, color: Colors.white)
                 else
                   const Icon(
                     Icons.lock_reset_rounded,
@@ -780,7 +553,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   ),
                 const SizedBox(width: 10),
                 Text(
-                  _resetting ? 'Resetting PIN…' : 'Verify Recovery code',
+                  _resetting ? 'Resetting PIN…' : 'Reset PIN',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -789,26 +562,6 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                   ),
                 ),
               ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Center(
-          child: TextButton(
-            onPressed: _resetting
-                ? null
-                : () => setState(() {
-                    _codeStage = _CodeStage.confirmEmail;
-                    _codeError = null;
-                    _codeController.clear();
-                  }),
-            child: Text(
-              'Use a different email',
-              style: TextStyle(
-                color: LiquidColors.textSecondary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
             ),
           ),
         ),

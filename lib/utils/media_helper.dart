@@ -26,20 +26,7 @@ class MediaHelper {
     }
   }
 
-  static Color getMediaColor(String type) {
-    switch (type) {
-      case 'video':
-        return LiquidColors.accentBlue;
-      case 'image':
-        return const Color(0xFF00C853);
-      case 'audio':
-        return const Color(0xFF9C27B0);
-      case 'document':
-        return const Color(0xFFFF9800);
-      default:
-        return const Color(0xFF607D8B);
-    }
-  }
+  static Color getMediaColor(String type) => LiquidColors.getMediaColor(type);
 
   static String getFileTypeLabel(String path) {
     final ext = path.split('.').last.toLowerCase();

@@ -23,6 +23,8 @@ class VaultContext {
   String get libraryKey => _decoy ? decoyLibraryKey : 'videoLibrary';
   String get customCategoriesKey =>
       _decoy ? decoyCustomCategoriesKey : 'customCategories';
+  String get categoriesConfigKey =>
+      _decoy ? 'categoriesConfig_decoy' : 'categoriesConfig';
   String get downloadHistoryKey =>
       _decoy ? decoyDownloadHistoryKey : 'downloadHistory';
 

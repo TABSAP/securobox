@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 
 import '../utils/intrusion_service.dart';
-import '../utils/liquid_circular_progress.dart';
 import '../utils/liquid_colors.dart';
 import '../utils/vault_crypto.dart';
 
@@ -176,19 +176,21 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
     HapticFeedback.selectionClick();
     Navigator.of(context).push(MaterialPageRoute(
       builder: (ctx) => Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: LiquidColors.backgroundDeep,
         appBar: AppBar(
-          backgroundColor: Colors.black,
+          backgroundColor: LiquidColors.backgroundDeep,
+          surfaceTintColor: Colors.transparent,
           elevation: 0,
-          iconTheme: const IconThemeData(color: Colors.white),
+          iconTheme: IconThemeData(color: LiquidColors.textPrimary),
           title: Text(
             _fullDate(entry.when),
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+            style: TextStyle(color: LiquidColors.textPrimary, fontSize: 14),
           ),
           actions: [
             IconButton(
               tooltip: 'Delete',
-              icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+              icon: Icon(Icons.delete_outline_rounded,
+                  color: LiquidColors.error),
               onPressed: () async {
                 final deleted = await _confirmDelete(entry);
                 if (deleted && ctx.mounted) Navigator.of(ctx).pop();
@@ -279,7 +281,7 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
       body: Container(
         decoration: BoxDecoration(gradient: LiquidColors.backgroundGradient),
         child: _loading
-            ? const Center(child: LiquidCircularProgress(size: 88))
+            ? const Center(child: AppLoader(size: 64))
             : _entries.isEmpty
                 ? _emptyState()
                 : CustomScrollView(

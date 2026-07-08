@@ -11,7 +11,6 @@ class RecoveryService {
 
   static const _kHashKey = 'recovery_hash_v2';
   static const _kSaltKey = 'recovery_salt_v2';
-  static const _kEmailKey = 'recovery_email_v1';
   static const _kIterations = 100000;
   static const _kKeyLengthBytes = 32;
   static const _kSaltLengthBytes = 16;
@@ -52,18 +51,15 @@ class RecoveryService {
     return base64Encode(dk);
   }
 
-  Future<void> save({required String code, required String email}) async {
+  Future<void> save({required String code}) async {
     final salt = _randomBytes(_kSaltLengthBytes);
     await _secure.write(key: _kSaltKey, value: base64Encode(salt));
     await _secure.write(key: _kHashKey, value: await _hash(code, salt));
-    await _secure.write(key: _kEmailKey, value: email.trim());
   }
 
   Future<bool> isEnabled() async {
     return (await _secure.read(key: _kHashKey)) != null;
   }
-
-  Future<String?> getEmail() async => _secure.read(key: _kEmailKey);
 
   Future<bool> verify(String code) async {
     final stored = await _secure.read(key: _kHashKey);
@@ -72,35 +68,9 @@ class RecoveryService {
     return _constantTimeEqual(await _hash(code, base64Decode(saltB64)), stored);
   }
 
-  Future<bool> verifyEmailAndCode({
-    required String email,
-    required String code,
-  }) async {
-    final storedHash = await _secure.read(key: _kHashKey);
-    final storedEmail = await _secure.read(key: _kEmailKey);
-    final saltB64 = await _secure.read(key: _kSaltKey);
-    if (storedHash == null || storedEmail == null || saltB64 == null) {
-      return false;
-    }
-    final emailMatches =
-        email.trim().toLowerCase() == storedEmail.trim().toLowerCase();
-    final codeMatches = _constantTimeEqual(
-      await _hash(code, base64Decode(saltB64)),
-      storedHash,
-    );
-    return emailMatches && codeMatches;
-  }
-
   Future<void> clear() async {
     await _secure.delete(key: _kHashKey);
     await _secure.delete(key: _kSaltKey);
-    await _secure.delete(key: _kEmailKey);
-  }
-
-  static const String hiddenLabel = '••••••••@••••••.•••';
-
-  static String mask(String email) {
-    return email.trim().isEmpty ? '' : hiddenLabel;
   }
 
   bool _constantTimeEqual(String a, String b) {

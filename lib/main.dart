@@ -2,8 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
+import 'package:video_player_app/utils/notification_service.dart';
 import 'package:video_player_app/utils/pbkdf2.dart';
 import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
@@ -21,6 +23,11 @@ void main() async {
   await SessionManager.instance.init();
 
   await NetworkGuard.instance.init();
+
+  unawaited(NotificationService.instance.init());
+
+  // Clean up any fake decoy content seeded by earlier builds (runs once).
+  unawaited(DecoyService.instance.purgeSeededDecoyData());
 
   unawaited(DisguiseService.instance.load());
 

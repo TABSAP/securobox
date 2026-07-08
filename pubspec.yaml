@@ -43,6 +43,7 @@ dependencies:
   # its module, so the release build fails to compile. It is only used at
   # build time (splash codegen); the shipped native plugin is a tiny no-op.
   flutter_native_splash: ^2.4.7
+  video_thumbnail: ^0.5.6
 
 dev_dependencies:
   flutter_test:

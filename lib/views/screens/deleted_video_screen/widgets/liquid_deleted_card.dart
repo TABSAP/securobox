@@ -475,7 +475,7 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
             ),
             const SizedBox(height: 12),
             Text(
-              '"${widget.video.title}" will be hidden from the app. You can recover it later using your recovery email.',
+              '"${widget.video.title}" will be hidden from the app. You can recover it later using your Recovery Key.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: LiquidColors.textSecondary),
             ),

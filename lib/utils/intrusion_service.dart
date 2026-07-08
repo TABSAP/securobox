@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'notification_service.dart';
 import 'vault_crypto.dart';
 
 class IntrusionEntry {
@@ -103,6 +105,12 @@ class IntrusionService {
       log.add(entry.toStorageString());
       await prefs.setStringList(_kLogKey, log);
       logCount.value = log.length;
+
+      unawaited(NotificationService.instance.addEvent(
+        title: 'Break-in attempt detected',
+        body: 'A photo was captured after a failed unlock attempt.',
+        kind: 'security',
+      ));
 
       return true;
     } catch (_) {

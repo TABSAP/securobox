@@ -63,7 +63,7 @@ class DecoyService {
     await _secure.write(key: _kFakeSalt, value: base64Encode(salt));
     await _secure.write(key: _kFakeHash, value: base64Encode(hash));
     await _secure.write(key: _kFakeLen, value: pin.length.toString());
-    await _seedDecoyVaultIfEmpty();
+    // The decoy vault starts empty. The user adds their own decoy content.
   }
 
   Future<bool> verifyFakePin(String pin) async {
@@ -118,49 +118,60 @@ class DecoyService {
     }
   }
 
-  Future<void> _seedDecoyVaultIfEmpty() async {
-    final prefs = await SharedPreferences.getInstance();
-    final existing = prefs.getStringList(VaultContext.decoyLibraryKey);
-    if (existing != null && existing.isNotEmpty) return;
+  /// One-time cleanup for installs that were seeded with fake decoy content by
+  /// an earlier build. Runs once (guarded by a flag) and only removes the
+  /// clearly-fake seeds — real, user-added content is never touched:
+  ///   - decoy media whose file path is empty (seeded fakes never had a real
+  ///     file; imported items always have a path),
+  ///   - the seeded empty 'Travel'/'Work' custom categories (only if no real
+  ///     decoy item uses them),
+  ///   - the seeded decoy download history.
+  Future<void> purgeSeededDecoyData() async {
+    const purgedFlag = 'decoy_seed_purged_v1';
+    const decoyConfigKey = 'categoriesConfig_decoy';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(purgedFlag) == true) return;
 
-    final base = DateTime.now().millisecondsSinceEpoch -
-        const Duration(days: 90).inMilliseconds;
+      // 1) Drop fake media (empty path in field index 2).
+      final lib = prefs.getStringList(VaultContext.decoyLibraryKey);
+      if (lib != null && lib.isNotEmpty) {
+        final kept = lib.where((row) {
+          final parts = row.split('|');
+          return parts.length > 2 && parts[2].trim().isNotEmpty;
+        }).toList();
+        if (kept.length != lib.length) {
+          await prefs.setStringList(VaultContext.decoyLibraryKey, kept);
+        }
 
-    String entry(String title, String type, String category, int daysOffset) {
-      final id = (base + daysOffset * 86400000).toString();
-      return '$id|$title||$type|false|$category|false||false|false';
-    }
+        // 2) Remove the seeded 'Travel'/'Work' categories if now unused.
+        final usedCats = kept
+            .map((r) {
+              final p = r.split('|');
+              return p.length > 5 ? p[5].toLowerCase() : '';
+            })
+            .toSet();
+        final customs =
+            prefs.getStringList(VaultContext.decoyCustomCategoriesKey);
+        if (customs != null && customs.isNotEmpty) {
+          final keptCats = customs.where((c) {
+            final lc = c.toLowerCase();
+            final seeded = lc == 'travel' || lc == 'work';
+            return !(seeded && !usedCats.contains(lc));
+          }).toList();
+          if (keptCats.length != customs.length) {
+            await prefs.setStringList(
+                VaultContext.decoyCustomCategoriesKey, keptCats);
+            // Rebuild the decoy category config from the cleaned list.
+            await prefs.remove(decoyConfigKey);
+          }
+        }
+      }
 
-    await prefs.setStringList(VaultContext.decoyLibraryKey, [
-      entry('Beach Trip 2024.mp4', 'video', 'Videos', 2),
-      entry('Family Dinner.mp4', 'video', 'Videos', 9),
-      entry('Concert Clip.mov', 'video', 'Videos', 21),
-      entry('Sunset.jpg', 'image', 'Photos', 4),
-      entry('Group Photo.png', 'image', 'Photos', 12),
-      entry('Birthday Cake.jpg', 'image', 'Photos', 33),
-      entry('Hiking Trail.heic', 'image', 'Photos', 47),
-      entry('Workout Playlist.mp3', 'audio', 'Audio', 6),
-      entry('Voice Note.m4a', 'audio', 'Audio', 18),
-      entry('Lecture Notes.pdf', 'document', 'Documents', 7),
-      entry('Receipts March.pdf', 'document', 'Documents', 25),
-      entry('Travel Itinerary.pdf', 'document', 'Documents', 41),
-    ]);
-    await prefs.setStringList(
-        VaultContext.decoyCustomCategoriesKey, ['Travel', 'Work']);
+      // 3) Remove the seeded fake download history.
+      await prefs.remove(VaultContext.decoyDownloadHistoryKey);
 
-    final dlBase = DateTime.now().millisecondsSinceEpoch -
-        const Duration(days: 14).inMilliseconds;
-    String dl(String name, String size, int daysOffset) {
-      final id = (dlBase + daysOffset * 86400000).toString();
-      final date =
-          DateTime.fromMillisecondsSinceEpoch(int.parse(id)).toIso8601String();
-      return '$id|$name|$size|completed|$date|||::1.0';
-    }
-
-    await prefs.setStringList(VaultContext.decoyDownloadHistoryKey, [
-      dl('Sunset.jpg', '2.4 MB', 12),
-      dl('Beach Trip 2024.mp4', '184.2 MB', 9),
-      dl('Lecture Notes.pdf', '880.0 KB', 4),
-    ]);
+      await prefs.setBool(purgedFlag, true);
+    } catch (_) {}
   }
 }

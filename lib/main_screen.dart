@@ -6,8 +6,6 @@ import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
-import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
-import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 import 'package:video_player_app/views/screens/home_screen/home_dashboard.dart';
 import 'app_lock_screen/app_lock_screen.dart';
@@ -24,7 +22,6 @@ class _MainScreenState extends State<MainScreen>
     with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final _libraryKey = GlobalKey<HomeDashboardState>();
-  final _intrusionKey = GlobalKey<IntrusionLogScreenState>();
 
   bool _wasPaused = false;
   bool _isShowingLockScreen = false;
@@ -38,7 +35,6 @@ class _MainScreenState extends State<MainScreen>
     SessionManager.instance.shouldLock.addListener(_onLockRequested);
     SessionManager.instance.markActive();
     _startInactivityTimer();
-    unawaited(IntrusionService.instance.refreshCount());
     AppNav.tab.value = 0;
     AppNav.tab.addListener(_onTabRequested);
   }
@@ -50,7 +46,6 @@ class _MainScreenState extends State<MainScreen>
     SessionManager.instance.markActive();
     setState(() => _selectedIndex = i);
     if (i == 0) _libraryKey.currentState?.refresh();
-    if (i == 1) _intrusionKey.currentState?.reload();
   }
 
   @override
@@ -196,10 +191,6 @@ class _MainScreenState extends State<MainScreen>
                   ),
                   TickerMode(
                     enabled: _selectedIndex == 1,
-                    child: IntrusionLogScreen(key: _intrusionKey),
-                  ),
-                  TickerMode(
-                    enabled: _selectedIndex == 2,
                     child: SettingsScreen(),
                   ),
                 ],

@@ -1,127 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/recovery_service.dart';
 
 class RecoverySetupScreen extends StatefulWidget {
-  final String? lockedEmail;
+  final bool reissue;
 
-  const RecoverySetupScreen({super.key, this.lockedEmail});
+  const RecoverySetupScreen({super.key, this.reissue = false});
 
   @override
   State<RecoverySetupScreen> createState() => _RecoverySetupScreenState();
 }
 
-enum _Stage { collectEmail, showCode }
-
 class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
-  final _emailController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  _Stage _stage = _Stage.collectEmail;
-  String _code = '';
-  bool _emailOpened = false;
+  late final String _code;
   bool _codeSaved = false;
   bool _saving = false;
   String? _saveError;
 
-  bool get _reissueMode => (widget.lockedEmail ?? '').trim().isNotEmpty;
-
   @override
   void initState() {
     super.initState();
-    if (_reissueMode) {
-      _emailController.text = widget.lockedEmail!.trim();
-    }
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    super.dispose();
-  }
-
-  String? _validateEmail(String? raw) {
-    final value = (raw ?? '').trim();
-    if (value.isEmpty) return 'Enter your email';
-    final ok = RegExp(
-      r'^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$',
-    ).hasMatch(value);
-    if (!ok) return 'That doesn\'t look like a valid email';
-    return null;
-  }
-
-  void _proceedToCode() {
-    final emailError = _validateEmail(_emailController.text);
-    if (emailError != null) {
-      HapticFeedback.heavyImpact();
-      _formKey.currentState?.validate();
-      FlushBarHelper.flushBarErrorMessage(emailError, context);
-      return;
-    }
-    HapticFeedback.lightImpact();
-    setState(() {
-      _code = RecoveryService.instance.generateCode();
-      _stage = _Stage.showCode;
-    });
-  }
-
-  Future<void> _openEmailClient() async {
-    HapticFeedback.lightImpact();
-    final email = _emailController.text.trim();
-    const subject = 'SecuroBox — Recovery Code';
-    final body = _code;
-
-    final uri = Uri(
-      scheme: 'mailto',
-      path: email,
-      query: _encodeQuery({
-        'subject': subject,
-        'body': body,
-      }),
-    );
-
-    try {
-      if (await canLaunchUrl(uri) && await launchUrl(uri)) {
-        if (!mounted) return;
-        FlushBarHelper.flushBarInfoMessage(
-          'Your email app opened with the code filled in — tap Send there to keep a copy.',
-          context,
-        );
-        setState(() {
-          _emailOpened = true;
-          _codeSaved = true;
-        });
-      } else {
-        if (!mounted) return;
-        await Clipboard.setData(ClipboardData(text: _code));
-        if (!mounted) return;
-        FlushBarHelper.flushBarInfoMessage(
-          'No email app found — code copied to clipboard. Save it somewhere safe.',
-          context,
-        );
-        setState(() {
-          _emailOpened = true;
-          _codeSaved = true;
-        });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      FlushBarHelper.flushBarErrorMessage(
-        'Could not open email app: ${e.toString()}',
-        context,
-      );
-    }
-  }
-
-  String _encodeQuery(Map<String, String> params) {
-    return params.entries
-        .map(
-          (e) =>
-              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
-        )
-        .join('&');
+    _code = RecoveryService.instance.generateCode();
   }
 
   Future<void> _copyCode() async {
@@ -130,7 +32,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
     if (!mounted) return;
     setState(() => _codeSaved = true);
     FlushBarHelper.flushBarSuccessMessage(
-      'Recovery code copied — paste it somewhere safe',
+      'Recovery Key copied — paste it somewhere safe',
       context,
     );
   }
@@ -142,10 +44,7 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
       _saveError = null;
     });
     try {
-      await RecoveryService.instance.save(
-        code: _code,
-        email: _emailController.text.trim(),
-      );
+      await RecoveryService.instance.save(code: _code);
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       Navigator.of(context).pop(true);
@@ -189,14 +88,14 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
-                Icons.restore_rounded,
+                Icons.vpn_key_rounded,
                 color: Colors.white,
                 size: 20,
               ),
             ),
             const SizedBox(width: 12),
             Text(
-              'Set Up Recovery',
+              widget.reissue ? 'Re-issue Recovery Key' : 'Recovery Key',
               style: TextStyle(
                 color: LiquidColors.textPrimary,
                 fontSize: 18,
@@ -225,268 +124,52 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 240),
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: SlideTransition(
-                  position: anim.drive(
-                    Tween<Offset>(
-                      begin: const Offset(0.04, 0),
-                      end: Offset.zero,
-                    ),
-                  ),
-                  child: child,
-                ),
-              ),
-              child: _stage == _Stage.collectEmail
-                  ? _buildEmailStage()
-                  : _buildCodeStage(),
-            ),
+            child: _buildCodeStage(),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildEmailStage() {
-    return Column(
-      key: const ValueKey('email'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildHero(
-          icon: _reissueMode
-              ? Icons.autorenew_rounded
-              : Icons.mark_email_read_outlined,
-          title: _reissueMode ? 'Re-issue recovery code' : 'Recover with email',
-          subtitle: _reissueMode
-              ? 'A new code will be generated for the same email address you set up before. The old code becomes invalid as soon as you save.'
-              : 'We\'ll generate a one-time code and open your email app so you can send it to yourself. We never store the code or read your email.',
-        ),
-        const SizedBox(height: 24),
-        _buildInfoCard(
-          color: LiquidColors.accentBlue,
-          icon: Icons.shield_outlined,
-          title: 'How this works',
-          bullets: const [
-            'Any valid email works — Gmail, work, or custom domains',
-            'You\'ll see a recovery code on the next screen',
-            'You email it to yourself from your own email app',
-            'Only a hash of the code is stored on this device',
-            'If you forget your PIN, paste the code from your email to reset it',
-            'Your encrypted files are kept; only the PIN changes',
-          ],
-        ),
-        const SizedBox(height: 18),
-        Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 8),
-                child: Text(
-                  _reissueMode ? 'RECOVERY EMAIL · LOCKED' : 'YOUR EMAIL',
-                  style: TextStyle(
-                    color: _reissueMode
-                        ? LiquidColors.textTertiary
-                        : LiquidColors.textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-              TextFormField(
-                controller: _emailController,
-                autofocus: !_reissueMode,
-                readOnly: _reissueMode,
-                keyboardType: TextInputType.emailAddress,
-                autocorrect: false,
-                enableSuggestions: false,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                validator: _validateEmail,
-                cursorColor: LiquidColors.accentBlue,
-                style: TextStyle(
-                  color: _reissueMode
-                      ? LiquidColors.textSecondary
-                      : LiquidColors.textPrimary,
-                  fontSize: 14,
-                  fontWeight: _reissueMode
-                      ? FontWeight.w600
-                      : FontWeight.normal,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'you@example.com',
-                  suffixIcon: _reissueMode
-                      ? Icon(
-                          Icons.lock_outline_rounded,
-                          color: LiquidColors.textTertiary,
-                          size: 16,
-                        )
-                      : null,
-                  hintStyle: TextStyle(
-                    color: LiquidColors.textTertiary,
-                    fontSize: 14,
-                  ),
-                  filled: true,
-                  fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
-                  prefixIcon: Icon(
-                    Icons.alternate_email_rounded,
-                    color: LiquidColors.textTertiary,
-                    size: 18,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: LiquidColors.accentBlue,
-                      width: 1.4,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: LiquidColors.error),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(
-                      color: LiquidColors.error,
-                      width: 1.4,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-        _buildSecurityNote(),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _proceedToCode,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: LiquidColors.accentBlue,
-              foregroundColor: LiquidColors.textPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  _reissueMode
-                      ? Icons.autorenew_rounded
-                      : Icons.arrow_forward_rounded,
-                  size: 18,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  _reissueMode ? 'Generate new code' : 'Continue',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.2,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildCodeStage() {
     return Column(
-      key: const ValueKey('code'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildHero(
           icon: Icons.vpn_key_rounded,
-          title: 'Your recovery code',
-          subtitle:
-              'Save this code somewhere safe. Without it you cannot recover from a forgotten PIN.',
+          title: 'Your Recovery Key',
+          subtitle: widget.reissue
+              ? 'A new key has been generated. Save it somewhere safe — the old key stops working as soon as you tap Done.'
+              : 'Save this key somewhere safe. It is the only way to regain access if you forget your PIN. It can\'t be recovered for you.',
         ),
         const SizedBox(height: 22),
         _buildCodeCard(),
         const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _copyCode,
-                icon: Icon(
-                  Icons.copy_rounded,
-                  size: 16,
-                  color: LiquidColors.textSecondary,
-                ),
-                label: Text(
-                  'Copy',
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  side: BorderSide(color: LiquidColors.textTertiary),
-                ),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _copyCode,
+            icon: Icon(
+              Icons.copy_rounded,
+              size: 16,
+              color: LiquidColors.textSecondary,
+            ),
+            label: Text(
+              'Copy',
+              style: TextStyle(
+                color: LiquidColors.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              flex: 2,
-              child: ElevatedButton.icon(
-                onPressed: _openEmailClient,
-                icon: const Icon(Icons.mail_outline_rounded, size: 18,color: Colors.white,),
-                label: Text(
-                  _emailOpened ? 'Open email again' : 'Email to myself',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: LiquidColors.accentBlue,
-                  foregroundColor: LiquidColors.textPrimary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
               ),
+              side: BorderSide(color: LiquidColors.textTertiary),
             ),
-          ],
+          ),
         ),
         const SizedBox(height: 18),
         _buildInfoCard(
@@ -494,8 +177,8 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
           icon: Icons.warning_amber_rounded,
           title: 'Save it before you finish',
           bullets: [
-            'We have no servers, so we can\'t send this for you — copy the code, or tap "Email to myself" to open your email app with it filled in, then send it to yourself',
-            'If you lose this code you can\'t recover from a forgotten PIN',
+            'Copy the key and store it in a password manager or somewhere safe',
+            'If you lose this key you can\'t recover from a forgotten PIN',
             'Without it, the only option will be to wipe the vault',
           ],
         ),
@@ -534,7 +217,26 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
             ),
           ),
         ],
-        const SizedBox(height: 24),
+        const SizedBox(height: 22),
+        CheckboxListTile(
+          value: _codeSaved,
+          onChanged: _saving
+              ? null
+              : (v) => setState(() => _codeSaved = v ?? false),
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+          activeColor: LiquidColors.indigo,
+          checkColor: Colors.white,
+          title: Text(
+            'I have saved my Recovery Key',
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
           height: 54,
@@ -555,23 +257,12 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 if (_saving)
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: LiquidColors.textPrimary,
-                    ),
-                  )
+                  AppLoader(size: 22, color: Colors.white)
                 else
-                  const Icon(Icons.check_rounded, size: 18,color: Colors.white,),
+                  const Icon(Icons.check_rounded, size: 18, color: Colors.white),
                 const SizedBox(width: 10),
                 Text(
-                  _saving
-                      ? 'Saving…'
-                      : _codeSaved
-                      ? 'I\'ve saved my code'
-                      : 'Save your code first',
+                  _saving ? 'Saving…' : 'Done',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -743,38 +434,6 @@ class _RecoverySetupScreenState extends State<RecoverySetupScreen> {
                 ],
               ),
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecurityNote() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: LiquidColors.textPrimary.withValues(alpha: 0.06)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.info_outline_rounded,
-            size: 14,
-            color: LiquidColors.textTertiary,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'With recovery enabled, anyone with both your phone and access to your email can reset the PIN. Skip this if your threat model includes someone who has both.',
-              style: TextStyle(
-                color: LiquidColors.textSecondary,
-                fontSize: 11,
-                height: 1.4,
-              ),
-            ),
-          ),
         ],
       ),
     );

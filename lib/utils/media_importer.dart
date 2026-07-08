@@ -57,6 +57,10 @@ class MediaImporter {
     'odt', 'ods', 'odp', 'xml', 'html', 'htm', 'epub', 'mobi', 'tex', 'md',
   };
 
+  /// Document file extensions (no leading dots, lowercase), exposed so the
+  /// file picker can restrict a Documents import to real document types.
+  static List<String> get docExtensions => _docExts.toList();
+
   String detectTypeFromPath(String path) {
     final ext = p.extension(path).toLowerCase().replaceFirst('.', '');
     if (_videoExts.contains(ext)) return 'video';

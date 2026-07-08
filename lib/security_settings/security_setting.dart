@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
@@ -44,7 +45,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _deleteOriginals = false;
   String _currentDisguise = 'default';
   bool _recoveryEnabled = false;
-  String? _recoveryEmail;
   bool _decoyEnabled = false;
   bool _changingPin = false;
   bool _verifyingOldPin = false;
@@ -140,9 +140,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final intrusionCount = await intrusionCountF;
       final deleteOriginals = await deleteOriginalsF;
       final recoveryEnabled = await recoveryEnabledF;
-      final recoveryEmail = recoveryEnabled
-          ? await RecoveryService.instance.getEmail()
-          : null;
       final decoyEnabled = await decoyEnabledF;
       final faceRecogEnrolled = await faceRecogEnrolledF;
       final currentDisguise = DisguiseService.instance.currentKey;
@@ -159,7 +156,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _deleteOriginals = deleteOriginals;
         _currentDisguise = currentDisguise;
         _recoveryEnabled = recoveryEnabled;
-        _recoveryEmail = recoveryEmail;
         _decoyEnabled = decoyEnabled;
         _faceRecogEnrolled = faceRecogEnrolled;
       });
@@ -1802,14 +1798,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           if (_isLoading)
             Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: LiquidColors.textPrimary,
-                ),
-              ),
+              child: const AppLoader(size: 22),
             ),
         ],
       ),
@@ -1961,7 +1950,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                 const AppSectionHeader(
                   label: 'Session & recovery',
-                  caption: 'Auto-lock timing and recovery email.',
+                  caption: 'Auto-lock timing and recovery key.',
                 ),
                 const SizedBox(height: AppSpace.sm),
                 _group([
@@ -1977,18 +1966,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                   ),
                   _divider(),
                   _tile(
-                    icon: Icons.mark_email_read_rounded,
+                    icon: Icons.vpn_key_rounded,
                     color: LiquidColors.accentBlue,
-                    title: 'Recovery email',
+                    title: 'Recovery Key',
                     subtitle: _recoveryEnabled
-                        ? (_recoveryEmail != null
-                              ? RecoveryService.mask(_recoveryEmail!)
-                              : 'Recovery is set up')
-                        : 'Add an email to reset a forgotten PIN',
+                        ? 'View or re-issue your Recovery Key'
+                        : 'Set up a Recovery Key to reset a forgotten PIN',
                     trailing: _chevron(),
-                    onTap: _recoveryEnabled
-                        ? _openRecoverySheet
-                        : _openRecoverySetup,
+                    onTap: _openRecoverySetup,
                   ),
                 ]),
                 const SizedBox(height: AppSpace.lg),
@@ -2004,8 +1989,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     color: LiquidColors.accentPurple,
                     title: 'Decoy vault',
                     subtitle: _decoyEnabled
-                        ? 'A fake PIN opens a decoy vault'
-                        : 'Set up a duress vault',
+                        ? 'On · a fake vault with a separate PIN keeps your real vault private'
+                        : 'A fake vault protected by a separate PIN to keep your real vault private',
                     trailing: _chevron(),
                     onTap: _openDecoySetup,
                   ),
@@ -2284,54 +2269,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     if (selected == null) return;
     await SessionManager.instance.setAutoLockSeconds(selected);
     if (mounted) setState(() {});
-  }
-
-  void _openRecoverySheet() {
-    HapticFeedback.lightImpact();
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: LiquidColors.backgroundMid,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: AppSpace.sm),
-            ListTile(
-              leading: Icon(
-                Icons.refresh_rounded,
-                color: LiquidColors.accentBlue,
-              ),
-              title: Text(
-                'Re-issue recovery code',
-                style: TextStyle(color: LiquidColors.textPrimary),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _openRecoverySetup();
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                Icons.delete_outline_rounded,
-                color: LiquidColors.error,
-              ),
-              title: Text(
-                'Remove recovery email',
-                style: TextStyle(color: LiquidColors.error),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                _confirmRemoveRecovery();
-              },
-            ),
-            const SizedBox(height: AppSpace.sm),
-          ],
-        ),
-      ),
-    );
   }
 
   void _openDisguiseSheet() {
@@ -2704,216 +2641,106 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     HapticFeedback.lightImpact();
     final wasEnabled = _recoveryEnabled;
 
+    // Gate re-issuing an existing key behind the app's PIN/biometric.
     if (wasEnabled) {
-      final verified = await _verifyRecoveryEmail();
+      final verified = await _gateBeforeReissue();
       if (!verified || !mounted) return;
     }
 
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => RecoverySetupScreen(
-          lockedEmail: wasEnabled ? _recoveryEmail : null,
-        ),
+        builder: (_) => RecoverySetupScreen(reissue: wasEnabled),
       ),
     );
     if (result == true && mounted) {
       await _loadSecuritySettings();
       if (!mounted) return;
       FlushBarHelper.flushBarSuccessMessage(
-        wasEnabled ? 'Recovery code re-issued' : 'Recovery enabled',
+        wasEnabled ? 'Recovery Key re-issued' : 'Recovery Key set up',
         context,
       );
     }
   }
 
-  Future<bool> _verifyRecoveryEmail() async {
-    final storedEmail = (_recoveryEmail ?? '').trim();
-    if (storedEmail.isEmpty) return true;
+  Future<bool> _gateBeforeReissue() async {
+    // Prefer biometric verification when it's available and enabled.
+    final useBiometric = _biometricAvailable &&
+        (_biometricEnabled || _faceUnlockEnabled);
+    if (useBiometric) {
+      try {
+        return await _authenticateOnce('Verify to re-issue your Recovery Key');
+      } catch (_) {
+        return false;
+      }
+    }
 
-    final controller = TextEditingController();
-    final target = storedEmail.toLowerCase();
-
+    // Otherwise fall back to an explicit confirmation.
     final ok = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final entered = controller.text.trim().toLowerCase();
-          final matches = entered.isNotEmpty && entered == target;
-          return AlertDialog(
-            backgroundColor: LiquidColors.backgroundLight,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: LiquidColors.backgroundLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: LiquidColors.accentBlue.withValues(alpha: 0.16),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.autorenew_rounded,
+                color: LiquidColors.accentBlue,
+                size: 18,
+              ),
             ),
-            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            title: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: LiquidColors.accentBlue.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.autorenew_rounded,
-                    color: LiquidColors.accentBlue,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Verify to re-issue',
-                    style: TextStyle(
-                      color: LiquidColors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Type the recovery email you used previously to prove it\'s '
-                  'you. A new code will only be generated after this matches.',
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    height: 1.5,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 6),
-                  child: Text(
-                    'Hint: ${RecoveryService.mask(storedEmail)}',
-                    style: TextStyle(
-                      color: LiquidColors.textTertiary,
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  keyboardType: TextInputType.emailAddress,
-                  onChanged: (_) => setDialogState(() {}),
-                  cursorColor: LiquidColors.accentBlue,
-                  style: TextStyle(
-                    color: matches
-                        ? LiquidColors.accentBlue
-                        : LiquidColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'previous@example.com',
-                    hintStyle: TextStyle(
-                      color: LiquidColors.textTertiary,
-                      fontSize: 13,
-                    ),
-                    filled: true,
-                    fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
-                    prefixIcon: Icon(
-                      Icons.alternate_email_rounded,
-                      color: matches
-                          ? LiquidColors.accentBlue
-                          : LiquidColors.textTertiary,
-                      size: 18,
-                    ),
-                    suffixIcon: matches
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            color: LiquidColors.accentBlue,
-                            size: 18,
-                          )
-                        : null,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: LiquidColors.accentBlue,
-                        width: 1.4,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Re-issue Recovery Key?',
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              TextButton(
-                onPressed: matches
-                    ? () => Navigator.of(dialogContext).pop(true)
-                    : null,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-                child: Text(
-                  'Verify',
-                  style: TextStyle(
-                    color: matches
-                        ? LiquidColors.accentBlue
-                        : LiquidColors.textTertiary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+            ),
+          ],
+        ),
+        content: Text(
+          'A new Recovery Key will be generated and shown to you. Your current '
+          'key stops working as soon as you save the new one.',
+          style: TextStyle(
+            color: LiquidColors.textSecondary,
+            height: 1.5,
+            fontSize: 13,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: LiquidColors.textSecondary,
+                fontWeight: FontWeight.w600,
               ),
-            ],
-          );
-        },
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(
+              'Re-issue',
+              style: TextStyle(
+                color: LiquidColors.accentBlue,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
-
-    if (ok != true && mounted) {
-      FlushBarHelper.flushBarErrorMessage(
-        'Email didn\'t match — re-issue cancelled',
-        context,
-      );
-    }
     return ok == true;
   }
 
@@ -2923,240 +2750,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       context,
     ).push(MaterialPageRoute(builder: (_) => const DecoySetupScreen()));
     if (mounted) await _loadSecuritySettings();
-  }
-
-  Future<void> _confirmRemoveRecovery() async {
-    HapticFeedback.lightImpact();
-    final storedEmail = (_recoveryEmail ?? '').trim();
-    if (storedEmail.isEmpty) {
-      await RecoveryService.instance.clear();
-      if (!mounted) return;
-      await _loadSecuritySettings();
-      return;
-    }
-
-    final controller = TextEditingController();
-    final target = storedEmail.toLowerCase();
-
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final entered = controller.text.trim().toLowerCase();
-          final matches = entered.isNotEmpty && entered == target;
-          return AlertDialog(
-            backgroundColor: LiquidColors.backgroundLight,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-            contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-            actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            title: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: LiquidColors.error.withValues(alpha: 0.16),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.lock_open_rounded,
-                    color: LiquidColors.error,
-                    size: 18,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Remove recovery?',
-                    style: TextStyle(
-                      color: LiquidColors.textPrimary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'You\'ll no longer be able to reset your PIN with the email code. '
-                  'If you forget your PIN, the only option will be to wipe the vault.',
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    height: 1.5,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: LiquidColors.error.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: LiquidColors.error.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        size: 14,
-                        color: LiquidColors.error,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Type your recovery email exactly to confirm.',
-                          style: TextStyle(
-                            color: LiquidColors.error,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Padding(
-                  padding: const EdgeInsets.only(left: 4, bottom: 6),
-                  child: Text(
-                    'Hint: ${RecoveryService.mask(storedEmail)}',
-                    style: TextStyle(
-                      color: LiquidColors.textTertiary,
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  keyboardType: TextInputType.emailAddress,
-                  onChanged: (_) => setDialogState(() {}),
-                  cursorColor: LiquidColors.error,
-                  style: TextStyle(
-                    color: matches
-                        ? LiquidColors.error
-                        : LiquidColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'you@example.com',
-                    hintStyle: TextStyle(
-                      color: LiquidColors.textTertiary,
-                      fontSize: 13,
-                    ),
-                    filled: true,
-                    fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
-                    prefixIcon: Icon(
-                      Icons.alternate_email_rounded,
-                      color: matches
-                          ? LiquidColors.error
-                          : LiquidColors.textTertiary,
-                      size: 18,
-                    ),
-                    suffixIcon: matches
-                        ? Icon(
-                            Icons.check_circle_rounded,
-                            color: LiquidColors.error,
-                            size: 18,
-                          )
-                        : null,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: matches
-                            ? LiquidColors.error
-                            : LiquidColors.accentBlue,
-                        width: 1.4,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: matches
-                    ? () => Navigator.of(dialogContext).pop(true)
-                    : null,
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                ),
-                child: Text(
-                  'Remove',
-                  style: TextStyle(
-                    color: matches
-                        ? LiquidColors.error
-                        : LiquidColors.textTertiary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    if (ok != true || !mounted) return;
-    await RecoveryService.instance.clear();
-    if (!mounted) return;
-    await _loadSecuritySettings();
-    if (!mounted) return;
-    FlushBarHelper.flushBarSuccessMessage('Recovery removed', context);
   }
 
   Future<void> _onChangePinLengthTapped() async {
@@ -3340,11 +2933,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         : allGood
         ? LiquidColors.success
         : LiquidColors.accentBlue;
-    final accentSoft = isCritical
-        ? LiquidColors.error.withValues(alpha: 0.85)
-        : allGood
-        ? LiquidColors.success.withValues(alpha: 0.85)
-        : LiquidColors.accentPurple;
 
     final headline = isCritical
         ? 'Your vault is unprotected'
@@ -3363,173 +2951,103 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         : 'Good';
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
+        color: LiquidColors.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: LiquidColors.cardBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _SecurityScoreRing(
+          SizedBox(
+            width: 96,
+            height: 96,
+            child: CustomPaint(
+              painter: _ScoreRingPainter(
                 ratio: ratio,
-                percent: percent,
-                accent: accent,
-                accentSoft: accentSoft,
+                trackColor: LiquidColors.textPrimary.withValues(alpha: 0.08),
+                arcColor: accent,
               ),
-              const SizedBox(width: 16),
-              Expanded(
+              child: Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: accent,
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        Text(
-                          status,
-                          style: TextStyle(
-                            color: accent,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
                     Text(
-                      headline,
+                      '$percent%',
                       style: TextStyle(
                         color: LiquidColors.textPrimary,
-                        fontSize: 15.5,
+                        fontSize: 24,
                         fontWeight: FontWeight.w800,
-                        letterSpacing: 0.2,
+                        letterSpacing: -0.6,
+                        height: 1.0,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
-                      subhead,
+                      '$active/$total',
                       style: TextStyle(
                         color: LiquidColors.textSecondary,
-                        fontSize: 12.5,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: ratio,
-                        minHeight: 6,
-                        backgroundColor: LiquidColors.textPrimary.withValues(
-                          alpha: 0.07,
-                        ),
-                        valueColor: AlwaysStoppedAnimation<Color>(accent),
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      '$active of $total protections active',
-                      style: TextStyle(
-                        color: LiquidColors.textTertiary,
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
-          if (!allGood && !isCritical) ...[
-            const SizedBox(height: 16),
-            Container(
-              height: 1,
-              color: LiquidColors.textPrimary.withValues(alpha: 0.05),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              'Suggested next steps',
-              style: TextStyle(
-                color: LiquidColors.textTertiary,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1.0,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                for (final p in protections.where((p) => !p.on))
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: p.action,
-                      borderRadius: BorderRadius.circular(999),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: LiquidColors.accentBlue.withValues(
-                            alpha: 0.10,
-                          ),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: LiquidColors.accentBlue.withValues(
-                              alpha: 0.30,
-                            ),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.add_rounded,
-                              size: 13,
-                              color: LiquidColors.accentBlue,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              p.label,
-                              style: TextStyle(
-                                color: LiquidColors.accentBlue,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            Icon(
-                              Icons.chevron_right_rounded,
-                              size: 14,
-                              color: LiquidColors.accentBlue.withValues(
-                                alpha: 0.7,
-                              ),
-                            ),
-                          ],
-                        ),
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: accent,
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Text(
+                      status,
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  headline,
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
                   ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  subhead,
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
               ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -3544,134 +3062,50 @@ class _Protection {
   const _Protection(this.label, this.on, [this.action]);
 }
 
-class _SecurityScoreRing extends StatelessWidget {
-  final double ratio;
-  final int percent;
-  final Color accent;
-  final Color accentSoft;
-
-  const _SecurityScoreRing({
-    required this.ratio,
-    required this.percent,
-    required this.accent,
-    required this.accentSoft,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const double size = 86;
-    return SizedBox(
-      width: size,
-      height: size,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: 0, end: ratio),
-        duration: const Duration(milliseconds: 900),
-        curve: Curves.easeOutCubic,
-        builder: (context, value, _) {
-          return CustomPaint(
-            painter: _ScoreRingPainter(
-              value: value,
-              trackColor: LiquidColors.textPrimary.withValues(alpha: 0.08),
-              start: accent,
-              end: accentSoft,
-            ),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '${(value * 100).round()}',
-                    style: TextStyle(
-                      color: LiquidColors.textPrimary,
-                      fontSize: 25,
-                      fontWeight: FontWeight.w900,
-                      height: 1.0,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'SCORE',
-                    style: TextStyle(
-                      color: accent,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2.0,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class _ScoreRingPainter extends CustomPainter {
-  final double value;
+  final double ratio;
   final Color trackColor;
-  final Color start;
-  final Color end;
+  final Color arcColor;
 
   const _ScoreRingPainter({
-    required this.value,
+    required this.ratio,
     required this.trackColor,
-    required this.start,
-    required this.end,
+    required this.arcColor,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 8.0;
-    final center = size.center(Offset.zero);
-    final radius = (size.width - stroke) / 2;
-    final arcRect = Rect.fromCircle(center: center, radius: radius);
-    const startAngle = -math.pi / 2;
-    final sweep = 2 * math.pi * value.clamp(0.0, 1.0);
+    const strokeWidth = 9.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (size.shortestSide - strokeWidth) / 2;
 
-    final track = Paint()
+    final trackPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
       ..color = trackColor;
-    canvas.drawCircle(center, radius, track);
+    canvas.drawCircle(center, radius, trackPaint);
 
-    if (value <= 0) return;
-
-    final shader = SweepGradient(
-      colors: [start, end],
-      transform: const GradientRotation(-math.pi / 2),
-    ).createShader(arcRect);
-
-    final glow = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..color = end.withValues(alpha: 0.32)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-    canvas.drawArc(arcRect, startAngle, sweep, false, glow);
-
-    final arc = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..shader = shader;
-    canvas.drawArc(arcRect, startAngle, sweep, false, arc);
-
-    final headAngle = startAngle + sweep;
-    final head = Offset(
-      center.dx + radius * math.cos(headAngle),
-      center.dy + radius * math.sin(headAngle),
-    );
-    canvas.drawCircle(head, stroke / 2 + 1.5, Paint()..color = end);
-    canvas.drawCircle(head, stroke / 2 - 1.0, Paint()..color = Colors.white);
+    final clamped = ratio.clamp(0.0, 1.0);
+    if (clamped > 0) {
+      final arcPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth
+        ..strokeCap = StrokeCap.round
+        ..color = arcColor;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        clamped * 2 * math.pi,
+        false,
+        arcPaint,
+      );
+    }
   }
 
   @override
-  bool shouldRepaint(_ScoreRingPainter old) =>
-      old.value != value ||
-      old.start != start ||
-      old.end != end ||
-      old.trackColor != trackColor;
+  bool shouldRepaint(_ScoreRingPainter oldDelegate) =>
+      oldDelegate.ratio != ratio ||
+      oldDelegate.trackColor != trackColor ||
+      oldDelegate.arcColor != arcColor;
 }

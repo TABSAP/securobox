@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_action_button.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
@@ -288,7 +289,7 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
         return SizedBox(
           height: 200,
           child: Center(
-            child: CircularProgressIndicator(color: LiquidColors.accentBlue),
+            child: AppLoader(),
           ),
         );
       case _Stage.manage:
@@ -331,16 +332,31 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'A decoy PIN opens a second, completely separate vault — its own '
-              'encryption key, its own files, its own storage stats. Under pressure '
-              'you can hand over the decoy PIN; your real encrypted vault stays '
-              'invisible and untouched. Nothing in the app reveals decoy mode exists.',
-              style: TextStyle(
-                color: LiquidColors.textSecondary,
-                fontSize: 13,
-                height: 1.5,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'What is a Decoy Vault?',
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'A Decoy Vault is a second, fake vault with its own separate '
+                  'PIN. If someone forces you to open the app, enter your decoy '
+                  'PIN — it shows a harmless vault while your real, private '
+                  'files stay hidden and fully protected. The app never reveals '
+                  'that a decoy exists.',
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

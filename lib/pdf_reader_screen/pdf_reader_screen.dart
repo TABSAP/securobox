@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
@@ -463,12 +464,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
       if (searching)
         Padding(
           padding: const EdgeInsets.only(right: 6),
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: LiquidColors.accentBlue),
-          ),
+          child: AppLoader(size: 20),
         )
       else if (r != null && r.isSearchCompleted)
         Padding(

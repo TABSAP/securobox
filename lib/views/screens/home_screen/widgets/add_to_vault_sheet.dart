@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -15,22 +17,44 @@ import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/views/screens/secure_picker/secure_media_picker_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_importer.dart';
+import 'package:video_player_app/utils/notification_service.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 
 class AddToVaultSheet extends StatefulWidget {
   final Future<void> Function() onImported;
-  const AddToVaultSheet({super.key, required this.onImported});
+
+  /// When set (with [autoStart]), imports go straight into this category and
+  /// the category grid is skipped.
+  final String? initialCategory;
+
+  /// When true, the sheet opens the picker immediately instead of showing the
+  /// Quick Import grid. If [initialCategory] is null a smart (all-types) picker
+  /// is used; otherwise the picker is filtered for that category.
+  final bool autoStart;
+
+  const AddToVaultSheet({
+    super.key,
+    required this.onImported,
+    this.initialCategory,
+    this.autoStart = false,
+  });
 
   static Future<void> show(
     BuildContext context, {
     required Future<void> Function() onImported,
+    String? initialCategory,
+    bool autoStart = false,
   }) {
     return showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => AddToVaultSheet(onImported: onImported),
+      builder: (_) => AddToVaultSheet(
+        onImported: onImported,
+        initialCategory: initialCategory,
+        autoStart: autoStart,
+      ),
     );
   }
 
@@ -58,6 +82,23 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
   void initState() {
     super.initState();
     _loadCustomCategories();
+    if (widget.autoStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _autoStartRun());
+    }
+  }
+
+  // Direct-pick mode: open the (category-filtered) picker immediately, import
+  // into the chosen category, then dismiss — no Quick Import grid.
+  Future<void> _autoStartRun() async {
+    try {
+      if (widget.initialCategory != null) {
+        await _importInto(widget.initialCategory!);
+      } else {
+        await _smartImport();
+      }
+    } finally {
+      if (mounted) _dismissSheet();
+    }
   }
 
   @override
@@ -97,9 +138,20 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
         return FileType.image;
       case 'Audio':
         return FileType.audio;
+      case 'Documents':
+        return FileType.custom;
       default:
         return FileType.any;
     }
+  }
+
+  /// Allowed extensions for a custom-typed picker (Documents only). Returns
+  /// null for every other category, which uses a broader [FileType].
+  List<String>? _allowedExtensionsForCategory(String category) {
+    if (category != 'Documents') return null;
+    return MediaImporter.docExtensions
+        .map((e) => e.replaceFirst('.', '').toLowerCase())
+        .toList();
   }
 
   Future<void> _smartImport() async {
@@ -129,6 +181,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       await _pickAndImport(
         category: category,
         type: _fileTypeForCategory(category),
+        allowedExtensions: _allowedExtensionsForCategory(category),
       );
     }
   }
@@ -177,6 +230,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
   Future<void> _pickAndImport({
     required String? category,
     required FileType type,
+    List<String>? allowedExtensions,
     bool useStreamFallback = false,
   }) async {
     final items = <PickedMedia>[];
@@ -184,6 +238,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: type,
+        allowedExtensions: type == FileType.custom ? allowedExtensions : null,
         allowMultiple: true,
         withData: false,
         withReadStream: useStreamFallback,
@@ -275,6 +330,12 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       }
 
       if (import.added > 0) {
+        unawaited(NotificationService.instance.addEvent(
+          title: 'Files added to your vault',
+          body:
+              '${import.added} file${import.added == 1 ? '' : 's'} were encrypted and added.',
+          kind: 'info',
+        ));
         AppRating.recordImportAndMaybeAsk();
       }
     } catch (e) {
@@ -782,31 +843,40 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            _header(),
-            const SizedBox(height: 14),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  context.contentInset(maxContent: 620, phone: 18),
-                  4,
-                  context.contentInset(maxContent: 620, phone: 18),
-                  24,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_importing) _importingBanner(),
-                    _smartImportCard(),
-                    const SizedBox(height: 18),
-                    _sectionLabel('YOUR CUSTOM CATEGORIES'),
-                    const SizedBox(height: 10),
-                    _categoryGrid(),
-                    const SizedBox(height: 14),
-                    _privacyNote(),
-                  ],
+            if (widget.autoStart)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                child: _importing
+                    ? _importingBanner()
+                    : const AppLoader(size: 46, label: 'Opening picker…'),
+              )
+            else ...[
+              _header(),
+              const SizedBox(height: 14),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    context.contentInset(maxContent: 620, phone: 18),
+                    4,
+                    context.contentInset(maxContent: 620, phone: 18),
+                    24,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_importing) _importingBanner(),
+                      _smartImportCard(),
+                      const SizedBox(height: 18),
+                      _sectionLabel('YOUR CUSTOM CATEGORIES'),
+                      const SizedBox(height: 10),
+                      _categoryGrid(),
+                      const SizedBox(height: 14),
+                      _privacyNote(),
+                    ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -896,14 +966,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
             children: [
               Row(
                 children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: LiquidColors.accentBlue,
-                    ),
-                  ),
+                  AppLoader(size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1043,10 +1106,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       return SizedBox(
         height: 80,
         child: Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: LiquidColors.accentBlue,
-          ),
+          child: AppLoader(),
         ),
       );
     }

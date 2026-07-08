@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:video_player_app/utils/liquid_circular_progress.dart';
 import 'package:video_player_app/utils/responsive.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
+import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/views/screens/secure_camera/secure_camera_screen.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
@@ -18,12 +19,17 @@ class HomeScreen extends StatefulWidget {
   final VideoItem? autoOpen;
   final String? screenTitle;
 
+  /// Opens the screen pre-filtered to this category chip (used for custom
+  /// categories, which filter by name rather than by media type).
+  final String? initialCategory;
+
   const HomeScreen({
     super.key,
     this.onVideosChanged,
     this.typeFilter,
     this.autoOpen,
     this.screenTitle,
+    this.initialCategory,
   });
 
   @override
@@ -45,6 +51,9 @@ class HomeScreenState extends State<HomeScreen>
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _searchDebounce;
   String _selectedCategory = "All";
+
+  bool _selectionMode = false;
+  final Set<String> _selectedIds = {};
 
   static const String _favoritesFilter = 'Favorites';
 
@@ -72,6 +81,10 @@ class HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    if (widget.initialCategory != null &&
+        widget.initialCategory!.trim().isNotEmpty) {
+      _selectedCategory = widget.initialCategory!;
+    }
     _loadMedia();
     MediaService.revision.addListener(_onLibraryRevision);
 
@@ -189,11 +202,23 @@ class HomeScreenState extends State<HomeScreen>
 
   Future<void> _openAddSheet() async {
     HapticFeedback.lightImpact();
+    // Import straight into the category the user is currently viewing, with a
+    // picker filtered to that category — no Quick Import grid.
+    final tf = widget.typeFilter;
+    String? category;
+    if (tf != null) {
+      category = MediaImporter.instance.defaultCategoryForType(tf);
+    } else if (_selectedCategory != 'All' &&
+        _selectedCategory != _favoritesFilter) {
+      category = _selectedCategory;
+    }
     await AddToVaultSheet.show(
       context,
       onImported: () async {
         widget.onVideosChanged?.call();
       },
+      autoStart: true,
+      initialCategory: category,
     );
   }
 
@@ -235,6 +260,11 @@ class HomeScreenState extends State<HomeScreen>
         _customCategories
           ..clear()
           ..addAll(customs);
+        if (_selectedIds.isNotEmpty) {
+          final presentIds = mediaList.map((m) => m.id).toSet();
+          _selectedIds.removeWhere((id) => !presentIds.contains(id));
+          if (_selectedIds.isEmpty) _selectionMode = false;
+        }
         if (_selectedCategory != 'All' &&
             !_allCategoriesForFilter
                 .map((c) => c.toLowerCase())
@@ -529,6 +559,181 @@ class HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _enterSelection(VideoItem media) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectionMode = true;
+      _selectedIds.add(media.id);
+    });
+  }
+
+  void _toggleSelect(VideoItem media) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_selectedIds.contains(media.id)) {
+        _selectedIds.remove(media.id);
+      } else {
+        _selectedIds.add(media.id);
+      }
+      if (_selectedIds.isEmpty) {
+        _selectionMode = false;
+      }
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _selectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  void _selectAllVisible() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      _selectionMode = true;
+      _selectedIds.addAll(_filteredMedia.map((m) => m.id));
+    });
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_selectedIds.isEmpty) return;
+
+    final selectedItems = _allMedia
+        .where((m) => _selectedIds.contains(m.id))
+        .toList();
+    if (selectedItems.isEmpty) return;
+
+    final count = selectedItems.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: LiquidContainer(
+          gradient: LiquidColors.cardGradient,
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: LiquidColors.error.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.delete_outline_rounded,
+                      color: LiquidColors.error,
+                      size: 34,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Delete $count item${count == 1 ? '' : 's'}?',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w700,
+                    color: LiquidColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "They'll be moved to the Recycle Bin.",
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: LiquidColors.textTertiary,
+                              width: 1,
+                            ),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(color: LiquidColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(dialogContext, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: LiquidColors.error,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: LiquidColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    final hasLocked = selectedItems.any((m) => m.isLocked);
+    if (hasLocked) {
+      final authenticated = await _unlockProtectedItem(
+        reason: 'Authenticate to delete locked media',
+      );
+      if (!authenticated) return;
+      if (!mounted) return;
+    }
+
+    for (final item in selectedItems) {
+      await _mediaService.softDeleteMedia(item);
+      if (!mounted) return;
+    }
+
+    setState(() {
+      _selectionMode = false;
+      _selectedIds.clear();
+    });
+    await _loadMedia(silent: true);
+    if (!mounted) return;
+    widget.onVideosChanged?.call();
+    FlushBarHelper.flushBarSuccessMessage(
+      '$count item${count == 1 ? '' : 's'} moved to Recycle Bin',
+      context,
+    );
+  }
+
   Future<void> _deleteMedia(VideoItem media) async {
     if (media.isLocked) {
       final authenticated = await _unlockProtectedItem(
@@ -666,8 +871,9 @@ class HomeScreenState extends State<HomeScreen>
             showDialog(
               context: context,
               barrierDismissible: false,
-              builder: (_) =>
-                  const Center(child: LiquidCircularProgress(size: 96)),
+              builder: (_) => const Center(
+                child: AppLoader(size: 64, label: 'Preparing file…'),
+              ),
             );
             try {
               savePath = await VaultCrypto.instance.decryptToTemp(media.path);
@@ -711,6 +917,84 @@ class HomeScreenState extends State<HomeScreen>
         },
       ),
     );
+  }
+
+  // Unlock / hide for any file. "Unlock" decrypts the file and makes it
+  // visible in the device gallery; hiding removes it from the gallery again.
+  Future<void> _toggleGalleryVisibility(VideoItem media) async {
+    if (media.isLocked) {
+      final ok = await _unlockProtectedItem(
+        reason: 'Authenticate to change gallery visibility',
+      );
+      if (!ok) return;
+    }
+    if (!mounted) return;
+
+    if (media.inGallery) {
+      final updated = await _mediaService.removeFromGallery(media);
+      if (!mounted) return;
+      if (updated != null) {
+        FlushBarHelper.flushBarSuccessMessage(
+          'Hidden from your gallery',
+          context,
+        );
+        await _loadMedia(silent: true);
+      } else {
+        FlushBarHelper.flushBarErrorMessage('Could not update gallery', context);
+      }
+      return;
+    }
+
+    if (media.path.isEmpty || !await File(media.path).exists()) {
+      if (!mounted) return;
+      FlushBarHelper.flushBarErrorMessage('File not found', context);
+      return;
+    }
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: AppLoader(size: 64, label: 'Unlocking…'),
+      ),
+    );
+
+    String savePath = media.path;
+    bool decryptedToTemp = false;
+    try {
+      if (media.encrypted) {
+        savePath = await VaultCrypto.instance.decryptToTemp(media.path);
+        decryptedToTemp = true;
+      }
+      final saveName = _saveFileNameFor(media);
+      final updated =
+          await _mediaService.saveToGallery(media, savePath, saveName);
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      if (updated != null) {
+        FlushBarHelper.flushBarSuccessMessage(
+          'Unlocked — now visible in your gallery',
+          context,
+        );
+        await _loadMedia(silent: true);
+      } else {
+        FlushBarHelper.flushBarErrorMessage(
+          'Could not unlock to gallery',
+          context,
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      FlushBarHelper.flushBarErrorMessage('Could not unlock to gallery', context);
+    } finally {
+      if (decryptedToTemp) {
+        try {
+          await File(savePath).delete();
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> _openMedia(VideoItem media) async {
@@ -894,12 +1178,28 @@ class HomeScreenState extends State<HomeScreen>
         systemOverlayStyle: LiquidColors.isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
-        titleSpacing:
-            (widget.typeFilter != null || widget.screenTitle != null) ? 4 : 20,
+        titleSpacing: _selectionMode
+            ? 4
+            : (widget.typeFilter != null || widget.screenTitle != null)
+                ? 4
+                : 20,
+        leading: _selectionMode
+            ? IconButton(
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: LiquidColors.textPrimary,
+                ),
+                tooltip: 'Cancel',
+                onPressed: _exitSelection,
+              )
+            : null,
         title: Text(
-          widget.typeFilter != null
-              ? _categoryLabel(widget.typeFilter!)
-              : (widget.screenTitle ?? 'Library'),
+          _selectionMode
+              ? '${_selectedIds.length} selected'
+              : widget.screenTitle ??
+                  (widget.typeFilter != null
+                      ? _categoryLabel(widget.typeFilter!)
+                      : 'Library'),
           style: TextStyle(
             color: LiquidColors.textPrimary,
             fontSize: 22,
@@ -907,31 +1207,31 @@ class HomeScreenState extends State<HomeScreen>
             letterSpacing: 0.2,
           ),
         ),
-        actions: [
-          _buildAppBarAction(
-            icon: Icons.photo_camera_rounded,
-            tooltip: 'Secure Camera',
-            onTap: _openSecureCamera,
-          ),
-          const SizedBox(width: 10),
-          _buildAppBarAction(
-            icon: Icons.delete_outline_rounded,
-            tooltip: 'Recycle Bin',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DeletedVideosScreen(
-                    onVideosChanged: () => _loadMedia(silent: true),
-                  ),
+        actions: _selectionMode
+            ? [
+                _buildAppBarAction(
+                  icon: Icons.select_all_rounded,
+                  tooltip: 'Select all',
+                  onTap: _selectAllVisible,
                 ),
-              );
-            },
-          ),
-          const SizedBox(width: 12),
-        ],
+                const SizedBox(width: 10),
+                _buildAppBarAction(
+                  icon: Icons.delete_outline_rounded,
+                  tooltip: 'Delete',
+                  onTap: _deleteSelected,
+                ),
+                const SizedBox(width: 12),
+              ]
+            : [
+                _buildAppBarAction(
+                  icon: Icons.photo_camera_rounded,
+                  tooltip: 'Secure Camera',
+                  onTap: _openSecureCamera,
+                ),
+                const SizedBox(width: 12),
+              ],
       ),
-      floatingActionButton: _buildAddFab(),
+      floatingActionButton: _selectionMode ? null : _buildAddFab(),
       body: LiquidBackground(
         child: Column(
           children: [
@@ -1302,11 +1602,17 @@ class HomeScreenState extends State<HomeScreen>
           media: media,
           categories: _allCategoriesForFilter,
           index: index,
-          onTap: () => _openMedia(media),
+          selectionMode: _selectionMode,
+          selected: _selectedIds.contains(media.id),
+          onTap: _selectionMode
+              ? () => _toggleSelect(media)
+              : () => _openMedia(media),
+          onLongPress: () => _enterSelection(media),
           onCategorySelected: (category) =>
               _updateMediaCategory(media, category),
           onFavoriteToggle: () => _toggleFavorite(media),
           onDownloadTap: () => _showDownloadConfirmation(media),
+          onGalleryToggle: () => _toggleGalleryVisibility(media),
           onDeleteTap: () => _deleteMedia(media),
           onRenameTap: () => _renameMedia(media),
         );
@@ -1500,14 +1806,9 @@ class _DecryptGateState extends State<_DecryptGate> {
                   ),
                 ],
               )
-            : SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
-                  color: LiquidColors.accentBlue,
-                ),
-              ),
+            // No loader while opening a file — the viewer surface shows
+            // instantly and the content appears the moment it's ready.
+            : const SizedBox.shrink(),
       ),
     );
   }

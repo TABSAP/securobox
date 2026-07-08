@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import 'package:video_player_app/utils/liquid_colors.dart';
@@ -149,7 +150,7 @@ class _SecureMediaPickerScreenState extends State<SecureMediaPickerScreen> {
     if (_denied) return _buildDenied();
     if (_loading) {
       return Center(
-        child: CircularProgressIndicator(color: LiquidColors.accentBlue),
+        child: AppLoader(),
       );
     }
     if (_assets.isEmpty) {

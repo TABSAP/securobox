@@ -33,6 +33,12 @@ class VideoItem {
   final bool encrypted;
   bool isHidden;
   bool isFavorite;
+  // Whether this item is currently saved/visible in the device gallery.
+  // Videos default to "hidden from gallery" (locked); unlocking saves them
+  // back to the gallery. `galleryId` is the device asset id, kept so the item
+  // can be removed from the gallery again when re-hidden.
+  bool inGallery;
+  String galleryId;
 
   VideoItem({
     required this.id,
@@ -46,6 +52,8 @@ class VideoItem {
     this.encrypted = false,
     this.isHidden = false,
     this.isFavorite = false,
+    this.inGallery = false,
+    this.galleryId = '',
   });
 
   VideoItem copyWith({
@@ -60,6 +68,8 @@ class VideoItem {
     bool? encrypted,
     bool? isHidden,
     bool? isFavorite,
+    bool? inGallery,
+    String? galleryId,
   }) {
     return VideoItem(
       id: id ?? this.id,
@@ -73,6 +83,8 @@ class VideoItem {
       encrypted: encrypted ?? this.encrypted,
       isHidden: isHidden ?? this.isHidden,
       isFavorite: isFavorite ?? this.isFavorite,
+      inGallery: inGallery ?? this.inGallery,
+      galleryId: galleryId ?? this.galleryId,
     );
   }
 
@@ -80,7 +92,7 @@ class VideoItem {
       v.replaceAll('|', ' ').replaceAll(RegExp(r'[\r\n]'), ' ');
 
   String toStorageString() {
-    return '$id|${_safe(title)}|${_safe(path)}|$type|$isLocked|${_safe(category)}|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite';
+    return '$id|${_safe(title)}|${_safe(path)}|$type|$isLocked|${_safe(category)}|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite|$inGallery|${_safe(galleryId)}';
   }
 
   factory VideoItem.fromStorageString(String storageString) {
@@ -111,6 +123,8 @@ class VideoItem {
       encrypted: parts.length > 8 ? parts[8] == 'true' : false,
       isHidden: parts.length > 9 ? parts[9] == 'true' : false,
       isFavorite: parts.length > 10 ? parts[10] == 'true' : false,
+      inGallery: parts.length > 11 ? parts[11] == 'true' : false,
+      galleryId: parts.length > 12 ? parts[12] : '',
     );
   }
 }

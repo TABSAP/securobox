@@ -35,19 +35,19 @@ class MyApp extends StatelessWidget {
 
   ThemeData _buildTheme(Brightness brightness) {
     final dark = brightness == Brightness.dark;
-    final bg = dark ? const Color(0xFF0A0F1E) : const Color(0xFFF4F6FB);
-    final surface = dark ? const Color(0xFF141B2B) : const Color(0xFFFFFFFF);
-    final raised = dark ? const Color(0xFF1E2738) : const Color(0xFFF1F4FA);
+    final bg = dark ? const Color(0xFF0B0B0F) : const Color(0xFFFFFFFF);
+    final surface = dark ? const Color(0xFF141418) : const Color(0xFFFFFFFF);
+    final raised = dark ? const Color(0xFF1A1A20) : const Color(0xFFF3F4F6);
     final textPrimary =
-        dark ? const Color(0xFFFFFFFF) : const Color(0xFF1A1F2E);
+        dark ? const Color(0xFFFFFFFF) : const Color(0xFF0A0A0C);
     final textSecondary =
-        dark ? const Color(0xFF9CA3AF) : const Color(0xFF5B6472);
+        dark ? const Color(0xFFA0A4AB) : const Color(0xFF5B5F66);
     final textTertiary =
-        dark ? const Color(0xFF6B7280) : const Color(0xFF8A93A3);
-    final accent = dark ? const Color(0xFF3B82F6) : const Color(0xFF2563EB);
-    final outline = dark ? const Color(0x14FFFFFF) : const Color(0xFFE1E6EF);
-    final inputFill = dark ? const Color(0x14FFFFFF) : const Color(0xFFEDF0F7);
-    final divider = dark ? const Color(0x0FFFFFFF) : const Color(0xFFE6EAF1);
+        dark ? const Color(0xFF6B7078) : const Color(0xFF9AA0A8);
+    final accent = dark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5);
+    final outline = dark ? const Color(0x1AFFFFFF) : const Color(0xFFE6E8EC);
+    final inputFill = dark ? const Color(0x14FFFFFF) : const Color(0xFFF1F2F4);
+    final divider = dark ? const Color(0x14FFFFFF) : const Color(0xFFEDEEF1);
 
     final base = ThemeData(brightness: brightness, useMaterial3: true);
     final scheme = ColorScheme.fromSeed(
