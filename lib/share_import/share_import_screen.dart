@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:video_player_app/utils/category_service.dart';
@@ -10,6 +12,7 @@ import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_helper.dart';
 import 'package:video_player_app/utils/media_importer.dart';
+import 'package:video_player_app/utils/notification_service.dart';
 import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
 
@@ -241,6 +244,7 @@ class _ShareImportScreenState extends State<ShareImportScreen> {
     setState(() => _importing = false);
 
     if (result == null || result.added == 0) {
+      // On failure, stay on the screen and show a toast so the user can retry.
       if (context.mounted) {
         FlushBarHelper.flushBarErrorMessage(
           'Import failed. Please try again.',
@@ -250,20 +254,41 @@ class _ShareImportScreenState extends State<ShareImportScreen> {
       return;
     }
 
-    final buffer = StringBuffer(
-      '${result.added} file${result.added == 1 ? '' : 's'} imported',
-    );
-    if (result.failed > 0) {
-      buffer.write(' · ${result.failed} failed');
-    }
-    if (context.mounted) {
-      FlushBarHelper.flushBarSuccessMessage(buffer.toString(), context);
-    }
+    // Success. Do NOT show a route-based flushbar here: it would push a route on
+    // top of this screen, and closing the screen would then only pop the toast —
+    // leaving the user stuck on the import screen. Instead we log an in-app
+    // notification (visible the next time they open SecuroBox) and immediately
+    // close the flow, returning the user to wherever they shared from.
+    final failedNote = result.failed > 0 ? ' · ${result.failed} failed' : '';
+    unawaited(NotificationService.instance.addEvent(
+      title: 'Files added to your vault',
+      body: '${result.added} file${result.added == 1 ? '' : 's'} imported'
+          '$failedNote.',
+      kind: 'info',
+    ));
 
+    _finishShare();
+  }
+
+  /// Closes the import screen and hands control back to the app the user shared
+  /// from. On Android, finishing the task returns them to the source app (e.g.
+  /// the gallery). Elsewhere we simply close the screen.
+  void _finishShare() {
+    // Close this screen. `onDone` (from ShareIntake) pops the pushed route;
+    // fall back to a local pop if presented some other way.
     if (widget.onDone != null) {
       widget.onDone!.call();
-    } else {
-      await Navigator.maybePop(context);
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+
+    // Return the user to the app they shared from. Defer to the next frame so
+    // the pop settles first. iOS doesn't allow an app to background itself, so
+    // this is Android-only; there the screen simply closes to the vault.
+    if (Platform.isAndroid) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        SystemNavigator.pop();
+      });
     }
   }
 
