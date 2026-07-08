@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,6 +46,13 @@ class HomeScreenState extends State<HomeScreen>
   final List<VideoItem> _allMedia = [];
   final List<VideoItem> _filteredMedia = [];
   final List<String> _customCategories = [];
+
+  /// Windowed pagination: only [_visibleCount] filtered items are rendered at a
+  /// time to avoid decrypting hundreds of thumbnails at once. The window grows
+  /// by [_pageSize] as the user scrolls toward the bottom.
+  static const int _pageSize = 30;
+  int _visibleCount = _pageSize;
+
   bool isDeleteData = true;
   bool _isLoading = true;
   final ScrollController _scrollController = ScrollController();
@@ -86,6 +95,7 @@ class HomeScreenState extends State<HomeScreen>
       _selectedCategory = widget.initialCategory!;
     }
     _loadMedia();
+    _scrollController.addListener(_onScroll);
     MediaService.revision.addListener(_onLibraryRevision);
 
     _searchController.addListener(_onSearchChanged);
@@ -136,6 +146,7 @@ class HomeScreenState extends State<HomeScreen>
   void dispose() {
     MediaService.revision.removeListener(_onLibraryRevision);
     _searchDebounce?.cancel();
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
@@ -143,6 +154,19 @@ class HomeScreenState extends State<HomeScreen>
     _searchFocusNode.dispose();
     _headerAnimationController.dispose();
     super.dispose();
+  }
+
+  /// Grows the rendered window as the user nears the bottom of the list so the
+  /// next batch of thumbnails is decrypted lazily instead of all at once.
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_visibleCount >= _filteredMedia.length) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 600) {
+      setState(() {
+        _visibleCount = min(_visibleCount + _pageSize, _filteredMedia.length);
+      });
+    }
   }
 
   void _onSearchChanged() {
@@ -162,6 +186,8 @@ class HomeScreenState extends State<HomeScreen>
     final typeFilter = widget.typeFilter;
 
     setState(() {
+      // A new filter/search/reload starts the render window from the top.
+      _visibleCount = _pageSize;
       _filteredMedia.clear();
 
       if (typeFilter == null && query.isEmpty && _selectedCategory == "All") {
@@ -1175,9 +1201,7 @@ class HomeScreenState extends State<HomeScreen>
         elevation: 0,
         scrolledUnderElevation: 0,
         iconTheme: IconThemeData(color: LiquidColors.textPrimary),
-        systemOverlayStyle: LiquidColors.isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         titleSpacing: _selectionMode
             ? 4
             : (widget.typeFilter != null || widget.screenTitle != null)
@@ -1586,6 +1610,8 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMediaList() {
+    final visible = min(_visibleCount, _filteredMedia.length);
+    final hasMore = visible < _filteredMedia.length;
     return ListView.builder(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(),
@@ -1595,8 +1621,15 @@ class HomeScreenState extends State<HomeScreen>
         context.contentInset(phone: 16),
         16,
       ),
-      itemCount: _filteredMedia.length,
+      itemCount: visible + (hasMore ? 1 : 0),
       itemBuilder: (context, index) {
+        if (index >= visible) {
+          // Bottom sentinel row shown while more items remain to be revealed.
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: AppLoader(size: 24)),
+          );
+        }
         final media = _filteredMedia[index];
         return AnimatedMediaCard(
           media: media,

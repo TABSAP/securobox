@@ -39,6 +39,12 @@ class VideoItem {
   // can be removed from the gallery again when re-hidden.
   bool inGallery;
   String galleryId;
+  // Where this file came from, so unlocking can restore it to its original
+  // spot. `origin` is 'gallery' | 'camera' | 'file' | ''. `originAlbum` is the
+  // device album relative path to restore into (e.g. 'DCIM/Camera',
+  // 'Pictures/Trips'); empty means "no known original location".
+  String origin;
+  String originAlbum;
 
   VideoItem({
     required this.id,
@@ -54,6 +60,8 @@ class VideoItem {
     this.isFavorite = false,
     this.inGallery = false,
     this.galleryId = '',
+    this.origin = '',
+    this.originAlbum = '',
   });
 
   VideoItem copyWith({
@@ -70,6 +78,8 @@ class VideoItem {
     bool? isFavorite,
     bool? inGallery,
     String? galleryId,
+    String? origin,
+    String? originAlbum,
   }) {
     return VideoItem(
       id: id ?? this.id,
@@ -85,6 +95,8 @@ class VideoItem {
       isFavorite: isFavorite ?? this.isFavorite,
       inGallery: inGallery ?? this.inGallery,
       galleryId: galleryId ?? this.galleryId,
+      origin: origin ?? this.origin,
+      originAlbum: originAlbum ?? this.originAlbum,
     );
   }
 
@@ -92,7 +104,7 @@ class VideoItem {
       v.replaceAll('|', ' ').replaceAll(RegExp(r'[\r\n]'), ' ');
 
   String toStorageString() {
-    return '$id|${_safe(title)}|${_safe(path)}|$type|$isLocked|${_safe(category)}|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite|$inGallery|${_safe(galleryId)}';
+    return '$id|${_safe(title)}|${_safe(path)}|$type|$isLocked|${_safe(category)}|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite|$inGallery|${_safe(galleryId)}|${_safe(origin)}|${_safe(originAlbum)}';
   }
 
   factory VideoItem.fromStorageString(String storageString) {
@@ -125,6 +137,8 @@ class VideoItem {
       isFavorite: parts.length > 10 ? parts[10] == 'true' : false,
       inGallery: parts.length > 11 ? parts[11] == 'true' : false,
       galleryId: parts.length > 12 ? parts[12] : '',
+      origin: parts.length > 13 ? parts[13] : '',
+      originAlbum: parts.length > 14 ? parts[14] : '',
     );
   }
 }

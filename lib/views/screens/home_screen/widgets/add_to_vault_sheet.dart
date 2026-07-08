@@ -205,6 +205,8 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
             f,
             galleryAssetId: a.id,
             originalName: name.isNotEmpty ? name : a.title,
+            origin: 'gallery',
+            originAlbum: a.relativePath ?? '',
           ));
         }
       }
@@ -258,6 +260,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
             file,
             identifier: pf.identifier,
             originalName: pf.name,
+            origin: 'file',
           ));
         }
       }

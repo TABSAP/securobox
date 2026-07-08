@@ -421,12 +421,11 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = LiquidColors.isDark;
     final size = MediaQuery.of(context).size;
     final double disc = (size.shortestSide * 0.36).clamp(124.0, 168.0).toDouble();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      value: LiquidColors.systemOverlayStyle,
       child: PopScope<BiometricAuthResult?>(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {

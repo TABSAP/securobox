@@ -653,9 +653,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: LiquidColors.isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
 import 'package:video_player_app/security_settings/about_screen.dart';
 import 'package:video_player_app/security_settings/security_setting.dart';
 import 'package:video_player_app/security_settings/support_screen.dart';
@@ -56,70 +53,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     FlushBarHelper.flushBarSuccessMessage('Cache cleared', context);
   }
 
-  Future<void> _confirmWipe() async {
-    HapticFeedback.heavyImpact();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Delete all data?',
-          style: TextStyle(color: LiquidColors.textPrimary),
-        ),
-        content: Text(
-          'This permanently erases every file in your vault, your PIN, and all '
-          'settings. This cannot be undone.',
-          style: TextStyle(color: LiquidColors.textSecondary, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: LiquidColors.textSecondary),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(
-              'Delete everything',
-              style: TextStyle(
-                color: LiquidColors.error,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    await VaultCrypto.instance.resetAll();
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-    } catch (_) {}
-    try {
-      const storage = FlutterSecureStorage(
-        aOptions: AndroidOptions(resetOnError: false),
-        iOptions: IOSOptions(
-          accessibility: KeychainAccessibility.first_unlock_this_device,
-        ),
-      );
-      await storage.deleteAll();
-    } catch (_) {}
-
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
-      (_) => false,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
-    final isDark =
-        ThemeController.instance.effectiveBrightness == Brightness.dark;
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -127,9 +63,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         titleSpacing: 20,
         title: Text(
           'Settings',
@@ -239,21 +173,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 subtitle: 'Feedback, privacy policy, tips and FAQs',
                 trailing: _chevron(),
                 onTap: () => _open(const SupportScreen()),
-              ),
-            ]),
-            const SizedBox(height: AppSpace.lg),
-
-            const AppSectionHeader(label: 'Danger zone'),
-            const SizedBox(height: AppSpace.sm),
-            _group([
-              _tile(
-                icon: Icons.delete_forever_rounded,
-                color: LiquidColors.error,
-                title: 'Delete all data',
-                subtitle: 'Permanently wipe the vault',
-                titleColor: LiquidColors.error,
-                trailing: _chevron(color: LiquidColors.error),
-                onTap: _confirmWipe,
               ),
             ]),
           ],
@@ -485,10 +404,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  // Neutral, theme-adaptive icon: dark in Light mode, light in
+                  // Dark mode.
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: LiquidColors.textPrimary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(

@@ -1,7 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/vault_thumbnail.dart';
+import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
@@ -21,7 +23,11 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   final List<VideoItem> _deletedVideos = [];
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
+
+  // Multi-select state: long-press a card to enter selection mode, then tap
+  // cards to toggle. Bulk restore / permanent-delete act on the selection.
+  bool _selectionMode = false;
+  final Set<String> _selectedIds = {};
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
@@ -33,7 +39,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     _initAnimations();
     _loadDeletedVideos();
     _searchController.addListener(_onSearchChanged);
-    _searchFocusNode.addListener(_onSearchChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoDeleteOldFiles();
@@ -44,8 +49,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   void dispose() {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
-    _searchFocusNode.removeListener(_onSearchChanged);
-    _searchFocusNode.dispose();
     _animationController.dispose();
 
     super.dispose();
@@ -53,14 +56,14 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
 
   void _initAnimations() {
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
     _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+        Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero).animate(
           CurvedAnimation(
             parent: _animationController,
             curve: Curves.easeOutCubic,
@@ -162,6 +165,141 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     }).toList();
   }
 
+  // ---- Multi-select ---------------------------------------------------------
+
+  bool get _allSelected =>
+      _filteredVideos.isNotEmpty &&
+      _filteredVideos.every((v) => _selectedIds.contains(v.id));
+
+  void _enterSelection(VideoItem video) {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _selectionMode = true;
+      _selectedIds.add(video.id);
+    });
+  }
+
+  void _toggleSelect(VideoItem video) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_selectedIds.remove(video.id)) {
+        if (_selectedIds.isEmpty) _selectionMode = false;
+      } else {
+        _selectedIds.add(video.id);
+      }
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _selectionMode = false;
+      _selectedIds.clear();
+    });
+  }
+
+  void _toggleSelectAll() {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_allSelected) {
+        _selectedIds.clear();
+        _selectionMode = false;
+      } else {
+        _selectedIds.addAll(_filteredVideos.map((v) => v.id));
+        _selectionMode = true;
+      }
+    });
+  }
+
+  Future<void> _restoreSelected() async {
+    if (_selectedIds.isEmpty) return;
+    HapticFeedback.lightImpact();
+    final ids = Set<String>.from(_selectedIds);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList =
+          prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
+      final updatedMediaList = <String>[];
+
+      for (final mediaData in mediaList) {
+        try {
+          final v = VideoItem.fromStorageString(mediaData);
+          if (ids.contains(v.id)) {
+            v.isDeleted = false;
+            v.deletedDate = null;
+            v.isHidden = false;
+            updatedMediaList.add(v.toStorageString());
+          } else {
+            updatedMediaList.add(mediaData);
+          }
+        } catch (e) {
+          updatedMediaList.add(mediaData);
+        }
+      }
+
+      await prefs.setStringList(
+        VaultContext.instance.libraryKey,
+        updatedMediaList,
+      );
+      if (!mounted) return;
+      FlushBarHelper.flushBarSuccessMessage(
+        '${ids.length} ${ids.length == 1 ? "file" : "files"} restored',
+        context,
+      );
+      _exitSelection();
+      await _loadDeletedVideos();
+      widget.onVideosChanged?.call();
+    } catch (e) {
+      _showErrorDialog('Failed to restore files');
+    }
+  }
+
+  Future<void> _deleteSelected() async {
+    if (_selectedIds.isEmpty) return;
+    final ids = Set<String>.from(_selectedIds);
+    final confirmed = await _confirmDeleteForever(
+      'Delete ${ids.length} ${ids.length == 1 ? "file" : "files"} forever?',
+      'The selected ${ids.length == 1 ? "file" : "files"} will be permanently '
+          'deleted from your vault. This cannot be undone.',
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mediaList =
+          prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
+      final updatedMediaList = <String>[];
+
+      for (final mediaData in mediaList) {
+        try {
+          final v = VideoItem.fromStorageString(mediaData);
+          if (ids.contains(v.id)) {
+            await VaultCrypto.instance.deleteEncryptedFile(v.path);
+          } else {
+            updatedMediaList.add(mediaData);
+          }
+        } catch (e) {
+          updatedMediaList.add(mediaData);
+        }
+      }
+
+      await prefs.setStringList(
+        VaultContext.instance.libraryKey,
+        updatedMediaList,
+      );
+      if (!mounted) return;
+      FlushBarHelper.flushBarSuccessMessage(
+        '${ids.length} ${ids.length == 1 ? "file" : "files"} permanently deleted',
+        context,
+      );
+      _exitSelection();
+      await _loadDeletedVideos();
+      widget.onVideosChanged?.call();
+    } catch (e) {
+      _showErrorDialog('Failed to delete files');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+
   Future<void> _confirmRestore(VideoItem video) async {
     await _restoreVideo(video);
   }
@@ -216,15 +354,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                LiquidColors.backgroundLight,
-                LiquidColors.backgroundMid,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(24),
+            color: LiquidColors.backgroundLight,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(
               color: LiquidColors.error.withValues(alpha: 0.3),
               width: 1,
@@ -237,15 +368,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      LiquidColors.error.withValues(alpha: 0.3),
-                      LiquidColors.error.withValues(alpha: 0.1),
-                    ],
-                    center: Alignment.center,
-                    radius: 0.8,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                  color: LiquidColors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Center(
                   child: Icon(
@@ -284,9 +408,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
-                        side: BorderSide(color: LiquidColors.textTertiary),
+                        side: BorderSide(color: LiquidColors.cardBorder),
                       ),
                       child: Text(
                         'Cancel',
@@ -302,7 +426,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                         backgroundColor: LiquidColors.error,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                       ),
                       child: const Text(
@@ -385,8 +509,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             updatedMediaList.add(mediaData);
           }
         } catch (e) {
-          if (kDebugMode) {
-          }
           updatedMediaList.add(mediaData);
         }
       }
@@ -418,15 +540,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                LiquidColors.backgroundLight,
-                LiquidColors.backgroundMid,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(24),
+            color: LiquidColors.backgroundLight,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(
               color: LiquidColors.error.withValues(alpha: 0.3),
               width: 1,
@@ -439,18 +554,15 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      LiquidColors.error.withValues(alpha: 0.3),
-                      LiquidColors.error.withValues(alpha: 0.1),
-                    ],
-                    center: Alignment.center,
-                    radius: 0.8,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                  color: LiquidColors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Center(
-                  child: Icon(Icons.error, color: LiquidColors.error, size: 30),
+                  child: Icon(
+                    Icons.error_outline_rounded,
+                    color: LiquidColors.error,
+                    size: 30,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -475,18 +587,18 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: LiquidColors.accentBlue,
+                  backgroundColor: LiquidColors.indigo,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
                     vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                 ),
-                child: Text(
+                child: const Text(
                   'OK',
-                  style: TextStyle(color: LiquidColors.textPrimary),
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
             ],
@@ -497,6 +609,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   }
 
   Future<void> _showClearAllDialog() async {
+    HapticFeedback.lightImpact();
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
@@ -504,15 +617,8 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                LiquidColors.backgroundLight,
-                LiquidColors.backgroundMid,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(24),
+            color: LiquidColors.backgroundLight,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
             border: Border.all(
               color: LiquidColors.error.withValues(alpha: 0.3),
               width: 1,
@@ -525,19 +631,12 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 width: 60,
                 height: 60,
                 decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      LiquidColors.error.withValues(alpha: 0.3),
-                      LiquidColors.error.withValues(alpha: 0.1),
-                    ],
-                    center: Alignment.center,
-                    radius: 0.8,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                  color: LiquidColors.error.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: Center(
                   child: Icon(
-                    Icons.delete_sweep,
+                    Icons.delete_sweep_rounded,
                     color: LiquidColors.error,
                     size: 30,
                   ),
@@ -545,9 +644,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               ),
               const SizedBox(height: 20),
               Text(
-                'Empty Trash?',
+                'Empty Recycle Bin?',
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: LiquidColors.textPrimary,
                 ),
@@ -571,9 +671,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
-                        side: BorderSide(color: LiquidColors.textTertiary),
+                        side: BorderSide(color: LiquidColors.cardBorder),
                       ),
                       child: Text(
                         'Cancel',
@@ -589,11 +689,11 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                         backgroundColor: LiquidColors.error,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
                         ),
                       ),
-                      child: Text(
-                        'Empty Trash',
+                      child: const Text(
+                        'Empty Bin',
                         style: TextStyle(color: Colors.white),
                       ),
                     ),
@@ -611,36 +711,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     }
   }
 
-  IconData _getMediaIcon(String type) {
-    switch (type) {
-      case 'video':
-        return Icons.video_library_rounded;
-      case 'image':
-        return Icons.image_rounded;
-      case 'audio':
-        return Icons.music_note_rounded;
-      case 'document':
-        return Icons.description_rounded;
-      default:
-        return Icons.insert_drive_file_rounded;
-    }
-  }
-
-  Color _getMediaColor(String type) {
-    switch (type) {
-      case 'video':
-        return LiquidColors.accentBlue;
-      case 'image':
-        return LiquidColors.success;
-      case 'audio':
-        return LiquidColors.accentPurple;
-      case 'document':
-        return LiquidColors.accentOrange;
-      default:
-        return LiquidColors.accentPink;
-    }
-  }
-
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
@@ -649,8 +719,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       return 'Today';
     } else if (difference.inDays == 1) {
       return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
     } else if (difference.inDays < 30) {
       return '${difference.inDays} days ago';
     } else {
@@ -664,147 +732,49 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     return deleteDate.difference(now).inDays;
   }
 
+  Color _daysColor(int days) {
+    if (days <= 5) return LiquidColors.error;
+    if (days <= 15) return LiquidColors.warning;
+    return LiquidColors.success;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      appBar: AppBar(
+    final inset = context.contentInset(phone: AppSpace.md);
+    return PopScope(
+      canPop: !_selectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _exitSelection();
+      },
+      child: Scaffold(
         backgroundColor: LiquidColors.backgroundDeep,
-        elevation: 0,
-        leading: TweenAnimationBuilder(
-          tween: Tween<double>(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.elasticOut,
-          builder: (context, double value, child) {
-            return Transform.scale(
-              scale: value,
-              child: IconButton(
-                icon: Icon(Icons.arrow_back, color: LiquidColors.textPrimary),
-                onPressed: () => Navigator.pop(context),
-              ),
-            );
-          },
-        ),
-        title: TweenAnimationBuilder(
-          tween: Tween<double>(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.elasticOut,
-          builder: (context, double value, child) {
-            return Transform.scale(
-              scale: value,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+        appBar: _selectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
+        body: SafeArea(
+          top: false,
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: Column(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      gradient: LiquidColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: LiquidColors.error.withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.delete_outline,
-                        color: Colors.white,
-                        size: 22,
-                      ),
-                    ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(inset, 0, inset, AppSpace.sm),
+                    child: _buildSearchBar(),
                   ),
-                  const SizedBox(width: 12),
-                  Flexible(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Recycle Bin',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 20,
-                            color: LiquidColors.textPrimary,
-                          ),
-                        ),
-                        if (_deletedVideos.isNotEmpty)
-                          Text(
-                            'Auto-delete after 30 days',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: LiquidColors.textSecondary,
-                            ),
-                          ),
-                      ],
-                    ),
+                  if (!_isLoading && _deletedVideos.isNotEmpty)
+                    _buildInfoBar(inset),
+                  Expanded(
+                    child: _isLoading
+                        ? _buildLoadingState()
+                        : _filteredVideos.isEmpty
+                        ? _buildEmptyState(
+                            hasSearch: _searchController.text.isNotEmpty,
+                          )
+                        : _buildList(inset),
                   ),
+                  if (_selectionMode) _buildSelectionActionBar(inset),
                 ],
               ),
-            );
-          },
-        ),
-        actions: [
-          if (_deletedVideos.isNotEmpty)
-            TweenAnimationBuilder(
-              tween: Tween<double>(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 600),
-              curve: Curves.elasticOut,
-              builder: (context, double value, child) {
-                return Transform.scale(
-                  scale: value,
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.delete_sweep,
-                      color: LiquidColors.textPrimary,
-                    ),
-                    tooltip: 'Empty Trash',
-                    onPressed: _showClearAllDialog,
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundMid,
-              LiquidColors.backgroundLight,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: Column(
-              children: [
-                _buildSearchBar(),
-                if (!_isLoading && _deletedVideos.isNotEmpty) _buildInfoBar(),
-                Expanded(
-                  child: _isLoading
-                      ? _buildLoadingState()
-                      : _filteredVideos.isEmpty
-                      ? LiquidDeletedEmptyState(
-                          hasSearch: _searchController.text.isNotEmpty,
-                          onBackPressed: () => Navigator.pop(context),
-                        )
-                      : _buildList(),
-                ),
-              ],
             ),
           ),
         ),
@@ -812,84 +782,132 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     );
   }
 
-  Widget _buildSearchBar() {
-    final hasQuery = _searchController.text.isNotEmpty;
-    final active = hasQuery || _searchFocusNode.hasFocus;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: LiquidColors.textPrimary.withValues(
-            alpha: active ? 0.07 : 0.05,
-          ),
-          borderRadius: BorderRadius.circular(16),
+  PreferredSizeWidget _buildDefaultAppBar() {
+    return AppBar(
+      backgroundColor: LiquidColors.backgroundDeep,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      systemOverlayStyle: LiquidColors.systemOverlayStyle,
+      titleSpacing: 0,
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Text(
+        'Recycle Bin',
+        style: TextStyle(
+          color: LiquidColors.textPrimary,
+          fontSize: 22,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
         ),
+      ),
+      actions: [
+        if (_deletedVideos.isNotEmpty) ...[
+          Tooltip(
+            message: 'Select',
+            child: IconButton(
+              icon: Icon(
+                Icons.checklist_rounded,
+                color: LiquidColors.textPrimary,
+              ),
+              onPressed: () {
+                if (_filteredVideos.isNotEmpty) {
+                  _enterSelection(_filteredVideos.first);
+                }
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Tooltip(
+              message: 'Empty bin',
+              child: IconButton(
+                icon: Icon(
+                  Icons.delete_sweep_rounded,
+                  color: LiquidColors.error,
+                ),
+                onPressed: _showClearAllDialog,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  PreferredSizeWidget _buildSelectionAppBar() {
+    return AppBar(
+      backgroundColor: LiquidColors.backgroundDeep,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      systemOverlayStyle: LiquidColors.systemOverlayStyle,
+      titleSpacing: 0,
+      leading: IconButton(
+        icon: Icon(Icons.close_rounded, color: LiquidColors.textPrimary),
+        onPressed: _exitSelection,
+      ),
+      title: Text(
+        '${_selectedIds.length} selected',
+        style: TextStyle(
+          color: LiquidColors.textPrimary,
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.2,
+        ),
+      ),
+      actions: [
+        Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: TextButton(
+            onPressed: _toggleSelectAll,
+            child: Text(
+              _allSelected ? 'Clear' : 'All',
+              style: TextStyle(
+                color: LiquidColors.indigo,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSelectionActionBar(double inset) {
+    final count = _selectedIds.length;
+    final enabled = count > 0;
+    return Container(
+      padding: EdgeInsets.fromLTRB(inset, AppSpace.sm, inset, AppSpace.sm),
+      decoration: BoxDecoration(
+        color: LiquidColors.backgroundDeep,
+        border: Border(top: BorderSide(color: LiquidColors.divider)),
+      ),
+      child: SafeArea(
+        top: false,
         child: Row(
           children: [
-            Icon(
-              Icons.search_rounded,
-              color: active ? LiquidColors.error : LiquidColors.textTertiary,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
             Expanded(
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                textInputAction: TextInputAction.search,
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                cursorColor: LiquidColors.error,
-                decoration: InputDecoration(
-                  hintText: 'Search deleted files',
-                  hintStyle: TextStyle(
-                    color: LiquidColors.textTertiary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
-                  filled: false,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
+              child: _buildBarButton(
+                icon: Icons.restore_rounded,
+                label: 'Restore',
+                color: LiquidColors.indigo,
+                enabled: enabled,
+                onTap: _restoreSelected,
               ),
             ),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 160),
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: ScaleTransition(scale: anim, child: child),
+            const SizedBox(width: AppSpace.sm + 2),
+            Expanded(
+              child: _buildBarButton(
+                icon: Icons.delete_forever_rounded,
+                label: 'Delete',
+                color: LiquidColors.error,
+                enabled: enabled,
+                onTap: _deleteSelected,
               ),
-              child: hasQuery
-                  ? GestureDetector(
-                      key: const ValueKey('clear'),
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        _searchController.clear();
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 6),
-                        child: Icon(
-                          Icons.close_rounded,
-                          color: LiquidColors.textTertiary,
-                          size: 18,
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(key: ValueKey('empty')),
             ),
           ],
         ),
@@ -897,24 +915,121 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     );
   }
 
-  Widget _buildInfoBar() {
+  Widget _buildBarButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: enabled
+          ? color.withValues(alpha: 0.12)
+          : LiquidColors.surfaceMuted,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Container(
+          height: 48,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: enabled ? color : LiquidColors.textTertiary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: enabled ? color : LiquidColors.textTertiary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return TextField(
+      controller: _searchController,
+      style: TextStyle(color: LiquidColors.textPrimary, fontSize: 15),
+      cursorColor: LiquidColors.indigo,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: LiquidColors.surfaceMuted,
+        hintText: 'Search deleted files',
+        hintStyle: TextStyle(color: LiquidColors.textTertiary, fontSize: 15),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          color: LiquidColors.textTertiary,
+          size: 20,
+        ),
+        suffixIcon: _searchController.text.isEmpty
+            ? null
+            : IconButton(
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: LiquidColors.textTertiary,
+                  size: 20,
+                ),
+                onPressed: () {
+                  HapticFeedback.selectionClick();
+                  _searchController.clear();
+                  FocusScope.of(context).unfocus();
+                },
+              ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderSide: BorderSide(color: LiquidColors.indigo, width: 1.4),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoBar(double inset) {
+    final count = _filteredVideos.length;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.fromLTRB(inset, 0, inset, AppSpace.sm),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '${_filteredVideos.length} ${_filteredVideos.length == 1 ? 'file' : 'files'}',
-            style: TextStyle(color: LiquidColors.textSecondary, fontSize: 12),
-          ),
-          if (_searchController.text.isNotEmpty)
-            TextButton(
-              onPressed: () => _searchController.clear(),
-              child: Text(
-                'Clear search',
-                style: TextStyle(color: LiquidColors.error, fontSize: 12),
-              ),
+            '$count ${count == 1 ? 'file' : 'files'}',
+            style: TextStyle(
+              color: LiquidColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
+          ),
+          const Spacer(),
+          Icon(
+            Icons.schedule_rounded,
+            size: 14,
+            color: LiquidColors.textTertiary,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            'Auto-deletes after 30 days',
+            style: TextStyle(color: LiquidColors.textTertiary, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -925,20 +1040,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          TweenAnimationBuilder(
-            tween: Tween<double>(begin: 0, end: 1),
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.elasticOut,
-            builder: (context, double value, child) {
-              return Transform.scale(
-                scale: value,
-                child: const AppLoader(size: 64),
-              );
-            },
-          ),
-          const SizedBox(height: 20),
+          const AppLoader(size: 56),
+          const SizedBox(height: AppSpace.md),
           Text(
-            'Loading deleted files...',
+            'Loading deleted files…',
             style: TextStyle(color: LiquidColors.textSecondary, fontSize: 14),
           ),
         ],
@@ -946,27 +1051,342 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     );
   }
 
-  Widget _buildList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _filteredVideos.length,
-      itemBuilder: (context, index) {
-        final video = _filteredVideos[index];
-        final daysRemaining = video.deletedDate != null
-            ? _getDaysRemaining(video.deletedDate!)
-            : 30;
+  Widget _buildEmptyState({required bool hasSearch}) {
+    final accent = hasSearch ? LiquidColors.indigo : LiquidColors.error;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpace.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.10),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                hasSearch
+                    ? Icons.search_off_rounded
+                    : Icons.delete_outline_rounded,
+                color: accent,
+                size: 42,
+              ),
+            ),
+            const SizedBox(height: AppSpace.lg),
+            Text(
+              hasSearch ? 'No matching files' : 'Recycle Bin is empty',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppSpace.sm),
+            Text(
+              hasSearch
+                  ? 'Try a different search term.'
+                  : 'Deleted files appear here and are kept for 30 days before they are removed for good.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: LiquidColors.textSecondary,
+                fontSize: 13.5,
+                height: 1.5,
+              ),
+            ),
+            if (!hasSearch) ...[
+              const SizedBox(height: AppSpace.lg),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Back to Library',
+                  style: TextStyle(
+                    color: LiquidColors.indigo,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
-        return LiquidDeletedCard(
-          video: video,
-          daysRemaining: daysRemaining,
-          onRestore: () => _confirmRestore(video),
-          onDelete: () => _permanentDelete(video),
-          formatDate: _formatDate,
-          getIcon: _getMediaIcon,
-          getColor: _getMediaColor,
-          index: index,
-        );
+  Widget _buildList(double inset) {
+    final videos = _filteredVideos;
+    return ListView.separated(
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        inset,
+        AppSpace.xs,
+        inset,
+        AppSpace.xl + 40,
+      ),
+      itemCount: videos.length,
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm + 2),
+      itemBuilder: (context, index) => _buildCard(videos[index]),
+    );
+  }
+
+  Widget _buildCard(VideoItem video) {
+    final deletedDate = video.deletedDate;
+    final daysRemaining = deletedDate != null
+        ? _getDaysRemaining(deletedDate)
+        : 30;
+    final daysColor = _daysColor(daysRemaining);
+    final isLocked = video.isLocked;
+    final selected = _selectedIds.contains(video.id);
+
+    final card = AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      padding: const EdgeInsets.all(AppSpace.sm + 2),
+      decoration: BoxDecoration(
+        color: selected
+            ? LiquidColors.indigo.withValues(alpha: 0.10)
+            : LiquidColors.backgroundLight.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: selected ? LiquidColors.indigo : LiquidColors.cardBorder,
+          width: selected ? 1.4 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          VaultThumbnail(
+            item: video,
+            width: 54,
+            height: 54,
+            radius: 14,
+            iconSize: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  video.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  deletedDate != null
+                      ? 'Deleted ${_formatDate(deletedDate)}  ·  ${video.category}'
+                      : video.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: LiquidColors.textTertiary,
+                    fontSize: 11.5,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Row(
+                  children: [
+                    _buildStatusPill(
+                      icon: isLocked
+                          ? Icons.lock_outline_rounded
+                          : (daysRemaining <= 5
+                                ? Icons.warning_amber_rounded
+                                : Icons.schedule_rounded),
+                      label: isLocked
+                          ? 'Locked'
+                          : (daysRemaining <= 0
+                                ? 'Removes today'
+                                : '$daysRemaining ${daysRemaining == 1 ? 'day' : 'days'} left'),
+                      color: isLocked ? LiquidColors.warning : daysColor,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          if (_selectionMode)
+            _buildCheckIndicator(selected)
+          else
+            Column(
+              children: [
+                _buildActionButton(
+                  icon: Icons.restore_rounded,
+                  color: LiquidColors.indigo,
+                  tooltip: 'Restore',
+                  onTap: () => _confirmRestore(video),
+                ),
+                const SizedBox(height: AppSpace.sm),
+                _buildActionButton(
+                  icon: Icons.delete_forever_rounded,
+                  color: LiquidColors.error,
+                  tooltip: 'Delete forever',
+                  onTap: () => _permanentDelete(video),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+
+    // In selection mode: tap toggles, swipe is disabled. Otherwise: long-press
+    // enters selection, and swipe restores / deletes as before.
+    if (_selectionMode) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _toggleSelect(video),
+        onLongPress: () => _toggleSelect(video),
+        child: card,
+      );
+    }
+
+    return Dismissible(
+      key: Key('deleted_${video.id}'),
+      direction: DismissDirection.horizontal,
+      background: _buildSwipeBackground(isRestore: true),
+      secondaryBackground: _buildSwipeBackground(isRestore: false),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          await _confirmRestore(video);
+        } else {
+          await _permanentDelete(video);
+        }
+        return false;
       },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: () => _enterSelection(video),
+        child: card,
+      ),
+    );
+  }
+
+  Widget _buildCheckIndicator(bool selected) {
+    return Container(
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        color: selected ? LiquidColors.indigo : Colors.transparent,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: selected ? LiquidColors.indigo : LiquidColors.cardBorder,
+          width: 1.6,
+        ),
+      ),
+      child: selected
+          ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+          : null,
+    );
+  }
+
+  Widget _buildStatusPill({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              border: Border.all(color: color.withValues(alpha: 0.22)),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwipeBackground({required bool isRestore}) {
+    final color = isRestore ? LiquidColors.indigo : LiquidColors.error;
+    final icon = isRestore
+        ? Icons.restore_rounded
+        : Icons.delete_forever_rounded;
+    final text = isRestore ? 'Restore' : 'Delete';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      alignment: isRestore ? Alignment.centerLeft : Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isRestore) ...[
+            Icon(icon, color: color, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ] else ...[
+            Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(icon, color: color, size: 24),
+          ],
+        ],
+      ),
     );
   }
 }

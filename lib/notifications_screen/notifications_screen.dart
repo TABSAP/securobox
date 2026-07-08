@@ -64,9 +64,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: LiquidColors.isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         title: Text(
           'Notifications',
           style: TextStyle(
@@ -181,7 +179,7 @@ class _NotificationTile extends StatelessWidget {
         child: Icon(Icons.delete_outline_rounded, color: LiquidColors.error),
       ),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
           borderRadius: AppRadius.rLg,
@@ -191,16 +189,16 @@ class _NotificationTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 34,
+              height: 34,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 20),
+              child: Icon(icon, color: color, size: 18),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,21 +228,21 @@ class _NotificationTile extends StatelessWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     item.body,
                     style: TextStyle(
                       color: LiquidColors.textSecondary,
-                      fontSize: 13,
-                      height: 1.35,
+                      fontSize: 12.5,
+                      height: 1.25,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 5),
                   Text(
                     _relativeTime,
                     style: TextStyle(
                       color: LiquidColors.textTertiary,
-                      fontSize: 11.5,
+                      fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

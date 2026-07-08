@@ -1777,9 +1777,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: LiquidColors.isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         titleSpacing: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
@@ -2124,10 +2122,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  // Neutral, theme-adaptive icon (light in Dark, dark in Light).
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: LiquidColors.textPrimary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(

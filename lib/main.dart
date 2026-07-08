@@ -16,6 +16,10 @@ import 'app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Draw edge-to-edge: content extends cleanly behind the status/navigation
+  // bars for a seamless top (no grey status-bar band).
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   await ScreenSecurity.init();
 
   await ThemeController.instance.init();

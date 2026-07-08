@@ -8,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/security_settings/decoy_setup_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/widgets/app_brand_icon.dart';
+import 'package:video_player_app/widgets/app_section_header.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -15,182 +17,127 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: LiquidColors.backgroundDeep,
       appBar: AppBar(
         backgroundColor: LiquidColors.backgroundDeep,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: LiquidColors.isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Row(
+        title: Text(
+          'About',
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: LiquidColors.primaryGradient,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.info_outline_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'About',
-              style: TextStyle(
-                color: LiquidColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
+            _header(context),
+            AppSpace.h32,
+            const AppSectionHeader(label: 'What is SecuroBox'),
+            _whatIsCard(),
+            AppSpace.h24,
+            const AppSectionHeader(label: 'How it keeps you safe'),
+            _securityInfoCard(),
+            AppSpace.h32,
+            _rateButton(),
+            AppSpace.h24,
+            Center(
+              child: Text(
+                'Made with care for your privacy.',
+                style: TextStyle(
+                  color: LiquidColors.textTertiary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ],
-        ),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundMid,
-              LiquidColors.backgroundLight,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _heroCard(context),
-              const SizedBox(height: 20),
-              _whatIsCard(),
-              const SizedBox(height: 20),
-              _securityInfoCard(),
-              const SizedBox(height: 20),
-              _rateCard(),
-              const SizedBox(height: 24),
-            ],
-          ),
         ),
       ),
     );
   }
 
-  Widget _heroCard(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.accentBlue.withValues(alpha: 0.18),
-            LiquidColors.accentPurple.withValues(alpha: 0.08),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _header(BuildContext context) {
+    return Column(
+      children: [
+        const AppBrandIcon(size: 72, radius: 18, showShadow: false),
+        AppSpace.h16,
+        Text(
+          'SecuroBox',
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.4,
+          ),
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.35),
-          width: 1,
+        AppSpace.h4,
+        Text(
+          'Your private, offline vault.',
+          style: TextStyle(
+            color: LiquidColors.textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: LiquidColors.accentBlue.withValues(alpha: 0.18),
-            blurRadius: 24,
-            spreadRadius: -2,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const AppBrandIcon(size: 88, radius: 22),
-          const SizedBox(height: 18),
-          Text(
-            'SecuroBox',
-            style: TextStyle(
-              color: LiquidColors.textPrimary,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.6,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Your private, offline vault.',
-            style: TextStyle(
-              color: LiquidColors.textSecondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 14),
-          FutureBuilder<PackageInfo>(
-            future: PackageInfo.fromPlatform(),
-            builder: (context, snap) {
-              final v = snap.hasData
-                  ? '${snap.data!.version} (${snap.data!.buildNumber})'
-                  : '...';
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onLongPress: () {
-                  HapticFeedback.heavyImpact();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const DecoySetupScreen(),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
+        AppSpace.h12,
+        FutureBuilder<PackageInfo>(
+          future: PackageInfo.fromPlatform(),
+          builder: (context, snap) {
+            final v = snap.hasData
+                ? '${snap.data!.version} (${snap.data!.buildNumber})'
+                : '...';
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onLongPress: () {
+                HapticFeedback.heavyImpact();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const DecoySetupScreen(),
                   ),
-                  decoration: BoxDecoration(
-                    color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: Text(
-                    'Version $v',
-                    style: TextStyle(
-                      color: LiquidColors.textSecondary,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.3,
-                    ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+                  borderRadius: AppRadius.rPill,
+                  border: Border.all(color: LiquidColors.cardBorder),
+                ),
+                child: Text(
+                  'Version $v',
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
                   ),
                 ),
-              );
-            },
-          ),
-        ],
-      ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
   Widget _whatIsCard() {
-    return _sectionCard(
-      icon: Icons.lock_outline_rounded,
-      iconColor: LiquidColors.accentPurple,
-      title: 'WHAT IS SECUROBOX?',
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -200,23 +147,23 @@ class AboutScreen extends StatelessWidget {
             'this device — no servers, no analytics, no cloud sync.',
             style: TextStyle(
               color: LiquidColors.textSecondary,
-              fontSize: 13,
-              height: 1.55,
+              fontSize: 13.5,
+              height: 1.5,
             ),
           ),
-          const SizedBox(height: 12),
+          AppSpace.h16,
           _factRow(
             Icons.wifi_off_rounded,
             'Works 100% offline',
             'Nothing ever leaves your phone.',
           ),
-          const SizedBox(height: 10),
+          AppSpace.h12,
           _factRow(
             Icons.do_not_disturb_on_outlined,
             'No account, no tracking',
             'You don\'t sign in. We don\'t see you.',
           ),
-          const SizedBox(height: 10),
+          AppSpace.h12,
           _factRow(
             Platform.isIOS ? Icons.phone_iphone_rounded : Icons.android_rounded,
             Platform.isIOS ? 'Built for iPhone' : 'Built for Android & iOS',
@@ -230,76 +177,55 @@ class AboutScreen extends StatelessWidget {
   }
 
   Widget _securityInfoCard() {
-    return _sectionCard(
-      icon: Icons.shield_rounded,
-      iconColor: LiquidColors.accentBlue,
-      title: 'HOW IT KEEPS YOU SAFE',
+    const points = <String>[
+      'AES-256-CTR encryption for every file at rest',
+      'PIN hashed with PBKDF2-HMAC-SHA256 (100,000 rounds)',
+      'Hash and master key stored in the OS Keychain / Keystore',
+      'Random UUID filenames — originals are never exposed',
+      'Cloud backup disabled — files stay on this device',
+      'Biometric verification via the OS BiometricPrompt',
+      'Escalating cooldown after repeated wrong PINs',
+      'No analytics, no trackers, no servers',
+    ];
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _featureRow('AES-256-CTR encryption for every file at rest'),
-          const SizedBox(height: 10),
-          _featureRow('PIN hashed with PBKDF2-HMAC-SHA256 (100,000 rounds)'),
-          const SizedBox(height: 10),
-          _featureRow(
-            'Hash and master key stored in the OS Keychain / Keystore',
-          ),
-          const SizedBox(height: 10),
-          _featureRow('Random UUID filenames — originals are never exposed'),
-          const SizedBox(height: 10),
-          _featureRow('Cloud backup disabled — files stay on this device'),
-          const SizedBox(height: 10),
-          _featureRow('Biometric verification via the OS BiometricPrompt'),
-          const SizedBox(height: 10),
-          _featureRow('Escalating cooldown after repeated wrong PINs'),
-          const SizedBox(height: 10),
-          _featureRow('No analytics, no trackers, no servers'),
-          const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  LiquidColors.accentBlue.withValues(alpha: 0.12),
-                  LiquidColors.accentBlue.withValues(alpha: 0.04),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          for (var i = 0; i < points.length; i++) ...[
+            _featureRow(points[i]),
+            if (i < points.length - 1) AppSpace.h12,
+          ],
+          AppSpace.h16,
+          Row(
+            children: [
+              Icon(
+                Icons.lock_clock_rounded,
+                color: LiquidColors.textSecondary,
+                size: 15,
               ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.lock_clock_rounded,
-                  color: LiquidColors.accentBlue,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Every security feature works without an internet connection.',
-                    style: TextStyle(
-                      color: LiquidColors.accentBlue,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
+              AppSpace.w8,
+              Expanded(
+                child: Text(
+                  'Every security feature works without an internet connection.',
+                  style: TextStyle(
+                    color: LiquidColors.textTertiary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _rateCard() {
+  Widget _rateButton() {
     return Material(
-      color: Colors.transparent,
+      color: LiquidColors.indigo,
+      borderRadius: AppRadius.rMd,
       child: InkWell(
         onTap: () async {
           HapticFeedback.lightImpact();
@@ -310,66 +236,21 @@ class AboutScreen extends StatelessWidget {
             await launchUrl(url, mode: LaunchMode.externalApplication);
           }
         },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                LiquidColors.warning.withValues(alpha: 0.18),
-                LiquidColors.warning.withValues(alpha: 0.06),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: LiquidColors.warning.withValues(alpha: 0.35),
-            ),
-          ),
+        borderRadius: AppRadius.rMd,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(vertical: 15),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: LiquidColors.warning.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(13),
+              Icon(Icons.star_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Rate SecuroBox',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
-                child: Icon(
-                  Icons.star_rounded,
-                  color: LiquidColors.warning,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Enjoying SecuroBox?',
-                      style: TextStyle(
-                        color: LiquidColors.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Leave a quick review on Google Play.',
-                      style: TextStyle(
-                        color: LiquidColors.textSecondary,
-                        fontSize: 12,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: LiquidColors.textTertiary,
               ),
             ],
           ),
@@ -378,61 +259,15 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _sectionCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required Widget child,
-  }) {
+  Widget _card({required Widget child}) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: 0.9),
-            LiquidColors.backgroundMid.withValues(alpha: 0.95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-          width: 1,
-        ),
+        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
+        borderRadius: AppRadius.rLg,
+        border: Border.all(color: LiquidColors.cardBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: LiquidColors.textPrimary,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          child,
-        ],
-      ),
+      child: child,
     );
   }
 
@@ -441,16 +276,16 @@ class AboutScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 30,
-          height: 30,
+          width: 32,
+          height: 32,
           decoration: BoxDecoration(
-            color: LiquidColors.accentPurple.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(9),
+            color: LiquidColors.textPrimary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(11),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, color: LiquidColors.accentPurple, size: 16),
+          child: Icon(icon, color: LiquidColors.textSecondary, size: 17),
         ),
-        const SizedBox(width: 12),
+        AppSpace.w12,
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,12 +296,12 @@ class AboutScreen extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: LiquidColors.textPrimary,
-                    fontSize: 13,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              const SizedBox(height: 2),
+              AppSpace.h4,
               Text(
                 subtitle,
                 style: TextStyle(
@@ -486,26 +321,15 @@ class AboutScreen extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 22,
-          height: 22,
-          margin: const EdgeInsets.only(top: 1),
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              colors: [
-                LiquidColors.success,
-                LiquidColors.success.withValues(alpha: 0.6),
-              ],
-              center: Alignment.center,
-              radius: 0.8,
-            ),
-            borderRadius: BorderRadius.circular(11),
-          ),
-          child: const Center(
-            child: Icon(Icons.check_rounded, color: Colors.white, size: 13),
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(
+            Icons.check_rounded,
+            color: LiquidColors.textSecondary,
+            size: 17,
           ),
         ),
-        const SizedBox(width: 10),
+        AppSpace.w8,
         Expanded(
           child: Text(
             text,

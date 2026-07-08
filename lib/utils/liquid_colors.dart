@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class LiquidColors {
   LiquidColors._();
 
   static bool _dark = true;
   static bool get isDark => _dark;
+
+  /// Transparent, edge-to-edge system bar style with the correct icon
+  /// brightness for the current theme. Contrast scrims are disabled so the app
+  /// content extends cleanly under the status/navigation bars (no grey band).
+  static SystemUiOverlayStyle get systemOverlayStyle => SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: _dark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: _dark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness:
+            _dark ? Brightness.light : Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
+      );
 
   static void applyBrightness(Brightness brightness) {
     _dark = brightness == Brightness.dark;

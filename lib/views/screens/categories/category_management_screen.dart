@@ -277,9 +277,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: LiquidColors.isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         title: Text(
           'Manage Categories',
           style: TextStyle(

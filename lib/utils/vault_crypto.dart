@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pointycastle/export.dart';
 import 'package:uuid/uuid.dart';
+import 'package:video_player_app/utils/thumbnail_cache.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 
 class VaultCrypto {
@@ -85,6 +86,11 @@ class VaultCrypto {
     }
     return dir;
   }
+
+  /// Public accessor for the vault's temp dir, so preview generators (e.g.
+  /// [ThumbnailCache]) write into the same location that lock wipes.
+  Future<Directory> previewTempDir({bool forceReal = false}) =>
+      _tempDir(forceReal: forceReal);
 
   Future<Directory> _tempDir({bool forceReal = false}) async {
     final decoy = !forceReal && VaultContext.instance.isDecoy;
@@ -177,6 +183,7 @@ class VaultCrypto {
 
   Future<void> wipeTempCache() async {
     _plainCache.clear();
+    ThumbnailCache.instance.clear();
     try {
       final temp = await _tempDir();
       if (await temp.exists()) {
@@ -191,6 +198,7 @@ class VaultCrypto {
 
   Future<void> wipeAllTempCache() async {
     _plainCache.clear();
+    ThumbnailCache.instance.clear();
     try {
       final tmp = await getTemporaryDirectory();
       for (final name in _allTempDirNames) {
@@ -236,6 +244,7 @@ class VaultCrypto {
 
   Future<void> wipeAppCache() async {
     _plainCache.clear();
+    ThumbnailCache.instance.clear();
     try {
       final tmp = await getTemporaryDirectory();
       await for (final entity in tmp.list(recursive: true)) {

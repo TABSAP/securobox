@@ -274,7 +274,13 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     });
     try {
       final result = await MediaImporter.instance.importFiles(
-        items: [PickedMedia(File(path))],
+        items: [
+          PickedMedia(
+            File(path),
+            origin: 'camera',
+            originAlbum: 'DCIM/Camera',
+          ),
+        ],
         category: _reviewIsVideo ? 'Videos' : 'Photos',
       );
       if (mounted && result.added == 0) {

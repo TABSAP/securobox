@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
         LiquidColors.applyBrightness(
             isDark ? Brightness.dark : Brightness.light);
         SystemChrome.setSystemUIOverlayStyle(
-          isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+          LiquidColors.systemOverlayStyle,
         );
         return MaterialApp(
           debugShowCheckedModeBanner: false,

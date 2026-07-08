@@ -1,14 +1,23 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:video_player_app/models/app_models.dart';
-import 'package:video_player_app/notifications_screen/notifications_screen.dart';
+import 'package:video_player_app/notifications_screen/notification_preview_sheet.dart';
 import 'package:video_player_app/services/media_service.dart';
+import 'package:video_player_app/utils/app_rating.dart';
 import 'package:video_player_app/utils/category_service.dart';
+import 'package:video_player_app/utils/category_style.dart';
+import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_helper.dart';
+import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/notification_service.dart';
 import 'package:video_player_app/utils/responsive.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/views/screens/categories/category_management_screen.dart';
 import 'package:video_player_app/views/screens/deleted_video_screen/deleted_video_screen.dart';
 import 'package:video_player_app/views/screens/home_screen/home_screen.dart';
@@ -140,14 +149,14 @@ class HomeDashboardState extends State<HomeDashboard> {
               Text(
                 'See all',
                 style: TextStyle(
-                  color: LiquidColors.accentBlue,
+                  color: LiquidColors.indigo,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: LiquidColors.accentBlue,
+                color: LiquidColors.indigo,
                 size: 18,
               ),
             ],
@@ -178,10 +187,7 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   void _openNotifications() {
     HapticFeedback.lightImpact();
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
-    );
+    NotificationPreviewSheet.show(context);
   }
 
   Widget _notificationsAction() {
@@ -237,9 +243,7 @@ class HomeDashboardState extends State<HomeDashboard> {
         elevation: 0,
         scrolledUnderElevation: 0,
         // Status-bar icons follow the theme (dark on white, light on black).
-        systemOverlayStyle: LiquidColors.isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         titleSpacing: 20,
         title: Text(
           'Library',
@@ -259,17 +263,16 @@ class HomeDashboardState extends State<HomeDashboard> {
           const SizedBox(width: 12),
         ],
       ),
-      floatingActionButton: _createCategoryFab(),
+      floatingActionButton: _importFab(),
       body: _body(),
     );
   }
 
   Widget _body() {
-    if (_loading) {
-      return const Center(child: AppLoader(size: 52));
-    }
-
     final inset = context.contentInset(phone: 16);
+    // Loading the library is a fast local read, so we render the screen chrome
+    // immediately and let content pop in rather than flashing a full-screen
+    // spinner — the dashboard opens instantly after unlock.
     return Column(
       children: [
         Padding(
@@ -277,16 +280,22 @@ class HomeDashboardState extends State<HomeDashboard> {
           child: _searchBar(),
         ),
         Expanded(
-          child: _query.isNotEmpty
-              ? _searchResults(inset)
-              : _dashboardContent(inset),
+          child: _loading
+              ? const SizedBox.shrink()
+              : _query.isNotEmpty
+                  ? _searchResults(inset)
+                  : _dashboardContent(inset),
         ),
       ],
     );
   }
 
   Widget _dashboardContent(double inset) {
-    final recent = _all.take(8).toList();
+    // Latest 10 only — a rolling FIFO window over the (newest-first) library,
+    // so importing an 11th file pushes the oldest entry out of Recently Added.
+    // This only trims the displayed list; the files stay stored in their
+    // categories and are never deleted.
+    final recent = _all.take(10).toList();
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.only(bottom: AppSpace.xl + 40),
@@ -511,108 +520,111 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-  // FAB for quickly creating a new custom category.
-  Widget _createCategoryFab() {
+  // FAB to import files: pick files → choose a category → save into it.
+  Widget _importFab() {
     return FloatingActionButton.extended(
-      onPressed: _createCategory,
+      onPressed: _importFlow,
       backgroundColor: LiquidColors.indigo,
       foregroundColor: Colors.white,
-      icon: const Icon(Icons.create_new_folder_rounded),
+      icon: const Icon(Icons.file_download_outlined),
       label: const Text(
-        'New category',
+        'Import',
         style: TextStyle(fontWeight: FontWeight.w700),
       ),
     );
   }
 
-  static const List<String> _reservedNames = ['all', 'favorites'];
-
-  Future<void> _createCategory() async {
+  Future<void> _importFlow() async {
     HapticFeedback.lightImpact();
-    final name = await _promptNewCategoryName();
-    if (name == null || !mounted) return;
-    await CategoryService.instance.addCustom(name);
-    if (mounted) _load();
+    // 1) Open the device file picker directly.
+    final items = <PickedMedia>[];
+    SessionManager.instance.beginTrustedInteraction();
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: true,
+        withData: false,
+      );
+      if (result == null) return;
+      for (final pf in result.files) {
+        final path = pf.path;
+        if (path != null && await File(path).exists()) {
+          items.add(PickedMedia(
+            File(path),
+            identifier: pf.identifier,
+            originalName: pf.name,
+            origin: 'file',
+          ));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        FlushBarHelper.flushBarErrorMessage('Couldn\'t read files: $e', context);
+      }
+      return;
+    } finally {
+      SessionManager.instance.endTrustedInteraction();
+    }
+
+    if (items.isEmpty || !mounted) return;
+
+    // 2) Encrypt + import. Each file's category is auto-detected from its type
+    // (video/image/document) — no manual picker.
+    await _runImportInto(items, null);
   }
 
-  Future<String?> _promptNewCategoryName() {
-    final controller = TextEditingController();
-    String? error;
-    return showDialog<String>(
+  Future<void> _runImportInto(List<PickedMedia> items, String? category) async {
+    showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) {
-          void submit() {
-            final name = controller.text.trim();
-            final lower = name.toLowerCase();
-            if (name.isEmpty) {
-              setLocal(() => error = 'Enter a name');
-              return;
-            }
-            if (name.length > 24) {
-              setLocal(() => error = 'Max 24 characters');
-              return;
-            }
-            if (!RegExp(r'^[A-Za-z0-9 _\-]+$').hasMatch(name)) {
-              setLocal(() => error = 'Letters, numbers, spaces, _ and - only');
-              return;
-            }
-            if (_reservedNames.contains(lower)) {
-              setLocal(() => error = '"$name" is reserved');
-              return;
-            }
-            final existing = {
-              for (final c in _categories) ...[
-                c.name.toLowerCase(),
-                c.key.toLowerCase(),
-              ],
-            };
-            if (existing.contains(lower)) {
-              setLocal(() => error = 'That category already exists');
-              return;
-            }
-            HapticFeedback.selectionClick();
-            Navigator.of(ctx).pop(name);
-          }
-
-          return AlertDialog(
-            title: const Text('New category'),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              maxLength: 24,
-              textCapitalization: TextCapitalization.words,
-              cursorColor: LiquidColors.indigo,
-              onSubmitted: (_) => submit(),
-              decoration: InputDecoration(
-                hintText: 'e.g. Travel, Work',
-                errorText: error,
-                counterText: '',
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: Text('Cancel',
-                    style: TextStyle(color: LiquidColors.textSecondary)),
-              ),
-              TextButton(
-                onPressed: submit,
-                child: Text('Create',
-                    style: TextStyle(
-                        color: LiquidColors.indigo,
-                        fontWeight: FontWeight.w700)),
-              ),
-            ],
-          );
-        },
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: AppLoader(
+          size: 56,
+          label: 'Encrypting ${items.length} file${items.length == 1 ? '' : 's'}…',
+        ),
       ),
     );
+    SessionManager.instance.beginTrustedInteraction();
+    ImportResult? res;
+    try {
+      res = await MediaImporter.instance.importFiles(
+        items: items,
+        category: category,
+      );
+    } catch (_) {
+      // fall through to error handling below
+    } finally {
+      SessionManager.instance.endTrustedInteraction();
+    }
+
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // dismiss loader
+    await _load();
+    if (!mounted) return;
+
+    if (res != null && res.added > 0) {
+      FlushBarHelper.flushBarSuccessMessage(
+        '${res.added} file${res.added == 1 ? '' : 's'} added to ${category ?? 'your vault'}',
+        context,
+      );
+      unawaited(NotificationService.instance.addEvent(
+        title: 'Files added to your vault',
+        body: '${res.added} file${res.added == 1 ? '' : 's'} were encrypted and added.',
+        kind: 'info',
+      ));
+      AppRating.recordImportAndMaybeAsk();
+    } else {
+      FlushBarHelper.flushBarErrorMessage(
+        'Nothing was imported',
+        context,
+      );
+    }
   }
 
   Widget _categoryCard(CategoryInfo cat) {
     final count = _countFor(cat);
     final isDefault = cat.isDefault && cat.type != null;
+    final color = CategoryStyle.forCategory(cat.name);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -629,47 +641,26 @@ class HomeDashboardState extends State<HomeDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (isDefault)
-                Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    gradient: LiquidColors.getMediaGradient(cat.type!),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: LiquidColors.getMediaColor(cat.type!)
-                            .withValues(alpha: 0.28),
-                        blurRadius: 10,
-                        spreadRadius: -3,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    cat.type == 'favorite'
-                        ? Icons.favorite_rounded
-                        : MediaHelper.getMediaIcon(cat.type!),
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                )
-              else
-                Container(
-                  width: 40,
-                  height: 40,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: LiquidColors.indigo.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    Icons.folder_rounded,
-                    color: LiquidColors.indigo,
-                    size: 20,
-                  ),
+              // Minimal icon tile tinted with the category colour — a small,
+              // consistent splash of colour that keeps the grid clean.
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Icon(
+                  isDefault
+                      ? (cat.type == 'favorite'
+                          ? Icons.favorite_rounded
+                          : MediaHelper.getMediaIcon(cat.type!))
+                      : Icons.folder_rounded,
+                  color: color,
+                  size: 20,
+                ),
+              ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
@@ -705,84 +696,58 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   Widget _recentCarousel(List<VideoItem> items, double inset) {
     return SizedBox(
-      height: 104,
+      height: 96,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         padding: EdgeInsets.symmetric(horizontal: inset),
         itemCount: items.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
         itemBuilder: (_, i) => _recentCard(items[i]),
       ),
     );
   }
 
-  // A circular thumbnail with a subtle indigo ring, a small media-type badge,
-  // and the file name beneath — a cleaner, more professional recent item.
+  // A compact circular avatar — the real image/video frame (or a type icon)
+  // clipped to a circle, wrapped in a ring tinted with the file's category
+  // colour, with the file name beneath.
   Widget _recentCard(VideoItem m) {
+    const double ring = 62; // outer diameter
+    const double gap = 2.5; // ring thickness gap
+    final color = CategoryStyle.forItem(m);
     return GestureDetector(
       onTap: () => _openItem(m),
       child: SizedBox(
-        width: 62,
+        width: 64,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 58,
-              height: 58,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: LiquidColors.cardBorder),
-                    ),
-                    child: ClipOval(
-                      child: VaultThumbnail(
-                        item: m,
-                        width: 56,
-                        height: 56,
-                        radius: 56,
-                        iconSize: 22,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: -1,
-                    bottom: -1,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: LiquidColors.indigo,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: LiquidColors.backgroundDeep,
-                          width: 2,
-                        ),
-                      ),
-                      child: Icon(
-                        MediaHelper.getMediaIcon(m.type),
-                        color: Colors.white,
-                        size: 10,
-                      ),
-                    ),
-                  ),
-                ],
+            Container(
+              width: ring,
+              height: ring,
+              padding: const EdgeInsets.all(gap),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withValues(alpha: 0.9), width: 2),
+                color: color.withValues(alpha: 0.10),
+              ),
+              child: VaultThumbnail(
+                item: m,
+                width: ring - gap * 2,
+                height: ring - gap * 2,
+                radius: (ring - gap * 2) / 2,
+                iconSize: 24,
               ),
             ),
             const SizedBox(height: 7),
             Text(
               m.title,
               maxLines: 1,
-              textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               style: TextStyle(
-                color: LiquidColors.textPrimary,
-                fontSize: 11,
+                color: LiquidColors.textSecondary,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w600,
               ),
             ),

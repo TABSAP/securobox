@@ -6,6 +6,8 @@ import 'package:video_player_app/security_settings/send_feedback_screen.dart';
 import 'package:video_player_app/utils/app_rating.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/responsive.dart';
+import 'package:video_player_app/widgets/app_section_header.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
@@ -13,157 +15,68 @@ class SupportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: LiquidColors.backgroundDeep,
       appBar: AppBar(
         backgroundColor: LiquidColors.backgroundDeep,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: LiquidColors.isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
+        systemOverlayStyle: LiquidColors.systemOverlayStyle,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Row(
+        title: Text(
+          'Help & Support',
+          style: TextStyle(
+            color: LiquidColors.textPrimary,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(
+          context.contentInset(phone: 20),
+          8,
+          context.contentInset(phone: 20),
+          40,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.help_outline_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
             Text(
-              'Help & Support',
+              'Send feedback, read our privacy policy, or skim the security '
+              'tips below to get the most out of SecuroBox.',
               style: TextStyle(
-                color: LiquidColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
+                color: LiquidColors.textSecondary,
+                fontSize: 13.5,
+                height: 1.5,
               ),
             ),
+            AppSpace.h24,
+            const AppSectionHeader(label: 'Get in touch'),
+            _getInTouchCard(context),
+            AppSpace.h24,
+            const AppSectionHeader(label: 'Security tips'),
+            _tipsCard(),
+            AppSpace.h24,
+            const AppSectionHeader(label: 'Quick answers'),
+            _faqCard(),
           ],
         ),
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundMid,
-              LiquidColors.backgroundLight,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(
-            context.contentInset(phone: 20),
-            0,
-            context.contentInset(phone: 20),
-            32,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _intro(),
-              const SizedBox(height: 20),
-              _getInTouchCard(context),
-              const SizedBox(height: 20),
-              _tipsCard(),
-              const SizedBox(height: 20),
-              _faqCard(),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _intro() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.accentBlue.withValues(alpha: 0.16),
-            LiquidColors.accentPurple.withValues(alpha: 0.06),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.35),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            Icons.support_agent_rounded,
-            color: LiquidColors.accentBlue,
-            size: 22,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'We\'re here to help',
-                  style: TextStyle(
-                    color: LiquidColors.textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Send feedback, read our privacy policy, or skim the security '
-                  'tips below to get the most out of SecuroBox.',
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    fontSize: 12.5,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
 
   Widget _getInTouchCard(BuildContext context) {
-    return _sectionCard(
-      icon: Icons.mail_outline_rounded,
-      iconColor: LiquidColors.accentBlue,
-      title: 'GET IN TOUCH',
+    return _card(
+      padding: const EdgeInsets.all(6),
       child: Column(
         children: [
           _actionTile(
             icon: Icons.mail_outline_rounded,
-            color: LiquidColors.accentBlue,
             label: 'Send Feedback',
             sublabel: 'Tell us what you think or report a bug.',
             onTap: () {
@@ -173,10 +86,9 @@ class SupportScreen extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 8),
+          _divider(),
           _actionTile(
             icon: Icons.star_outline_rounded,
-            color: LiquidColors.warning,
             label: 'Rate SecuroBox',
             sublabel: 'Enjoying the app? Leave a rating on Google Play.',
             onTap: () {
@@ -184,10 +96,9 @@ class SupportScreen extends StatelessWidget {
               AppRating.rateNow();
             },
           ),
-          const SizedBox(height: 8),
+          _divider(),
           _actionTile(
             icon: Icons.privacy_tip_outlined,
-            color: LiquidColors.success,
             label: 'Privacy Policy',
             sublabel: 'See exactly how SecuroBox handles your data.',
             onTap: () {
@@ -203,23 +114,20 @@ class SupportScreen extends StatelessWidget {
   }
 
   Widget _tipsCard() {
-    final tips = const <String>[
+    const tips = <String>[
       'Avoid simple PINs like 1234, 0000, or repeating digits.',
       'Enable biometric authentication for faster, secure access.',
       'Lock individual videos for extra protection on sensitive files.',
       'Change your PIN every few months for better security.',
       'Set up a Recovery Key so a forgotten PIN doesn\'t mean wiping the vault.',
     ];
-    return _sectionCard(
-      icon: Icons.lightbulb_outline_rounded,
-      iconColor: LiquidColors.warning,
-      title: 'SECURITY TIPS',
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (var i = 0; i < tips.length; i++) ...[
             _tipRow(i + 1, tips[i]),
-            if (i < tips.length - 1) const SizedBox(height: 12),
+            if (i < tips.length - 1) AppSpace.h16,
           ],
         ],
       ),
@@ -227,7 +135,7 @@ class SupportScreen extends StatelessWidget {
   }
 
   Widget _faqCard() {
-    final items = const <_Faq>[
+    const items = <_Faq>[
       _Faq(
         q: 'Where are my files stored?',
         a: 'Only on this device. Imports are encrypted with AES-256-CTR and '
@@ -250,86 +158,37 @@ class SupportScreen extends StatelessWidget {
             'prompts for verification before opening.',
       ),
     ];
-    return _sectionCard(
-      icon: Icons.question_answer_outlined,
-      iconColor: LiquidColors.accentPurple,
-      title: 'QUICK ANSWERS',
+    return _card(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
           for (var i = 0; i < items.length; i++) ...[
             _FaqTile(item: items[i]),
-            if (i < items.length - 1)
-              Divider(
-                height: 1,
-                color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-              ),
+            if (i < items.length - 1) _divider(),
           ],
         ],
       ),
     );
   }
 
-  Widget _sectionCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required Widget child,
-  }) {
+  Widget _card({required Widget child, EdgeInsets? padding}) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: 0.9),
-            LiquidColors.backgroundMid.withValues(alpha: 0.95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-          width: 1,
-        ),
+        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
+        borderRadius: AppRadius.rLg,
+        border: Border.all(color: LiquidColors.cardBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: LiquidColors.textPrimary,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          child,
-        ],
-      ),
+      child: child,
     );
+  }
+
+  Widget _divider() {
+    return Divider(height: 1, thickness: 1, color: LiquidColors.divider);
   }
 
   Widget _actionTile({
     required IconData icon,
-    required Color color,
     required String label,
     required String sublabel,
     required VoidCallback onTap,
@@ -338,21 +197,21 @@ class SupportScreen extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.rMd,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: LiquidColors.textSecondary, size: 19),
               ),
-              const SizedBox(width: 14),
+              AppSpace.w12,
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,7 +224,7 @@ class SupportScreen extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    AppSpace.h4,
                     Text(
                       sublabel,
                       style: TextStyle(
@@ -397,29 +256,22 @@ class SupportScreen extends StatelessWidget {
           height: 24,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                LiquidColors.warning,
-                LiquidColors.warning.withValues(alpha: 0.7),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+            color: LiquidColors.textPrimary.withValues(alpha: 0.06),
           ),
           alignment: Alignment.center,
           child: Text(
             '$index',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
+            style: TextStyle(
+              color: LiquidColors.textSecondary,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        AppSpace.w12,
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.only(top: 3),
             child: Text(
               text,
               style: TextStyle(
@@ -462,7 +314,7 @@ class _FaqTileState extends State<_FaqTile> {
           setState(() => _open = !_open);
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

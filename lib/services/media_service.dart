@@ -485,6 +485,19 @@ class MediaService {
   /// and marks the item as unlocked/in-gallery. For photos and videos this
   /// records the created asset id so the item can be hidden again later; other
   /// file types are exported via [downloadFile]. Returns the updated item.
+  /// Decides which device album an unlocked file is restored into. Files keep
+  /// a record of where they came from (`origin` / `originAlbum`), so:
+  ///  - gallery imports go back to their original album (e.g. 'DCIM/Camera',
+  ///    'Pictures/Trips');
+  ///  - in-app camera captures land in the phone's Camera album;
+  ///  - everything else falls back to the app's own SecuroBox album.
+  String _restoreRelativePath(VideoItem media, {required bool isVideo}) {
+    final album = media.originAlbum.trim().replaceAll(RegExp(r'^/+|/+$'), '');
+    if (album.isNotEmpty) return album;
+    if (media.origin == 'camera') return 'DCIM/Camera';
+    return isVideo ? 'Movies/$galleryAlbum' : 'Pictures/$galleryAlbum';
+  }
+
   Future<VideoItem?> saveToGallery(
     VideoItem media,
     String decryptedPath,
@@ -506,7 +519,7 @@ class MediaService {
         final asset = await PhotoManager.editor.saveVideo(
           file,
           title: fileName,
-          relativePath: 'Movies/$galleryAlbum',
+          relativePath: _restoreRelativePath(media, isVideo: true),
         );
         assetId = asset.id;
       } else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif']
@@ -516,7 +529,7 @@ class MediaService {
         final asset = await PhotoManager.editor.saveImage(
           await file.readAsBytes(),
           title: fileName,
-          relativePath: 'Pictures/$galleryAlbum',
+          relativePath: _restoreRelativePath(media, isVideo: false),
           filename: fileName,
         );
         assetId = asset.id;

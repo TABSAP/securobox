@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
@@ -11,8 +12,16 @@ class PinCrypto {
 
   static const _kHashKey = 'pin_hash_v1';
   static const _kSaltKey = 'pin_salt_v1';
+  static const _kIterKey = 'pin_iters_v1';
   static const _kPinLengthKey = 'pin_length_v1';
-  static const _kIterations = 100000;
+  // Iteration count for NEW/updated PINs. A numeric PIN has very low inherent
+  // entropy (10k–1M combinations), so the marginal brute-force resistance of a
+  // very high count is small while the unlock latency it adds is real. 50k
+  // keeps a solid work factor while letting the unlock complete well under a
+  // second. Legacy PINs hashed at the old count still verify (see verifyPin)
+  // and are transparently re-hashed to this count on the next unlock.
+  static const _kIterations = 50000;
+  static const _kLegacyIterations = 100000;
   static const _kHashLengthBytes = 32;
   static const _kSaltLengthBytes = 16;
   static const defaultPinLength = 4;
@@ -43,6 +52,7 @@ class PinCrypto {
     );
     await _secure.write(key: _kSaltKey, value: base64Encode(salt));
     await _secure.write(key: _kHashKey, value: base64Encode(hash));
+    await _secure.write(key: _kIterKey, value: '$_kIterations');
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_kPinLengthKey, pin.length);
     _cachedPinLength = pin.length;
@@ -72,16 +82,28 @@ class PinCrypto {
       return await _migrateLegacyAndVerify(pin);
     }
 
+    // PINs created before iteration counts were stored used the old, higher
+    // count; honour whatever count this hash was actually derived with.
+    final iterStr = await _secure.read(key: _kIterKey);
+    final iterations = int.tryParse(iterStr ?? '') ?? _kLegacyIterations;
+
     final salt = base64Decode(saltStr);
     final stored = base64Decode(hashStr);
     final candidate = await pbkdf2(
       Uint8List.fromList(utf8.encode(pin)),
       salt,
-      _kIterations,
+      iterations,
       _kHashLengthBytes,
     );
 
-    return _constantTimeEqual(stored, candidate);
+    final ok = _constantTimeEqual(stored, candidate);
+    // Transparently upgrade an old-count hash to the current (faster) count so
+    // subsequent unlocks are quicker. Runs after the result is known and is not
+    // awaited, so it never delays the unlock.
+    if (ok && iterations != _kIterations) {
+      unawaited(setPin(pin));
+    }
+    return ok;
   }
 
   Future<bool> hasPin() async {
@@ -106,6 +128,7 @@ class PinCrypto {
   Future<void> clearPin() async {
     await _secure.delete(key: _kHashKey);
     await _secure.delete(key: _kSaltKey);
+    await _secure.delete(key: _kIterKey);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('appPin');
     await prefs.remove('secure_pin');
