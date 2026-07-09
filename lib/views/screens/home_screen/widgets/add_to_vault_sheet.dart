@@ -83,7 +83,11 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     super.initState();
     _loadCustomCategories();
     if (widget.autoStart) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _autoStartRun());
+      // The sheet can be dismissed before the frame ends; _autoStartRun opens a
+      // picker and pops this route, so it must not run on a dead widget.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _autoStartRun();
+      });
     }
   }
 

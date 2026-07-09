@@ -40,8 +40,10 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     _loadDeletedVideos();
     _searchController.addListener(_onSearchChanged);
 
+    // _autoDeleteOldFiles surfaces a FlushBar (an overlay route), so it must
+    // never run during build, nor after this screen is disposed.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _autoDeleteOldFiles();
+      if (mounted) _autoDeleteOldFiles();
     });
   }
 

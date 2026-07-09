@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
+import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/notification_service.dart';
@@ -33,6 +34,9 @@ void main() async {
 
   // Clean up any fake decoy content seeded by earlier builds (runs once).
   unawaited(DecoyService.instance.purgeSeededDecoyData());
+
+  // Fold any legacy Archives/Code/eBooks/Fonts items into Documents.
+  unawaited(MediaImporter.instance.migrateLegacyDocumentTypes());
 
   unawaited(DisguiseService.instance.load());
 

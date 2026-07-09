@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/responsive.dart';
+import 'package:video_player_app/widgets/app_confirm_dialog.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/media_importer.dart';
@@ -946,28 +947,35 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Unlock / hide for any file. "Unlock" decrypts the file and makes it
-  // visible in the device gallery; hiding removes it from the gallery again.
+  // Unlock = restore + remove. The file is written back to the album/folder it
+  // was imported from, and only once that succeeds is SecuroBox's encrypted
+  // copy deleted, so it disappears from the app. A failed or denied restore
+  // never loses the file.
   Future<void> _toggleGalleryVisibility(VideoItem media) async {
     if (media.isLocked) {
       final ok = await _unlockProtectedItem(
-        reason: 'Authenticate to change gallery visibility',
+        reason: 'Authenticate to unlock this file',
       );
       if (!ok) return;
     }
     if (!mounted) return;
 
+    if (!await _confirmRestore(media)) return;
+    if (!mounted) return;
+
+    // Legacy items already exported to the gallery: nothing to restore, just
+    // drop the vault copy so it stops appearing in the app.
     if (media.inGallery) {
-      final updated = await _mediaService.removeFromGallery(media);
+      final removed = await _mediaService.removeVaultCopy(media);
       if (!mounted) return;
-      if (updated != null) {
+      if (removed) {
         FlushBarHelper.flushBarSuccessMessage(
-          'Hidden from your gallery',
+          'Removed from SecuroBox — the file stays on your device',
           context,
         );
         await _loadMedia(silent: true);
       } else {
-        FlushBarHelper.flushBarErrorMessage('Could not update gallery', context);
+        FlushBarHelper.flushBarErrorMessage('Could not remove the file', context);
       }
       return;
     }
@@ -983,9 +991,15 @@ class HomeScreenState extends State<HomeScreen>
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(
-        child: AppLoader(size: 64, label: 'Unlocking…'),
+        child: AppLoader(size: 64, label: 'Restoring…'),
       ),
     );
+    var loaderOpen = true;
+    void closeLoader() {
+      if (!loaderOpen || !mounted) return;
+      loaderOpen = false;
+      Navigator.of(context, rootNavigator: true).pop();
+    }
 
     String savePath = media.path;
     bool decryptedToTemp = false;
@@ -995,33 +1009,66 @@ class HomeScreenState extends State<HomeScreen>
         decryptedToTemp = true;
       }
       final saveName = _saveFileNameFor(media);
-      final updated =
-          await _mediaService.saveToGallery(media, savePath, saveName);
+      final ok = await _mediaService.restoreToDeviceAndRemove(
+        media,
+        savePath,
+        saveName,
+      );
+      closeLoader();
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-      if (updated != null) {
+      if (ok) {
         FlushBarHelper.flushBarSuccessMessage(
-          'Unlocked — now visible in your gallery',
+          'Restored to your device and removed from SecuroBox',
           context,
         );
         await _loadMedia(silent: true);
       } else {
         FlushBarHelper.flushBarErrorMessage(
-          'Could not unlock to gallery',
+          'Could not restore the file — it is still safe in SecuroBox',
           context,
         );
       }
     } catch (_) {
+      closeLoader();
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pop();
-      FlushBarHelper.flushBarErrorMessage('Could not unlock to gallery', context);
+      FlushBarHelper.flushBarErrorMessage(
+        'Could not restore the file — it is still safe in SecuroBox',
+        context,
+      );
     } finally {
+      // The loader must never outlive this flow, even on an early !mounted exit.
+      closeLoader();
       if (decryptedToTemp) {
         try {
           await File(savePath).delete();
         } catch (_) {}
       }
     }
+  }
+
+  /// Unlocking removes the file from the vault, so confirm before doing it.
+  ///
+  /// NOTE: [AppConfirmDialog] pops itself before invoking `onConfirm`, so the
+  /// callback must NOT pop again — doing so returns null from `showDialog` and
+  /// pops the screen underneath. Capture the answer in a flag instead.
+  Future<bool> _confirmRestore(VideoItem media) async {
+    var confirmed = false;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AppConfirmDialog(
+        icon: Icons.lock_open_rounded,
+        accent: LiquidColors.indigo,
+        title: 'Unlock this file?',
+        message: media.inGallery
+            ? '"${media.title}" is already on your device. SecuroBox\'s copy '
+                'will be deleted and it will no longer appear in the app.'
+            : '"${media.title}" will be restored to where it came from on your '
+                'device, then removed from SecuroBox.',
+        confirmLabel: 'Unlock & restore',
+        onConfirm: () => confirmed = true,
+      ),
+    );
+    return confirmed;
   }
 
   Future<void> _openMedia(VideoItem media) async {

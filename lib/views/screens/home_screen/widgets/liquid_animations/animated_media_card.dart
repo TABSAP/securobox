@@ -313,12 +313,13 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           'Change category',
           LiquidColors.success,
         ),
-        // Every item is hidden from the device gallery by default. "Unlock"
-        // makes it visible in the gallery again; once visible it can be hidden.
+        // "Unlock" restores the file to where it came from on the device and
+        // then removes SecuroBox's copy. For a legacy item that is already on
+        // the device, it just removes the vault copy.
         _menuItem(
           'gallery',
-          _m.inGallery ? Icons.lock_open_rounded : Icons.lock_rounded,
-          _m.inGallery ? 'Hide from gallery' : 'Unlock',
+          Icons.lock_open_rounded,
+          _m.inGallery ? 'Remove from SecuroBox' : 'Unlock & restore',
           LiquidColors.indigo,
         ),
         const PopupMenuDivider(height: 6),

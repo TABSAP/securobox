@@ -33,7 +33,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   String? _error;
 
   String? _captureError;
-  bool _justSaved = false;
 
   _CaptureMode _mode = _CaptureMode.photo;
   bool _recording = false;
@@ -293,23 +292,13 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
       }
       _wipeReviewFile(path);
       final video = _reviewVideo;
-      if (!mounted) {
-        await video?.dispose();
-        return;
-      }
-      setState(() {
-        _savedCount++;
-        _saving = false;
-        _reviewPath = null;
-        _reviewVideo = null;
-        _reviewIsVideo = false;
-        _justSaved = true;
-      });
       await video?.dispose();
+      if (!mounted) return;
+      _savedCount++;
       HapticFeedback.lightImpact();
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (mounted) setState(() => _justSaved = false);
-      });
+      // The capture is safely in the vault — close the camera automatically and
+      // return the user to the Home dashboard.
+      Navigator.of(context).pop(_savedCount);
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -402,13 +391,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
             left: 24,
             right: 24,
             child: Center(child: _errorPill(_captureError!)),
-          )
-        else if (_justSaved)
-          Positioned(
-            top: 70,
-            left: 0,
-            right: 0,
-            child: Center(child: _savedPill()),
           ),
         Positioned(bottom: 0, left: 0, right: 0, child: _bottomBar()),
       ],
@@ -474,31 +456,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
               fontWeight: FontWeight.w800,
               letterSpacing: 0.6,
               fontFeatures: [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _savedPill() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: LiquidColors.success.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.check_circle_rounded, color: Colors.white, size: 14),
-          SizedBox(width: 6),
-          Text(
-            'Saved to your vault',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
             ),
           ),
         ],

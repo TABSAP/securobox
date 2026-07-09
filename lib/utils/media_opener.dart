@@ -11,6 +11,7 @@ import 'package:video_player_app/font_viewer_screen/font_viewer_screen.dart';
 import 'package:video_player_app/models/app_models.dart';
 import 'package:video_player_app/pdf_reader_screen/pdf_reader_screen.dart';
 import 'package:video_player_app/services/media_service.dart';
+import 'package:video_player_app/utils/file_type_registry.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/video_player_screen/video_player_screen.dart';
@@ -106,19 +107,23 @@ Future<void> openVaultMedia(
         return ImageViewerScreen(path: path, title: media.title);
       case 'audio':
         return AudioPlayerScreen(filePath: path, fileName: media.title);
-      case 'archive':
-        return ArchiveViewerScreen(filePath: path, fileName: media.title);
-      case 'font':
-        return FontViewerScreen(filePath: path, fileName: media.title);
       default:
-        // Documents, code, ebooks and anything else: PDFs use the dedicated
-        // PDF reader; everything else (Word, Excel, PowerPoint, text, code,
-        // EPUB/FB2 ebooks, …) uses the in-app document viewer, which falls back
-        // to a graceful "preview not available" state for formats it can't read.
-        final isPdf = p.extension(path).toLowerCase() == '.pdf';
-        return isPdf
-            ? PDFReaderScreen(filePath: path, fileName: media.title)
-            : DocumentViewerScreen(filePath: path, fileName: media.title);
+        // Everything filed under Documents shares one stored type, so pick the
+        // viewer from the file's real extension: PDFs get the PDF reader,
+        // archives get the archive listing, fonts get a specimen, and the rest
+        // (Word/Excel/PowerPoint, text, code, EPUB/FB2 ebooks, …) go to the
+        // document viewer, which degrades gracefully for formats it can't read.
+        if (p.extension(path).toLowerCase() == '.pdf') {
+          return PDFReaderScreen(filePath: path, fileName: media.title);
+        }
+        switch (FileTypeRegistry.kindForPath(path)) {
+          case 'archive':
+            return ArchiveViewerScreen(filePath: path, fileName: media.title);
+          case 'font':
+            return FontViewerScreen(filePath: path, fileName: media.title);
+          default:
+            return DocumentViewerScreen(filePath: path, fileName: media.title);
+        }
     }
   }
 

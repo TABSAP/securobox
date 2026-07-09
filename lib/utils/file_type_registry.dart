@@ -53,16 +53,23 @@ class FileTypeRegistry {
     },
   };
 
+  /// Kinds that all live under the single "Documents" category. The fine-grained
+  /// kind is still used to pick the right viewer (archive listing, font
+  /// specimen, …); only the *category* is collapsed, keeping the library simple.
+  static const Set<String> documentKinds = {
+    'document', 'archive', 'code', 'ebook', 'font',
+  };
+
   /// Kind → default category display name (must match CategoryService defaults).
   static const Map<String, String> _kindCategory = {
     'image': 'Photos',
     'video': 'Videos',
     'audio': 'Audio',
     'document': 'Documents',
-    'archive': 'Archives',
-    'code': 'Code',
-    'ebook': 'eBooks',
-    'font': 'Fonts',
+    'archive': 'Documents',
+    'code': 'Documents',
+    'ebook': 'Documents',
+    'font': 'Documents',
   };
 
   /// Priority order used when building a reverse lookup, so a duplicated
@@ -95,6 +102,16 @@ class FileTypeRegistry {
   /// The kind for a path/name, or `'other'` if unknown.
   static String kindForPath(String pathOrName) =>
       kindForExtension(extensionOf(pathOrName));
+
+  /// The type stored on a vault item (`VideoItem.type`). Media keeps its own
+  /// type; every document-ish kind collapses to `'document'` so it lives in the
+  /// Documents category and is filtered/counted there. Viewers still route on
+  /// the fine-grained [kindForPath] of the real file, so archives and fonts keep
+  /// their dedicated viewers.
+  static String storageTypeForPath(String pathOrName) {
+    final kind = kindForPath(pathOrName);
+    return documentKinds.contains(kind) ? 'document' : kind;
+  }
 
   /// The default category name for a kind (unknown kinds → 'Others').
   static String categoryForKind(String kind) =>

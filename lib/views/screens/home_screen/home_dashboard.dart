@@ -36,6 +36,11 @@ class HomeDashboard extends StatefulWidget {
 }
 
 class HomeDashboardState extends State<HomeDashboard> {
+  /// The dashboard grid stays compact: only the first six categories (in the
+  /// user's chosen order) are shown. The rest — including any custom categories
+  /// they create — are reachable via "View all" / "Manage".
+  static const int _dashboardCategoryLimit = 6;
+
   final MediaService _mediaService = MediaService();
   final TextEditingController _searchController = TextEditingController();
   List<VideoItem> _all = const [];
@@ -43,6 +48,8 @@ class HomeDashboardState extends State<HomeDashboard> {
   List<CategoryInfo> _categories = const [];
   bool _loading = true;
   String _query = '';
+  // Items sitting in the Recycle Bin, shown as a badge on the bin icon.
+  int _deletedCount = 0;
 
   @override
   void initState() {
@@ -73,10 +80,14 @@ class HomeDashboardState extends State<HomeDashboard> {
   Future<void> _load() async {
     final media = await _mediaService.loadMedia();
     final cats = await CategoryService.instance.load();
+    // Same filter the Recycle Bin uses, so the badge always matches its list.
+    final deleted = await _mediaService.getDeletedMedia();
+    final deletedCount = deleted.where((m) => !m.isHidden).length;
     if (!mounted) return;
     setState(() {
       _all = media;
       _categories = cats.where((c) => !c.hidden).toList();
+      _deletedCount = deletedCount;
       _loading = false;
     });
   }
@@ -135,7 +146,7 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-  Widget _seeAll(VoidCallback onTap) {
+  Widget _seeAll(VoidCallback onTap, {String label = 'View all'}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -144,9 +155,10 @@ class HomeDashboardState extends State<HomeDashboard> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'See all',
+                label,
                 style: TextStyle(
                   color: LiquidColors.indigo,
                   fontSize: 12.5,
@@ -174,19 +186,63 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-  void _openRecycleBin() {
+  Future<void> _openRecycleBin() async {
     HapticFeedback.lightImpact();
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => DeletedVideosScreen(onVideosChanged: () {}),
+        // Restoring or permanently deleting changes the bin count — reload so
+        // the badge on the bin icon stays accurate.
+        builder: (_) => DeletedVideosScreen(onVideosChanged: _load),
       ),
     );
+    if (mounted) _load();
   }
 
   void _openNotifications() {
     HapticFeedback.lightImpact();
     NotificationPreviewSheet.show(context);
+  }
+
+  /// A small red count bubble, anchored to the top-right of an app-bar action.
+  Widget _countBadge(int count) {
+    return Positioned(
+      right: 4,
+      top: 8,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        constraints: const BoxConstraints(minWidth: 16),
+        decoration: BoxDecoration(
+          color: LiquidColors.error,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: LiquidColors.backgroundDeep, width: 1.5),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          count > 99 ? '99+' : '$count',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            height: 1.2,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _recycleBinAction() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        _appBarAction(
+          Icons.delete_outline_rounded,
+          'Recycle Bin',
+          _openRecycleBin,
+        ),
+        if (_deletedCount > 0) _countBadge(_deletedCount),
+      ],
+    );
   }
 
   Widget _notificationsAction() {
@@ -201,31 +257,7 @@ class HomeDashboardState extends State<HomeDashboard> {
               'Notifications',
               _openNotifications,
             ),
-            if (count > 0)
-              Positioned(
-                right: 4,
-                top: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  constraints: const BoxConstraints(minWidth: 16),
-                  decoration: BoxDecoration(
-                    color: LiquidColors.error,
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: LiquidColors.backgroundDeep, width: 1.5),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    count > 99 ? '99+' : '$count',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-              ),
+            if (count > 0) _countBadge(count),
           ],
         );
       },
@@ -258,7 +290,7 @@ class HomeDashboardState extends State<HomeDashboard> {
           const SizedBox(width: 8),
           _appBarAction(Icons.photo_camera_rounded, 'Secure Camera', _openSecureCamera),
           const SizedBox(width: 8),
-          _appBarAction(Icons.delete_outline_rounded, 'Recycle Bin', _openRecycleBin),
+          _recycleBinAction(),
           const SizedBox(width: 12),
         ],
       ),
@@ -269,9 +301,9 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   Widget _body() {
     final inset = context.contentInset(phone: 16);
-    // Loading the library is a fast local read, so we render the screen chrome
-    // immediately and let content pop in rather than flashing a full-screen
-    // spinner — the dashboard opens instantly after unlock.
+    // The screen chrome renders immediately; a small loader fills the content
+    // area while the library loads, so arriving here (e.g. straight after a
+    // fingerprint/Face ID unlock) never looks like the app has frozen.
     return Column(
       children: [
         Padding(
@@ -280,7 +312,7 @@ class HomeDashboardState extends State<HomeDashboard> {
         ),
         Expanded(
           child: _loading
-              ? const SizedBox.shrink()
+              ? const Center(child: AppLoader(size: 34))
               : _query.isNotEmpty
                   ? _searchResults(inset)
                   : _dashboardContent(inset),
@@ -313,7 +345,9 @@ class HomeDashboardState extends State<HomeDashboard> {
           _recentCarousel(recent, inset),
           const SizedBox(height: AppSpace.lg),
         ],
-        // Categories — built-in and custom shown together, the default view.
+        // Categories — the dashboard shows only the first six (in the user's
+        // chosen order) to stay compact. Everything else, including custom
+        // categories the user creates, lives behind "View all" / "Manage".
         Padding(
           padding: EdgeInsets.symmetric(horizontal: inset),
           child: Column(
@@ -332,9 +366,19 @@ class HomeDashboardState extends State<HomeDashboard> {
                 crossAxisSpacing: AppSpace.sm + 2,
                 childAspectRatio: 1.25,
                 children: [
-                  for (final c in _categories) _categoryCard(c),
+                  for (final c in _categories.take(_dashboardCategoryLimit))
+                    _categoryCard(c),
                 ],
               ),
+              if (_categories.length > _dashboardCategoryLimit) ...[
+                const SizedBox(height: AppSpace.sm),
+                Center(
+                  child: _seeAll(
+                    _openManageCategories,
+                    label: 'View all ${_categories.length} categories',
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -707,13 +751,10 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-  // A compact circular avatar — the real image/video frame (or a type icon)
-  // clipped to a circle, wrapped in a ring tinted with the file's category
-  // colour, with the file name beneath.
+  // A compact rounded-square thumbnail — the real image/video frame (or a type
+  // icon) with the file name beneath. No coloured ring.
   Widget _recentCard(VideoItem m) {
-    const double ring = 62; // outer diameter
-    const double gap = 2.5; // ring thickness gap
-    final color = CategoryStyle.forItem(m);
+    const double size = 62;
     return GestureDetector(
       onTap: () => _openItem(m),
       child: SizedBox(
@@ -721,22 +762,12 @@ class HomeDashboardState extends State<HomeDashboard> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: ring,
-              height: ring,
-              padding: const EdgeInsets.all(gap),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: color.withValues(alpha: 0.9), width: 2),
-                color: color.withValues(alpha: 0.10),
-              ),
-              child: VaultThumbnail(
-                item: m,
-                width: ring - gap * 2,
-                height: ring - gap * 2,
-                radius: (ring - gap * 2) / 2,
-                iconSize: 24,
-              ),
+            VaultThumbnail(
+              item: m,
+              width: size,
+              height: size,
+              radius: 14,
+              iconSize: 24,
             ),
             const SizedBox(height: 7),
             Text(

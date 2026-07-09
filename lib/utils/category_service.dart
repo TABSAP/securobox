@@ -66,10 +66,6 @@ class CategoryService {
     ('Photos', 'image'),
     ('Audio', 'audio'),
     ('Documents', 'document'),
-    ('Archives', 'archive'),
-    ('Code', 'code'),
-    ('eBooks', 'ebook'),
-    ('Fonts', 'font'),
     ('Others', 'other'),
   ];
 
@@ -120,6 +116,13 @@ class CategoryService {
           changed = true;
         }
       }
+      // Drop built-ins that are no longer defaults (Archives/Code/eBooks/Fonts,
+      // now folded into Documents). Custom categories are never touched.
+      final validDefaults = defaults.map((d) => d.$1).toSet();
+      final before = list.length;
+      list.removeWhere((c) => c.isDefault && !validDefaults.contains(c.key));
+      if (list.length != before) changed = true;
+
       if (changed) await _persist(list);
     }
 

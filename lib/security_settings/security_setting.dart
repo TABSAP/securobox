@@ -283,7 +283,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           context,
         );
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _startPinChange();
+          if (mounted) _startPinChange();
         });
         return;
       }

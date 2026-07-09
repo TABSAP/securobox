@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
+import 'package:video_player_app/widgets/app_loader.dart';
 
 /// Decrypts an encrypted vault file to a temp path, then renders [builder] with
 /// that plaintext path. Shows a blank surface while preparing (no loader flash)
@@ -82,9 +83,9 @@ class _DecryptGateState extends State<DecryptGate> {
                   ),
                 ],
               )
-            // No loader while opening a file — the viewer surface shows
-            // instantly and the content appears the moment it's ready.
-            : const SizedBox.shrink(),
+            // A small loader while the file decrypts, so opening a large item
+            // never looks frozen.
+            : const AppLoader(size: 34),
       ),
     );
   }

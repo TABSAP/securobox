@@ -156,8 +156,10 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
     setState(() {
       _searching = !_searching;
       if (_searching) {
-        WidgetsBinding.instance
-            .addPostFrameCallback((_) => _searchFocus.requestFocus());
+        // The screen can be popped before the frame ends, disposing the node.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _searchFocus.requestFocus();
+        });
       } else {
         _clearSearch();
       }

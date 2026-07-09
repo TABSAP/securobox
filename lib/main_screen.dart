@@ -39,8 +39,12 @@ class _MainScreenState extends State<MainScreen>
     AppNav.tab.value = 0;
     AppNav.tab.addListener(_onTabRequested);
     // The vault is unlocked once we reach the main screen — release any files
-    // that were shared into the app while it was locked.
-    ShareIntake.instance.markUnlocked();
+    // that were shared into the app while it was locked. Deferred off the build
+    // phase: this screen is being mounted right now, and the intake may surface
+    // a toast (an overlay route) once the import finishes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ShareIntake.instance.markUnlocked();
+    });
   }
 
   void _onTabRequested() {
@@ -77,12 +81,17 @@ class _MainScreenState extends State<MainScreen>
   }
 
   void _onLockRequested() {
-    if (SessionManager.instance.shouldLock.value &&
-        mounted &&
-        !_isShowingLockScreen) {
-      SessionManager.instance.shouldLock.value = false;
-      _showLockScreen();
+    if (!SessionManager.instance.shouldLock.value ||
+        !mounted ||
+        _isShowingLockScreen) {
+      return;
     }
+    SessionManager.instance.shouldLock.value = false;
+    // A ValueNotifier callback can fire during a frame, and pushing a route
+    // mutates the Navigator's Overlay. Defer to after the build completes.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showLockScreen();
+    });
   }
 
   void _onUserActivity([_]) {
@@ -147,13 +156,20 @@ class _MainScreenState extends State<MainScreen>
 
   Future<void> _showLockScreen() async {
     if (!mounted || _isShowingLockScreen) return;
+    // Claim the guard SYNCHRONOUSLY, before the first await. Otherwise the
+    // inactivity timer and the shouldLock listener can both pass the check and
+    // push two lock screens.
+    _isShowingLockScreen = true;
+
     final prefs = await SharedPreferences.getInstance();
     final lockEnabled = (prefs.getBool('appLock') ?? false) ||
         (prefs.getBool('biometric') ?? false) ||
         (prefs.getBool('biometric_face') ?? false);
-    if (!lockEnabled) return;
+    if (!lockEnabled) {
+      _isShowingLockScreen = false;
+      return;
+    }
 
-    _isShowingLockScreen = true;
     unawaited(VaultCrypto.instance.wipeTempCache());
     if (!mounted) {
       _isShowingLockScreen = false;
@@ -169,10 +185,9 @@ class _MainScreenState extends State<MainScreen>
             FadeTransition(opacity: anim, child: child),
       ),
     );
-    if (mounted) {
-      _isShowingLockScreen = false;
-      SessionManager.instance.markActive();
-    }
+    // Always release the guard, even if we were disposed while locked.
+    _isShowingLockScreen = false;
+    if (mounted) SessionManager.instance.markActive();
   }
 
   @override

@@ -1,12 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:video_player_app/app_lock_screen/app_lock_screen.dart';
-import 'package:video_player_app/main_screen.dart';
-import 'package:video_player_app/onboarding_screen/onboarding_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/startup_router.dart';
 import 'package:video_player_app/widgets/app_brand_icon.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -73,19 +70,9 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _goNext() async {
     if (_navigated || !mounted) return;
     _navigated = true;
-    Widget next = const MainScreen();
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final hasOnboarded = prefs.getBool('hasOnboarded') ?? false;
-      final lockEnabled = (prefs.getBool('appLock') ?? false) ||
-          (prefs.getBool('biometric') ?? false) ||
-          (prefs.getBool('biometric_face') ?? false);
-      next = !hasOnboarded
-          ? const OnboardingScreen()
-          : (lockEnabled ? const AppLockScreen() : const MainScreen());
-    } catch (_) {
-      next = const MainScreen();
-    }
+    // This is the one and only time the splash is shown on this device.
+    await StartupRouter.markSplashSeen();
+    final next = await StartupRouter.resolveStartScreen();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(

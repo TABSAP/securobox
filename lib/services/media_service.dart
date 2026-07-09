@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -9,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../models/app_models.dart';
 import '../utils/session_manager.dart';
+import '../utils/thumbnail_cache.dart';
 import '../utils/vault_context.dart';
 
 List<VideoItem> _parseActiveMedia(List<String> raw) {
@@ -34,6 +37,19 @@ class MediaService {
   List<VideoItem> _mediaList = [];
 
   List<VideoItem> get mediaList => _mediaList;
+
+  /// Step-by-step trace of the restore pipeline. Visible in `adb logcat` and
+  /// `flutter logs` under the `SecuroBox.Restore` name.
+  static void _log(String message) =>
+      developer.log(message, name: 'SecuroBox.Restore');
+
+  /// Reads the raw library as a **mutable** list.
+  ///
+  /// `SharedPreferences.getStringList` may hand back an unmodifiable view, and
+  /// mutating it throws `Unsupported operation: Cannot remove from an
+  /// unmodifiable list`. Every writer must go through this.
+  Future<List<String>> _readRawLibrary(SharedPreferences prefs) async =>
+      List<String>.from(prefs.getStringList(_storageKey) ?? const <String>[]);
 
   Future<List<VideoItem>> loadMedia() async {
     try {
@@ -67,7 +83,7 @@ class MediaService {
     try {
       final updatedMedia = media.copyWith(category: newCategory);
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
       final index = mediaList.indexWhere((item) => item.startsWith(media.id));
       if (index != -1) {
@@ -90,7 +106,7 @@ class MediaService {
     try {
       final updatedMedia = media.copyWith(isFavorite: value);
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
       final index = mediaList.indexWhere((item) => item.startsWith(media.id));
       if (index == -1) return null;
@@ -111,7 +127,7 @@ class MediaService {
     try {
       final updatedMedia = media.copyWith(isLocked: !media.isLocked);
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
       final index = mediaList.indexWhere((item) => item.startsWith(media.id));
       if (index != -1) {
@@ -138,7 +154,7 @@ class MediaService {
       );
 
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
       final index = mediaList.indexWhere((item) => item.startsWith(media.id));
       if (index != -1) {
@@ -146,6 +162,9 @@ class MediaService {
         await prefs.setStringList(_storageKey, mediaList);
 
         _mediaList.removeWhere((item) => item.id == media.id);
+        // Let listeners update in real time — the dashboard drops the item and
+        // the Recycle Bin badge counts it.
+        notifyChanged();
         return true;
       }
       return false;
@@ -157,7 +176,7 @@ class MediaService {
   Future<bool> restoreMedia(String mediaId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
       final index = mediaList.indexWhere((item) => item.startsWith(mediaId));
       if (index != -1) {
@@ -171,6 +190,8 @@ class MediaService {
 
         _mediaList.add(restoredMedia);
         _mediaList.sort((a, b) => b.id.compareTo(a.id));
+        // Restoring shrinks the bin — refresh listeners (badge, library).
+        notifyChanged();
         return true;
       }
       return false;
@@ -179,32 +200,51 @@ class MediaService {
     }
   }
 
+  /// Permanently removes an item from the vault.
+  ///
+  /// The library entry is dropped FIRST — that entry is what makes the item
+  /// appear in the app, so it must never survive because of a failure while
+  /// deleting the encrypted blob. A leftover blob is a harmless disk orphan;
+  /// a leftover entry is a ghost the user can see.
   Future<bool> permanentlyDeleteMedia(String mediaId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
-      VideoItem? mediaItem;
-      try {
-        mediaItem = mediaList
-            .map((data) => VideoItem.fromStorageString(data))
-            .firstWhere((item) => item.id == mediaId);
-      } catch (e) {
-
-        mediaItem = null;
-      }
-
-      if (mediaItem != null) {
-        final file = File(mediaItem.path);
-        if (await file.exists()) {
-          await file.delete();
+      // Exact id match — `startsWith` would also match an id that merely shares
+      // a prefix with this one.
+      String? vaultPath;
+      final kept = <String>[];
+      for (final raw in mediaList) {
+        try {
+          final item = VideoItem.fromStorageString(raw);
+          if (item.id == mediaId) {
+            vaultPath = item.path;
+            continue; // drop it
+          }
+        } catch (_) {
+          // Unparseable row — keep it rather than silently losing data.
         }
+        kept.add(raw);
       }
 
-      mediaList.removeWhere((item) => item.startsWith(mediaId));
-      await prefs.setStringList(_storageKey, mediaList);
+      if (kept.length == mediaList.length) {
+        // Nothing matched: already gone. Treat as success and let the caller
+        // refresh, rather than reporting a failure for an absent item.
+        _mediaList.removeWhere((item) => item.id == mediaId);
+        return true;
+      }
 
+      await prefs.setStringList(_storageKey, kept);
       _mediaList.removeWhere((item) => item.id == mediaId);
+
+      // Best effort, and deliberately after the entry is gone.
+      if (vaultPath != null && vaultPath.isNotEmpty) {
+        try {
+          final file = File(vaultPath);
+          if (await file.exists()) await file.delete();
+        } catch (_) {}
+      }
       return true;
     } catch (e) {
       return false;
@@ -214,7 +254,7 @@ class MediaService {
   Future<List<VideoItem>> getDeletedMedia() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
       return mediaList
           .map((data) => VideoItem.fromStorageString(data))
@@ -285,7 +325,7 @@ class MediaService {
       await file.rename(newPath);
 
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
       final index = mediaList.indexWhere((item) => item.startsWith(media.id));
       if (index != -1) {
@@ -316,7 +356,7 @@ class MediaService {
   Future<bool> updateMediaPath(String mediaId, String newPath) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final mediaList = prefs.getStringList(_storageKey) ?? [];
+      final mediaList = await _readRawLibrary(prefs);
 
       final index = mediaList.indexWhere((item) => item.startsWith(mediaId));
       if (index != -1) {
@@ -485,107 +525,345 @@ class MediaService {
   /// and marks the item as unlocked/in-gallery. For photos and videos this
   /// records the created asset id so the item can be hidden again later; other
   /// file types are exported via [downloadFile]. Returns the updated item.
-  /// Decides which device album an unlocked file is restored into. Files keep
-  /// a record of where they came from (`origin` / `originAlbum`), so:
-  ///  - gallery imports go back to their original album (e.g. 'DCIM/Camera',
-  ///    'Pictures/Trips');
-  ///  - in-app camera captures land in the phone's Camera album;
-  ///  - everything else falls back to the app's own SecuroBox album.
-  String _restoreRelativePath(VideoItem media, {required bool isVideo}) {
-    final album = media.originAlbum.trim().replaceAll(RegExp(r'^/+|/+$'), '');
-    if (album.isNotEmpty) return album;
-    if (media.origin == 'camera') return 'DCIM/Camera';
-    return isVideo ? 'Movies/$galleryAlbum' : 'Pictures/$galleryAlbum';
+  /// MediaStore only accepts a relative path whose first segment is one of the
+  /// standard public directories. Anything else throws
+  /// `IllegalArgumentException: Primary directory ... not allowed`.
+  static const _allowedPrimaryDirs = {
+    'DCIM', 'Pictures', 'Movies', 'Music', 'Download', 'Documents',
+    'Alarms', 'Audiobooks', 'Notifications', 'Podcasts', 'Ringtones',
+  };
+
+  /// Normalises a stored `originAlbum` into a MediaStore-safe relative path, or
+  /// null when it can't be used (absolute path from a different volume, an
+  /// unsupported primary directory, empty, …).
+  String? _sanitizeAlbum(String raw) {
+    var path = raw.trim().replaceAll('\\', '/');
+    if (path.isEmpty) return null;
+    // `AssetEntity.relativePath` is sometimes an absolute filesystem path.
+    path = path.replaceFirst(RegExp(r'^/?storage/emulated/\d+/'), '');
+    path = path.replaceFirst(RegExp(r'^/?sdcard/'), '');
+    path = path.replaceAll(RegExp(r'^/+|/+$'), '');
+    if (path.isEmpty) return null;
+    final primary = path.split('/').first;
+    if (!_allowedPrimaryDirs.contains(primary)) return null;
+    return path;
   }
 
-  Future<VideoItem?> saveToGallery(
+  /// Albums to try, best first. The original location leads; the platform
+  /// default (the Camera album) is always the last resort so a restore never
+  /// fails just because the original album is unusable.
+  List<String> _albumCandidates(VideoItem media) {
+    final candidates = <String>[];
+    void add(String? value) {
+      if (value != null && value.isNotEmpty && !candidates.contains(value)) {
+        candidates.add(value);
+      }
+    }
+
+    add(_sanitizeAlbum(media.originAlbum));
+    if (media.origin == 'camera') add('DCIM/Camera');
+    add('DCIM/Camera'); // default for photos and videos
+    return candidates;
+  }
+
+  /// Writes the decrypted file back onto the device: photos/videos into the
+  /// gallery album they came from (falling back to the Camera album), and
+  /// everything else into Downloads.
+  ///
+  /// Returns true only when the file is verifiably on the device. Each album is
+  /// attempted independently — a rejection by MediaStore falls through to the
+  /// next candidate rather than aborting the whole restore.
+  Future<bool> _exportToDevice(
+    VideoItem media,
+    File file,
+    String fileName,
+  ) async {
+    final ext =
+        fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
+
+    const videoExts = {
+      'mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'm4v', 'mpg', 'mpeg',
+    };
+    const imageExts = {
+      'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif',
+    };
+
+    final isVideo = videoExts.contains(ext);
+    final isImage = imageExts.contains(ext);
+    final sourceSize = await file.length();
+    _log('export: name=$fileName ext=$ext isVideo=$isVideo isImage=$isImage '
+        'src=${file.path} size=$sourceSize origin=${media.origin} '
+        'originAlbum="${media.originAlbum}"');
+
+    if (isVideo || isImage) {
+      final permission = await PhotoManager.requestPermissionExtend();
+      _log('export: permission isAuth=${permission.isAuth} value=$permission');
+      if (!permission.isAuth) return false;
+
+      final bytes = isImage ? await file.readAsBytes() : null;
+      final candidates = _albumCandidates(media);
+      _log('export: album candidates=$candidates');
+
+      for (final album in candidates) {
+        try {
+          _log('export: trying album="$album"');
+          final asset = isVideo
+              ? await PhotoManager.editor
+                  .saveVideo(file, title: fileName, relativePath: album)
+              : await PhotoManager.editor.saveImage(
+                  bytes!,
+                  title: fileName,
+                  relativePath: album,
+                  filename: fileName,
+                );
+          _log('export: saved assetId=${asset.id} relativePath=${asset.relativePath}');
+          if (asset.id.isEmpty) continue;
+
+          // Verify the asset is really on disk and readable before we let the
+          // caller delete the vault copy.
+          final written = await asset.file;
+          final exists = written != null && await written.exists();
+          final size = exists ? await written.length() : -1;
+          _log('export: verify path=${written?.path} exists=$exists size=$size '
+              'expected=$sourceSize');
+          if (exists && size > 0) return true;
+
+          _log('export: verification FAILED for album="$album", trying next');
+        } catch (e) {
+          _log('export: album="$album" rejected: $e');
+          // Bad primary dir, missing volume, … — fall through to the next one.
+        }
+      }
+      _log('export: all album candidates failed');
+      return false;
+    }
+
+    // Audio / documents / archives / anything else → Downloads.
+    return _exportToDownloads(file, fileName, sourceSize);
+  }
+
+  static const MethodChannel _mediaStoreChannel =
+      MethodChannel('secure_player/media_store');
+
+  static const Map<String, String> _mimeTypes = {
+    'pdf': 'application/pdf',
+    'txt': 'text/plain',
+    'csv': 'text/csv',
+    'rtf': 'application/rtf',
+    'doc': 'application/msword',
+    'docx':
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'ppt': 'application/vnd.ms-powerpoint',
+    'pptx':
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'zip': 'application/zip',
+    'rar': 'application/vnd.rar',
+    '7z': 'application/x-7z-compressed',
+    'epub': 'application/epub+zip',
+    'json': 'application/json',
+    'xml': 'application/xml',
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'm4a': 'audio/mp4',
+    'flac': 'audio/flac',
+    'ogg': 'audio/ogg',
+  };
+
+  String _mimeTypeFor(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    if (dot < 0) return 'application/octet-stream';
+    final ext = fileName.substring(dot + 1).toLowerCase();
+    return _mimeTypes[ext] ?? 'application/octet-stream';
+  }
+
+  /// Copies [file] into the public Downloads folder.
+  ///
+  /// On Android 10+ scoped storage forbids writing to shared storage with the
+  /// File API — the old `Directory('/storage/emulated/0/Download/SecuroBox')
+  /// .create()` always threw EACCES. We insert through MediaStore natively
+  /// instead, and only fall back to a raw copy on older releases.
+  Future<bool> _exportToDownloads(
+    File file,
+    String fileName,
+    int sourceSize,
+  ) async {
+    if (Platform.isAndroid) {
+      final mime = _mimeTypeFor(fileName);
+      try {
+        _log('downloads: invoking MediaStore saveToDownloads mime=$mime');
+        final result = await _mediaStoreChannel
+            .invokeMapMethod<String, dynamic>('saveToDownloads', {
+          'path': file.path,
+          'fileName': fileName,
+          'mimeType': mime,
+        });
+        if (result != null) {
+          final uri = result['uri'];
+          final bytes = (result['bytes'] as num?)?.toInt() ?? -1;
+          _log('downloads: MediaStore uri=$uri bytes=$bytes expected=$sourceSize');
+          if (bytes == sourceSize) return true;
+          _log('downloads: byte-count mismatch — treating as failure');
+        } else {
+          _log('downloads: MediaStore returned null (see SecuroBoxRestore tag)');
+        }
+      } on MissingPluginException catch (e) {
+        _log('downloads: native handler missing ($e) — falling back');
+      } on PlatformException catch (e) {
+        _log('downloads: PlatformException $e — falling back');
+      } catch (e) {
+        _log('downloads: unexpected $e — falling back');
+      }
+
+      // Legacy (API ≤ 29) direct copy. Never *creates* a shared directory.
+      for (final dirPath in const [
+        '/storage/emulated/0/Download',
+        '/storage/emulated/0/Documents',
+      ]) {
+        try {
+          final dir = Directory(dirPath);
+          if (!await dir.exists()) continue;
+          final target = await _uniqueTarget(dir, fileName);
+          await file.copy(target.path);
+          final ok = await target.exists() && await target.length() == sourceSize;
+          _log('downloads(legacy): target=${target.path} ok=$ok');
+          if (ok) return true;
+        } catch (e) {
+          _log('downloads(legacy): $dirPath failed: $e');
+        }
+      }
+      _log('downloads: all strategies failed');
+      return false;
+    }
+
+    // iOS/other: hand off to the share sheet. We cannot verify a write, so we
+    // deliberately report failure and keep the vault copy.
+    try {
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: fileName),
+      );
+    } catch (_) {}
+    _log('downloads: non-Android share sheet — not treated as a verified write');
+    return false;
+  }
+
+  /// Avoids clobbering an existing file: `report.pdf` → `report (1).pdf`.
+  Future<File> _uniqueTarget(Directory dir, String fileName) async {
+    final dot = fileName.lastIndexOf('.');
+    final base = dot > 0 ? fileName.substring(0, dot) : fileName;
+    final ext = dot > 0 ? fileName.substring(dot) : '';
+    var candidate = File('${dir.path}/$fileName');
+    var n = 1;
+    while (await candidate.exists()) {
+      candidate = File('${dir.path}/$base ($n)$ext');
+      n++;
+    }
+    return candidate;
+  }
+
+  /// Unlock = restore + remove. Puts [media] back where it came from on the
+  /// device, then deletes SecuroBox's encrypted copy so it no longer appears in
+  /// the app.
+  ///
+  /// The vault copy is only ever deleted **after** the export is confirmed, so a
+  /// failed or denied restore never loses the file. Returns true on success.
+  Future<bool> restoreToDeviceAndRemove(
     VideoItem media,
     String decryptedPath,
     String fileName,
   ) async {
+    final file = File(decryptedPath);
+    int size = 0;
+    _log('=== restore START id=${media.id} title="${media.title}" '
+        'type=${media.type} encrypted=${media.encrypted} vaultPath=${media.path}');
     try {
-      final file = File(decryptedPath);
-      if (!await file.exists()) return null;
-
-      final ext = fileName.contains('.')
-          ? fileName.split('.').last.toLowerCase()
-          : '';
-      String assetId = '';
-
-      if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'm4v', 'mpg', 'mpeg']
-          .contains(ext)) {
-        final permission = await PhotoManager.requestPermissionExtend();
-        if (!permission.isAuth) return null;
-        final asset = await PhotoManager.editor.saveVideo(
-          file,
-          title: fileName,
-          relativePath: _restoreRelativePath(media, isVideo: true),
-        );
-        assetId = asset.id;
-      } else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif']
-          .contains(ext)) {
-        final permission = await PhotoManager.requestPermissionExtend();
-        if (!permission.isAuth) return null;
-        final asset = await PhotoManager.editor.saveImage(
-          await file.readAsBytes(),
-          title: fileName,
-          relativePath: _restoreRelativePath(media, isVideo: false),
-          filename: fileName,
-        );
-        assetId = asset.id;
-      } else {
-        // Audio / documents / other — not gallery media; export a copy.
-        final ok = await downloadFile(
-          filePath: decryptedPath,
-          fileName: fileName,
-        );
-        if (!ok) return null;
+      if (!await file.exists()) {
+        _log('restore ABORT: decrypted source missing at $decryptedPath');
+        return false;
       }
+      size = await file.length();
+      _log('restore: decrypted source=$decryptedPath size=$size');
+      // Step 1 — restore. If this fails or throws, nothing is removed and the
+      // file stays safely encrypted in the vault.
+      if (!await _exportToDevice(media, file, fileName)) {
+        _log('restore ABORT: export failed — vault copy KEPT');
+        return false;
+      }
+      _log('restore: export VERIFIED on device');
+    } catch (e) {
+      _log('restore ABORT: exception during export ($e) — vault copy KEPT');
+      return false;
+    }
 
-      final updated = media.copyWith(inGallery: true, galleryId: assetId);
-      await _persistUpdate(updated);
+    // Step 2 — the file is now verifiably on the device, so the vault copy MUST
+    // go. Nothing non-essential below is allowed to abort the removal.
+    try {
       await _addToDownloadHistory(
         fileName: fileName,
         filePath: decryptedPath,
-        fileSize: _formatBytes(await file.length()),
+        fileSize: _formatBytes(size),
       );
-      return updated;
     } catch (_) {
-      return null;
+      // Download history is cosmetic — never let it strand a restored file.
     }
-  }
 
-  /// Removes a previously-unlocked item from the device gallery (hides it
-  /// again) and clears the stored asset id. Returns the updated item.
-  Future<VideoItem?> removeFromGallery(VideoItem media) async {
+    var removed = false;
     try {
-      if (media.galleryId.isNotEmpty) {
-        final permission = await PhotoManager.requestPermissionExtend();
-        if (permission.isAuth) {
-          try {
-            await PhotoManager.editor.deleteWithIds([media.galleryId]);
-          } catch (_) {}
-        }
+      removed = await permanentlyDeleteMedia(media.id);
+    } catch (e) {
+      _log('restore: permanentlyDeleteMedia threw $e');
+      removed = false;
+    }
+
+    // Read back: the entry is what makes the item visible, so confirm it is
+    // actually gone rather than trusting the return value.
+    if (!removed || await _libraryContains(media.id)) {
+      _log('restore: entry survived first delete — retrying');
+      try {
+        removed = await permanentlyDeleteMedia(media.id);
+      } catch (e) {
+        _log('restore: retry threw $e');
       }
-      final updated = media.copyWith(inGallery: false, galleryId: '');
-      await _persistUpdate(updated);
-      return updated;
+      removed = !await _libraryContains(media.id);
+    }
+
+    ThumbnailCache.instance.remove(media.id);
+    // Always notify: the library changed on disk either way, and the UI must
+    // reflect reality in real time without a manual refresh.
+    notifyChanged();
+    _log('=== restore END removed=$removed id=${media.id}');
+    return removed;
+  }
+
+  /// True if [mediaId] still has a library entry on disk.
+  Future<bool> _libraryContains(String mediaId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(_storageKey) ?? const <String>[];
+      for (final row in raw) {
+        try {
+          if (VideoItem.fromStorageString(row).id == mediaId) return true;
+        } catch (_) {}
+      }
+      return false;
     } catch (_) {
-      return null;
+      return false;
     }
   }
 
-  /// Writes an updated item back to storage and the in-memory list.
-  Future<bool> _persistUpdate(VideoItem updated) async {
-    final prefs = await SharedPreferences.getInstance();
-    final mediaList = prefs.getStringList(_storageKey) ?? [];
-    final index = mediaList.indexWhere((item) => item.startsWith(updated.id));
-    if (index == -1) return false;
-    mediaList[index] = updated.toStorageString();
-    await prefs.setStringList(_storageKey, mediaList);
-    final localIndex = _mediaList.indexWhere((item) => item.id == updated.id);
-    if (localIndex != -1) _mediaList[localIndex] = updated;
-    return true;
+  /// Deletes SecuroBox's copy of an item that is already present on the device
+  /// (a legacy "unlocked to gallery" item), without exporting it again.
+  Future<bool> removeVaultCopy(VideoItem media) async {
+    try {
+      await permanentlyDeleteMedia(media.id);
+      final removed = !await _libraryContains(media.id);
+      ThumbnailCache.instance.remove(media.id);
+      notifyChanged();
+      return removed;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<void> _addToDownloadHistory({

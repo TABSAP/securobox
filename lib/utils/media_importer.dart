@@ -52,7 +52,10 @@ class MediaImporter {
   static List<String> get docExtensions =>
       FileTypeRegistry.extensionsFor('document').toList();
 
-  String detectTypeFromPath(String path) => FileTypeRegistry.kindForPath(path);
+  /// The stored item type. Archives, code, ebooks and fonts all collapse to
+  /// `'document'`, so every such file lands in the Documents category.
+  String detectTypeFromPath(String path) =>
+      FileTypeRegistry.storageTypeForPath(path);
 
   String defaultCategoryForType(String type) =>
       FileTypeRegistry.categoryForKind(type);
@@ -165,6 +168,40 @@ class MediaImporter {
       } catch (_) {}
     }
     return set;
+  }
+
+  /// One-time migration: items imported while Archives/Code/eBooks/Fonts were
+  /// separate categories are folded into Documents, so nothing is orphaned now
+  /// that those categories no longer exist. Safe to run on every launch.
+  Future<void> migrateLegacyDocumentTypes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final libKey = VaultContext.instance.libraryKey;
+    final list = prefs.getStringList(libKey) ?? [];
+    const legacyTypes = {'archive', 'code', 'ebook', 'font'};
+    const legacyCategories = {'archives', 'code', 'ebooks', 'fonts'};
+
+    var changed = false;
+    for (int i = 0; i < list.length; i++) {
+      final parts = list[i].split('|');
+      if (parts.length < 6) continue;
+      var itemChanged = false;
+      if (legacyTypes.contains(parts[3])) {
+        parts[3] = 'document';
+        itemChanged = true;
+      }
+      if (legacyCategories.contains(parts[5].toLowerCase())) {
+        parts[5] = 'Documents';
+        itemChanged = true;
+      }
+      if (itemChanged) {
+        list[i] = parts.join('|');
+        changed = true;
+      }
+    }
+    if (changed) {
+      await prefs.setStringList(libKey, list);
+      MediaService.notifyChanged();
+    }
   }
 
   Future<int> moveCategoryItems(String from, String to) async {
