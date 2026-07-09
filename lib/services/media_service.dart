@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -38,10 +37,11 @@ class MediaService {
 
   List<VideoItem> get mediaList => _mediaList;
 
-  /// Step-by-step trace of the restore pipeline. Visible in `adb logcat` and
-  /// `flutter logs` under the `SecuroBox.Restore` name.
-  static void _log(String message) =>
-      developer.log(message, name: 'SecuroBox.Restore');
+  /// Step-by-step trace of the restore pipeline.
+  ///
+  /// Uses [debugPrint] (not `developer.log`, which only reaches the VM service)
+  /// so every step is visible in `adb logcat` and `flutter logs`.
+  static void _log(String message) => debugPrint('[SecuroBox.Restore] $message');
 
   /// Reads the raw library as a **mutable** list.
   ///
@@ -709,31 +709,19 @@ class MediaService {
           _log('downloads: MediaStore returned null (see SecuroBoxRestore tag)');
         }
       } on MissingPluginException catch (e) {
-        _log('downloads: native handler missing ($e) — falling back');
+        _log('downloads: native handler MISSING ($e)');
       } on PlatformException catch (e) {
-        _log('downloads: PlatformException $e — falling back');
+        _log('downloads: PlatformException $e');
       } catch (e) {
-        _log('downloads: unexpected $e — falling back');
+        _log('downloads: unexpected $e');
       }
 
-      // Legacy (API ≤ 29) direct copy. Never *creates* a shared directory.
-      for (final dirPath in const [
-        '/storage/emulated/0/Download',
-        '/storage/emulated/0/Documents',
-      ]) {
-        try {
-          final dir = Directory(dirPath);
-          if (!await dir.exists()) continue;
-          final target = await _uniqueTarget(dir, fileName);
-          await file.copy(target.path);
-          final ok = await target.exists() && await target.length() == sourceSize;
-          _log('downloads(legacy): target=${target.path} ok=$ok');
-          if (ok) return true;
-        } catch (e) {
-          _log('downloads(legacy): $dirPath failed: $e');
-        }
-      }
-      _log('downloads: all strategies failed');
+      // Deliberately NO raw-copy fallback: on API 29+ a File-API write to
+      // shared storage is either rejected or produces a file that MediaStore
+      // never indexes — invisible in Gallery/Files, yet it would look like a
+      // success and let us delete the vault copy. The native side already
+      // handles pre-Q with a direct copy. Failing here keeps the file safe.
+      _log('downloads: FAILED — vault copy will be kept');
       return false;
     }
 
@@ -746,20 +734,6 @@ class MediaService {
     } catch (_) {}
     _log('downloads: non-Android share sheet — not treated as a verified write');
     return false;
-  }
-
-  /// Avoids clobbering an existing file: `report.pdf` → `report (1).pdf`.
-  Future<File> _uniqueTarget(Directory dir, String fileName) async {
-    final dot = fileName.lastIndexOf('.');
-    final base = dot > 0 ? fileName.substring(0, dot) : fileName;
-    final ext = dot > 0 ? fileName.substring(dot) : '';
-    var candidate = File('${dir.path}/$fileName');
-    var n = 1;
-    while (await candidate.exists()) {
-      candidate = File('${dir.path}/$base ($n)$ext');
-      n++;
-    }
-    return candidate;
   }
 
   /// Unlock = restore + remove. Puts [media] back where it came from on the
