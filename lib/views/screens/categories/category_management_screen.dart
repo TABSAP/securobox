@@ -331,7 +331,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       itemCount: _items.length,
-      onReorderItem: _onReorder,
+      onReorder: _onReorder,
       proxyDecorator: (child, index, animation) => Material(
         color: Colors.transparent,
         child: child,

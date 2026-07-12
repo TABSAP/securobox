@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 allprojects {
     repositories {
         google()
@@ -45,6 +47,14 @@ subprojects {
             // matches the app and its own Kotlin, keeping the toolchain aligned.
             androidExt.compileOptions.sourceCompatibility = JavaVersion.VERSION_17
             androidExt.compileOptions.targetCompatibility = JavaVersion.VERSION_17
+        }
+        // Align each plugin's Kotlin jvmTarget to the Java (17) forced above.
+        // file_picker (and others) default Kotlin to 11, which trips Gradle's
+        // "Inconsistent JVM-target" check once Java is bumped to 17.
+        tasks.withType<KotlinCompile>().configureEach {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            }
         }
     }
 }
