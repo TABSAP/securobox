@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SecuroBox — Your private, offline vault</title>
-<meta name="description" content="SecuroBox is a 100% offline media vault for Android and iOS. Files are encrypted on-device with AES-256 and protected by a PIN or biometric.">
+<title>SecuroBox — Support & Help</title>
+<meta name="description" content="Support and help for SecuroBox, a 100% offline media vault for Android and iOS. Contact us, read the FAQ, or view the privacy policy.">
 <style>
   :root { --bg:#0b0b14; --card:#13131f; --fg:#fafafa; --muted:#a1a1b3; --accent:#818cf8; --border:#23232f; }
   *,*::before,*::after{box-sizing:border-box}
@@ -13,12 +13,16 @@
   h1{font-size:36px;line-height:1.15;margin:0 0 8px;letter-spacing:-0.5px}
   .tag{color:var(--muted);font-size:16px;margin:0 0 32px}
   .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:14px}
-  .card h2{margin:0 0 6px;font-size:17px;letter-spacing:-0.2px}
-  .card p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.55}
+  .card h2{margin:0 0 8px;font-size:18px;letter-spacing:-0.2px}
+  .card p{margin:0 0 10px;color:var(--muted);font-size:14.5px;line-height:1.55}
+  .card p:last-child{margin-bottom:0}
   .card a{color:var(--accent);text-decoration:none;font-weight:600}
   .card a:hover{text-decoration:underline}
-  ul{margin:0;padding-left:18px;color:var(--muted);font-size:14.5px}
-  li+li{margin-top:4px}
+  .email{display:inline-block;background:var(--accent);color:#0b0b14;font-weight:700;padding:10px 18px;border-radius:10px;text-decoration:none;margin-top:4px}
+  .email:hover{text-decoration:none;opacity:.9}
+  ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:14.5px}
+  li+li{margin-top:6px}
+  .q{color:var(--fg);font-weight:600;margin:14px 0 2px;font-size:14.5px}
   footer{margin-top:48px;color:var(--muted);font-size:13px;text-align:center}
   .shield{font-size:48px;margin-bottom:8px}
 </style>
@@ -26,38 +30,41 @@
 <body>
 <main>
   <div class="shield">🛡️</div>
-  <h1>SecuroBox</h1>
-  <p class="tag">A 100% offline private media vault. Files are encrypted on-device with AES-256 and unlocked only by your PIN or biometric. No cloud, no analytics, no account.</p>
+  <h1>SecuroBox Support</h1>
+  <p class="tag">SecuroBox is a 100% offline private media vault. Files are encrypted on your device and unlocked only by your PIN or biometric. Below is how to get help.</p>
+
+  <div class="card">
+    <h2>Contact us</h2>
+    <p>Have a question, found a bug, or need help with the app? Email us and we'll get back to you, typically within 1–2 business days.</p>
+    <a class="email" href="mailto:info@tabsap.com?subject=SecuroBox%20Support">info@tabsap.com</a>
+    <p style="margin-top:12px">When reporting a problem, it helps to include your device model, OS version, and a short description of what happened.</p>
+  </div>
+
+  <div class="card">
+    <h2>Frequently asked questions</h2>
+
+    <p class="q">I forgot my PIN. Can I recover my files?</p>
+    <p>Your files are encrypted with a key on your device, separate from your PIN. If you set up a Recovery Key during onboarding, open “Forgot PIN?” on the lock screen and enter it to reset the PIN without losing files. If you did not set up recovery, the PIN cannot be reset for security reasons.</p>
+
+    <p class="q">How do I add files to the vault?</p>
+    <p>Open the app, unlock it, and tap the “+” button to import photos, videos, audio, or documents. You can also capture photos and videos directly into the vault with the in-app camera.</p>
+
+    <p class="q">Is my data sent anywhere?</p>
+    <p>No. SecuroBox is fully offline. There are no servers, no accounts, and no analytics. Everything stays on your device, and uninstalling the app removes all of it.</p>
+
+    <p class="q">Does it work without internet?</p>
+    <p>Yes. Every feature works offline. No internet connection is required to use the vault.</p>
+
+    <p class="q">How do I delete my data?</p>
+    <p>Delete files individually inside the app, or uninstall the app to permanently remove the vault and all keys from your device.</p>
+  </div>
 
   <div class="card">
     <h2>Privacy Policy</h2>
     <p><a href="./play-store/privacy-policy.html">Read the privacy policy →</a></p>
   </div>
 
-  <div class="card">
-    <h2>Security model</h2>
-    <p>Threat model, cryptographic primitives, vulnerability disclosure — all in <a href="https://github.com/TABSAP/securobox/blob/main/SECURITY.md">SECURITY.md</a>.</p>
-  </div>
-
-  <div class="card">
-    <h2>Source code</h2>
-    <p>Apache 2.0 licensed. Browse on <a href="https://github.com/TABSAP/securobox">GitHub</a>.</p>
-  </div>
-
-  <div class="card">
-    <h2>What it does</h2>
-    <ul>
-      <li>AES-256-CTR file encryption with hardware-backed key storage</li>
-      <li>PIN (4 or 6 digit) + biometric unlock</li>
-      <li>Optional Face Unlock via on-device ML Kit</li>
-      <li>Break-in detection: silent front-camera capture on wrong PIN</li>
-      <li>Decoy mode (duress PIN) with a separate isolated vault</li>
-      <li>Home-screen icon disguise (Calculator / Notes / Weather / Compass / Utilities)</li>
-      <li>No servers, no analytics, no third-party SDKs that phone home</li>
-    </ul>
-  </div>
-
-  <footer>SecuroBox · info@tabsap.com</footer>
+  <footer>SecuroBox by TABSAP · <a href="mailto:info@tabsap.com" style="color:var(--muted)">info@tabsap.com</a></footer>
 </main>
 </body>
 </html>
