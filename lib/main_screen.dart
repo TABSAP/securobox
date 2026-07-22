@@ -107,8 +107,24 @@ class _MainScreenState extends State<MainScreen>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
+      // The shield always goes up: it hides content from the app-switcher
+      // snapshot and is cheap/reversible.
       setState(() => _showPrivacyShield = true);
-      unawaited(VaultCrypto.instance.wipeAllTempCache());
+
+      // Wiping decrypted plaintext is NOT reversible, so it must only happen on
+      // a real backgrounding.
+      //
+      // `inactive` also fires for transient system UI the user deliberately
+      // invoked — the iOS document picker, the photo-library permission alert,
+      // Control Center. Wiping there deletes the very temp file the in-flight
+      // flow is using: the file picker loses its staged files, an open viewer
+      // loses its decrypted source, and a restore loses the file it was about
+      // to write out. `inTrustedInteraction` marks exactly those flows.
+      final backgrounded = state == AppLifecycleState.paused ||
+          state == AppLifecycleState.hidden;
+      if (backgrounded && !SessionManager.instance.inTrustedInteraction) {
+        unawaited(VaultCrypto.instance.wipeAllTempCache());
+      }
     }
 
     if (state == AppLifecycleState.paused) {

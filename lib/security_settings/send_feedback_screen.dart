@@ -8,6 +8,7 @@ import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 
 class SendFeedbackScreen extends StatefulWidget {
   const SendFeedbackScreen({super.key});
@@ -75,6 +76,9 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
     }
 
     HapticFeedback.selectionClick();
+    // Opening the system picker sends the app inactive; without this the
+    // auto-lock can fire and dismiss the picker mid-selection.
+    SessionManager.instance.beginTrustedInteraction();
     try {
       final result = await FilePicker.platform.pickFiles(
         type: imagesOnly ? FileType.image : FileType.any,
@@ -125,6 +129,10 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
         'Could not attach: ${e.toString()}',
         context,
       );
+    } finally {
+      // Must run on every path — the block above has several early returns,
+      // and a leaked depth would suppress auto-lock for the rest of the session.
+      SessionManager.instance.endTrustedInteraction();
     }
   }
 

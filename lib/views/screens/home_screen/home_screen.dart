@@ -346,7 +346,8 @@ class HomeScreenState extends State<HomeScreen>
 
   Future<bool> _unlockProtectedItem({required String reason}) async {
     final prefs = await SharedPreferences.getInstance();
-    final biometricEnabled = (prefs.getBool('biometric') ?? false) ||
+    final biometricEnabled =
+        (prefs.getBool('biometric') ?? false) ||
         (prefs.getBool('biometric_face') ?? false);
     final appLockEnabled = prefs.getBool('appLock') ?? false;
 
@@ -975,7 +976,10 @@ class HomeScreenState extends State<HomeScreen>
         );
         await _loadMedia(silent: true);
       } else {
-        FlushBarHelper.flushBarErrorMessage('Could not remove the file', context);
+        FlushBarHelper.flushBarErrorMessage(
+          'Could not remove the file',
+          context,
+        );
       }
       return;
     }
@@ -990,9 +994,8 @@ class HomeScreenState extends State<HomeScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(
-        child: AppLoader(size: 64, label: 'Restoring…'),
-      ),
+      builder: (_) =>
+          const Center(child: AppLoader(size: 64, label: 'Restoring…')),
     );
     var loaderOpen = true;
     void closeLoader() {
@@ -1061,9 +1064,9 @@ class HomeScreenState extends State<HomeScreen>
         title: 'Unlock this file?',
         message: media.inGallery
             ? '"${media.title}" is already on your device. SecuroBox\'s copy '
-                'will be deleted and it will no longer appear in the app.'
+                  'will be deleted and it will no longer appear in the app.'
             : '"${media.title}" will be restored to where it came from on your '
-                'device, then removed from SecuroBox.',
+                  'device, then removed from SecuroBox.',
         confirmLabel: 'Unlock & restore',
         onConfirm: () => confirmed = true,
       ),
@@ -1098,8 +1101,8 @@ class HomeScreenState extends State<HomeScreen>
         titleSpacing: _selectionMode
             ? 4
             : (widget.typeFilter != null || widget.screenTitle != null)
-                ? 4
-                : 20,
+            ? 4
+            : 20,
         leading: _selectionMode
             ? IconButton(
                 icon: Icon(
@@ -1114,9 +1117,9 @@ class HomeScreenState extends State<HomeScreen>
           _selectionMode
               ? '${_selectedIds.length} selected'
               : widget.screenTitle ??
-                  (widget.typeFilter != null
-                      ? _categoryLabel(widget.typeFilter!)
-                      : 'Library'),
+                    (widget.typeFilter != null
+                        ? _categoryLabel(widget.typeFilter!)
+                        : 'Library'),
           style: TextStyle(
             color: LiquidColors.textPrimary,
             fontSize: 22,
@@ -1262,6 +1265,7 @@ class HomeScreenState extends State<HomeScreen>
       ),
       child: Column(
         children: [
+          SizedBox(height: AppSpace.sm),
           _buildSearchBar(),
           const SizedBox(height: AppSpace.md),
           if (widget.typeFilter == null && widget.screenTitle == null) ...[
@@ -1382,7 +1386,8 @@ class HomeScreenState extends State<HomeScreen>
             final categories = _filterChips;
             final category = categories[index];
             final isSelected = _selectedCategory == category;
-            final isCustom = !MediaHelper.mediaCategories.contains(category) &&
+            final isCustom =
+                !MediaHelper.mediaCategories.contains(category) &&
                 category != _favoritesFilter;
             return _CategoryPill(
               label: category,

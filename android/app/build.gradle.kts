@@ -24,7 +24,10 @@ android {
     defaultConfig {
         applicationId = "app.securobox.vault"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
+        // Android 16. Google Play requires apps to target API 36 by
+        // 31 Aug 2026; targeting 35 triggers the "old target API level"
+        // warning in Play Console.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
