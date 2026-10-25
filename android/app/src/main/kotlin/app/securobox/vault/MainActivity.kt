@@ -65,6 +65,7 @@ open class MainActivity: FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+
     }
 
     /**

@@ -19,10 +19,11 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen>
-    with WidgetsBindingObserver {
+class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final _libraryKey = GlobalKey<HomeDashboardState>();
+  final _libraryNavigatorKey = GlobalKey<NavigatorState>();
+  final _settingsNavigatorKey = GlobalKey<NavigatorState>();
 
   bool _wasPaused = false;
   bool _isShowingLockScreen = false;
@@ -49,11 +50,31 @@ class _MainScreenState extends State<MainScreen>
 
   void _onTabRequested() {
     final i = AppNav.tab.value;
-    if (!mounted || i == _selectedIndex) return;
+    if (!mounted) return;
+    if (i == _selectedIndex) {
+      // Reselecting the active tab returns that tab to its root screen.
+      _navigatorFor(i)?.popUntil((route) => route.isFirst);
+      return;
+    }
     HapticFeedback.selectionClick();
     SessionManager.instance.markActive();
     setState(() => _selectedIndex = i);
     if (i == 0) _libraryKey.currentState?.refresh();
+  }
+
+  NavigatorState? _navigatorFor(int index) => index == 0
+      ? _libraryNavigatorKey.currentState
+      : _settingsNavigatorKey.currentState;
+
+  void _handleSystemBack() {
+    final navigator = _navigatorFor(_selectedIndex);
+    if (navigator?.canPop() ?? false) {
+      navigator!.pop();
+    } else if (_selectedIndex != 0) {
+      AppNav.tab.value = 0;
+    } else if (Theme.of(context).platform == TargetPlatform.android) {
+      SystemNavigator.pop();
+    }
   }
 
   @override
@@ -120,7 +141,8 @@ class _MainScreenState extends State<MainScreen>
       // flow is using: the file picker loses its staged files, an open viewer
       // loses its decrypted source, and a restore loses the file it was about
       // to write out. `inTrustedInteraction` marks exactly those flows.
-      final backgrounded = state == AppLifecycleState.paused ||
+      final backgrounded =
+          state == AppLifecycleState.paused ||
           state == AppLifecycleState.hidden;
       if (backgrounded && !SessionManager.instance.inTrustedInteraction) {
         unawaited(VaultCrypto.instance.wipeAllTempCache());
@@ -147,7 +169,8 @@ class _MainScreenState extends State<MainScreen>
     }
 
     final prefs = await SharedPreferences.getInstance();
-    final lockEnabled = (prefs.getBool('appLock') ?? false) ||
+    final lockEnabled =
+        (prefs.getBool('appLock') ?? false) ||
         (prefs.getBool('biometric') ?? false) ||
         (prefs.getBool('biometric_face') ?? false);
     if (!lockEnabled) {
@@ -157,7 +180,8 @@ class _MainScreenState extends State<MainScreen>
     }
 
     final autoLock = SessionManager.instance.autoLockSeconds;
-    final mustLock = autoLock == 0 ||
+    final mustLock =
+        autoLock == 0 ||
         _wasPaused ||
         await SessionManager.instance.hasInactivityElapsed();
 
@@ -178,7 +202,8 @@ class _MainScreenState extends State<MainScreen>
     _isShowingLockScreen = true;
 
     final prefs = await SharedPreferences.getInstance();
-    final lockEnabled = (prefs.getBool('appLock') ?? false) ||
+    final lockEnabled =
+        (prefs.getBool('appLock') ?? false) ||
         (prefs.getBool('biometric') ?? false) ||
         (prefs.getBool('biometric_face') ?? false);
     if (!lockEnabled) {
@@ -214,29 +239,48 @@ class _MainScreenState extends State<MainScreen>
         behavior: HitTestBehavior.translucent,
         onPointerDown: _onUserActivity,
         onPointerMove: _onUserActivity,
-        child: Stack(
-          children: [
-            Scaffold(
-              backgroundColor: LiquidColors.backgroundDeep,
-              body: IndexedStack(
-                index: _selectedIndex,
-                children: [
-                  TickerMode(
-                    enabled: _selectedIndex == 0,
-                    child: HomeDashboard(key: _libraryKey),
-                  ),
-                  TickerMode(
-                    enabled: _selectedIndex == 1,
-                    child: SettingsScreen(),
-                  ),
-                ],
+        child: PopScope<Object?>(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) _handleSystemBack();
+          },
+          child: Stack(
+            children: [
+              Scaffold(
+                backgroundColor: LiquidColors.backgroundDeep,
+                extendBody: true,
+                body: IndexedStack(
+                  index: _selectedIndex,
+                  children: [
+                    TickerMode(
+                      enabled: _selectedIndex == 0,
+                      child: Navigator(
+                        key: _libraryNavigatorKey,
+                        onGenerateRoute: (settings) => MaterialPageRoute<void>(
+                          settings: settings,
+                          builder: (_) => HomeDashboard(key: _libraryKey),
+                        ),
+                      ),
+                    ),
+                    TickerMode(
+                      enabled: _selectedIndex == 1,
+                      child: Navigator(
+                        key: _settingsNavigatorKey,
+                        onGenerateRoute: (settings) => MaterialPageRoute<void>(
+                          settings: settings,
+                          builder: (_) => const SettingsScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                bottomNavigationBar: LiquidBottomNav(
+                  selectedIndex: _selectedIndex,
+                ),
               ),
-              bottomNavigationBar: LiquidBottomNav(
-                selectedIndex: _selectedIndex,
-              ),
-            ),
-            if (_showPrivacyShield) const _PrivacyShield(),
-          ],
+              if (_showPrivacyShield) const _PrivacyShield(),
+            ],
+          ),
         ),
       ),
     );
@@ -265,7 +309,11 @@ class _PrivacyShield extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(Icons.shield_rounded, color: LiquidColors.textPrimary, size: 60),
+          child: Icon(
+            Icons.shield_rounded,
+            color: LiquidColors.textPrimary,
+            size: 60,
+          ),
         ),
       ),
     );

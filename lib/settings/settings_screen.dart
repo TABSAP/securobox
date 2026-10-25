@@ -3,6 +3,10 @@ import 'package:flutter/services.dart';
 
 import 'package:video_player_app/security_settings/about_screen.dart';
 import 'package:video_player_app/security_settings/security_setting.dart';
+import 'package:video_player_app/security_settings/safety_center_screen.dart';
+import 'package:video_player_app/security_settings/guest_view_screen.dart';
+import 'package:video_player_app/security_settings/auto_import_screen.dart';
+import 'package:video_player_app/security_settings/private_locker_screen.dart';
 import 'package:video_player_app/security_settings/support_screen.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
@@ -53,7 +57,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     FlushBarHelper.flushBarSuccessMessage('Cache cleared', context);
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +106,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const AppSectionHeader(label: 'Security & privacy'),
             const SizedBox(height: AppSpace.sm),
             _group([
+              _tile(
+                icon: Icons.visibility_rounded,
+                color: LiquidColors.indigo,
+                title: 'Guest View',
+                subtitle: 'Show selected files without exposing your library',
+                trailing: _chevron(),
+                onTap: () => _open(const GuestViewScreen()),
+              ),
+              _divider(),
+              _tile(
+                icon: Icons.shield_moon_rounded,
+                color: LiquidColors.indigo,
+                title: 'Private Locker',
+                subtitle: 'A separate PIN-protected space for selected media',
+                trailing: _chevron(),
+                onTap: () => _open(const PrivateLockerScreen()),
+              ),
+              _divider(),
+              _tile(
+                icon: Icons.auto_awesome_motion_rounded,
+                color: LiquidColors.accentPurple,
+                title: 'Auto-import rules',
+                subtitle: 'Review new photos and videos from selected albums',
+                trailing: _chevron(),
+                onTap: () => _open(const AutoImportScreen()),
+              ),
+              _divider(),
+              _tile(
+                icon: Icons.health_and_safety_rounded,
+                color: LiquidColors.success,
+                title: 'Safety Center',
+                subtitle: 'Vault health and encrypted backup & recovery',
+                trailing: _chevron(),
+                onTap: () => _open(const SafetyCenterScreen()),
+              ),
+              _divider(),
               _tile(
                 icon: Icons.shield_rounded,
                 color: LiquidColors.accentBlue,
@@ -287,8 +326,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  String _themeSubtitle(ThemeMode m) =>
-      m == ThemeMode.system ? 'System default' : '${ThemeController.label(m)} mode';
+  String _themeSubtitle(ThemeMode m) => m == ThemeMode.system
+      ? 'System default'
+      : '${ThemeController.label(m)} mode';
 
   // Opens a clean popup dialog to choose Light / Dark / System.
   Future<void> _openThemeDialog() async {
@@ -338,7 +378,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Icon(
               _themeIcon(mode),
               size: 22,
-              color: selected ? LiquidColors.indigo : LiquidColors.textSecondary,
+              color: selected
+                  ? LiquidColors.indigo
+                  : LiquidColors.textSecondary,
             ),
             const SizedBox(width: 14),
             Expanded(

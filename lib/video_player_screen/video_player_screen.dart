@@ -43,7 +43,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   void dispose() {
-
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -95,16 +94,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _seekForward() {
-    final currentPosition = _videoPlayerController.value.position;
-    final newPosition = currentPosition + const Duration(seconds: 10);
-    _videoPlayerController.seekTo(newPosition);
+    final value = _videoPlayerController.value;
+    final target = value.position + const Duration(seconds: 10);
+    _videoPlayerController.seekTo(
+      target > value.duration ? value.duration : target,
+    );
     _showSeekOverlay('+10s');
   }
 
   void _seekBackward() {
-    final currentPosition = _videoPlayerController.value.position;
-    final newPosition = currentPosition - const Duration(seconds: 10);
-    _videoPlayerController.seekTo(newPosition);
+    final target =
+        _videoPlayerController.value.position - const Duration(seconds: 10);
+    _videoPlayerController.seekTo(target.isNegative ? Duration.zero : target);
     _showSeekOverlay('-10s');
   }
 
@@ -143,6 +144,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       }
     });
   }
+
   void _showErrorDialog() {
     showDialog(
       context: context,
@@ -264,13 +266,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   void _toggleFullScreen() {
     if (_isFullScreen) {
-
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
       ]);
     } else {
-
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -296,278 +296,223 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Widget _buildCustomControls() {
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 300),
-      opacity: _showOverlay ? 1.0 : 0.0,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.7),
-              Colors.transparent,
-              Colors.transparent,
-              Colors.black.withValues(alpha: 0.7),
-            ],
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return IgnorePointer(
+      ignoring: !_showOverlay,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOut,
+        opacity: _showOverlay ? 1 : 0,
+        child: Stack(
           children: [
-
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                MediaQuery.of(context).padding.top + 10,
-                20,
-                10,
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0, .22, .55, 1],
+                      colors: [
+                        Colors.black.withValues(alpha: .78),
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: .82),
+                      ],
+                    ),
+                  ),
+                ),
               ),
+            ),
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 10,
+              left: 14,
+              right: 14,
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-
-                  GestureDetector(
-                    onTap: () {
-
-                      if (_isFullScreen) {
-                        SystemChrome.setPreferredOrientations([
-                          DeviceOrientation.portraitUp,
-                          DeviceOrientation.portraitDown,
-                        ]);
-                      }
-                      Navigator.pop(context);
-                    },
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-
+                  _playerIconButton(Icons.arrow_back_rounded, () {
+                    if (_isFullScreen) {
+                      SystemChrome.setPreferredOrientations([
+                        DeviceOrientation.portraitUp,
+                        DeviceOrientation.portraitDown,
+                      ]);
+                    }
+                    Navigator.pop(context);
+                  }, tooltip: 'Back'),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        widget.videoTitle,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: .38),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: .14),
+                          ),
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Text(
+                          widget.videoTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-
+                  const SizedBox(width: 12),
                   PopupMenuButton<String>(
+                    tooltip: 'More video options',
                     onSelected: (value) {
-                      if (value == 'speed') {
-                        _showPlaybackSpeedDialog();
-                      }
+                      if (value == 'speed') _showPlaybackSpeedDialog();
                     },
                     itemBuilder: (context) => [
                       PopupMenuItem(
                         value: 'speed',
                         child: Row(
                           children: [
-                            const Icon(Icons.speed, size: 20),
-                            const SizedBox(width: 8),
-                            Text('Playback Speed (${_playbackSpeed}x)'),
+                            const Icon(Icons.speed_rounded, size: 20),
+                            const SizedBox(width: 10),
+                            Text('Playback speed · ${_playbackSpeed}x'),
                           ],
                         ),
                       ),
                     ],
-                    child: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.more_vert_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
+                    child: _playerIconButton(
+                      Icons.more_horiz_rounded,
+                      null,
+                      tooltip: 'More options',
                     ),
                   ),
                 ],
               ),
             ),
-
-            Expanded(
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-
-                    GestureDetector(
-                      onTap: _seekBackward,
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.replay_10_rounded,
-                          color: Colors.white,
-                          size: 32,
-                        ),
-                      ),
-                    ),
-
-                    GestureDetector(
-                      onTap: _togglePlayPause,
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6366F1),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF6366F1,
-                              ).withValues(alpha: 0.35),
-                              blurRadius: 22,
-                              spreadRadius: -4,
-                              offset: const Offset(0, 6),
+            Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _seekControl(
+                    Icons.replay_10_rounded,
+                    '−10 sec',
+                    _seekBackward,
+                  ),
+                  const SizedBox(width: 24),
+                  ValueListenableBuilder<VideoPlayerValue>(
+                    valueListenable: _videoPlayerController,
+                    builder: (context, value, _) => AnimatedScale(
+                      scale: value.isPlaying ? .94 : 1,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutBack,
+                      child: Material(
+                        color: LiquidColors.indigo,
+                        shape: const CircleBorder(),
+                        elevation: 16,
+                        shadowColor: LiquidColors.indigo.withValues(alpha: .55),
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: _togglePlayPause,
+                          child: SizedBox(
+                            width: 74,
+                            height: 74,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              transitionBuilder: (child, animation) =>
+                                  ScaleTransition(
+                                    scale: animation,
+                                    child: child,
+                                  ),
+                              child: Icon(
+                                value.isPlaying
+                                    ? Icons.pause_rounded
+                                    : Icons.play_arrow_rounded,
+                                key: ValueKey(value.isPlaying),
+                                color: Colors.white,
+                                size: 38,
+                              ),
                             ),
-                          ],
-                        ),
-                        child: ValueListenableBuilder<VideoPlayerValue>(
-                          valueListenable: _videoPlayerController,
-                          builder: (context, value, _) => Icon(
-                            value.isPlaying
-                                ? Icons.pause_rounded
-                                : Icons.play_arrow_rounded,
-                            color: Colors.white,
-                            size: 40,
                           ),
                         ),
                       ),
                     ),
-
-                    GestureDetector(
-                      onTap: _seekForward,
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.forward_10_rounded,
-                          color: Colors.white,
-                          size: 32,
-                        ),
+                  ),
+                  const SizedBox(width: 24),
+                  _seekControl(
+                    Icons.forward_10_rounded,
+                    '+10 sec',
+                    _seekForward,
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 12,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 11, 12, 10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: .48),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .12),
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    VideoProgressIndicator(
+                      _videoPlayerController,
+                      allowScrubbing: true,
+                      colors: const VideoProgressColors(
+                        playedColor: Color(0xFF818CF8),
+                        bufferedColor: Colors.white38,
+                        backgroundColor: Colors.white24,
                       ),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ValueListenableBuilder<VideoPlayerValue>(
+                            valueListenable: _videoPlayerController,
+                            builder: (context, value, _) => Text(
+                              '${_formatDuration(value.position)}  /  ${_formatDuration(value.duration)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ),
+                        ),
+                        _playerPill(
+                          Icons.speed_rounded,
+                          '${_playbackSpeed}x',
+                          _showPlaybackSpeedDialog,
+                        ),
+                        const SizedBox(width: 8),
+                        _playerIconButton(
+                          _isFullScreen
+                              ? Icons.fullscreen_exit_rounded
+                              : Icons.fullscreen_rounded,
+                          _toggleFullScreen,
+                          tooltip: _isFullScreen
+                              ? 'Exit full screen'
+                              : 'Full screen',
+                          compact: true,
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ),
-            ),
-
-            Container(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                10,
-                20,
-                MediaQuery.of(context).padding.bottom + 10,
-              ),
-              child: Column(
-                children: [
-
-                  VideoProgressIndicator(
-                    _videoPlayerController,
-                    allowScrubbing: true,
-                    colors: const VideoProgressColors(
-                      playedColor: Color(0xFF6366F1),
-                      bufferedColor: Colors.white30,
-                      backgroundColor: Colors.white24,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-
-                      ValueListenableBuilder<VideoPlayerValue>(
-                        valueListenable: _videoPlayerController,
-                        builder: (context, value, _) => Text(
-                          '${_formatDuration(value.position)}  /  '
-                          '${_formatDuration(value.duration)}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            fontFeatures: [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                      ),
-
-                      Row(
-                        children: [
-
-                          GestureDetector(
-                            onTap: () => _showPlaybackSpeedDialog(),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                '${_playbackSpeed}x',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-
-                          GestureDetector(
-                            onTap: _toggleFullScreen,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Icon(
-                                _isFullScreen
-                                    ? Icons.fullscreen_exit_rounded
-                                    : Icons.fullscreen_rounded,
-                                color: Colors.white,
-                                size: 24,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
               ),
             ),
           ],
@@ -576,6 +521,85 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
+  Widget _playerIconButton(
+    IconData icon,
+    VoidCallback? onTap, {
+    required String tooltip,
+    bool compact = false,
+  }) => Tooltip(
+    message: tooltip,
+    child: Material(
+      color: Colors.black.withValues(alpha: .48),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: compact ? 40 : 44,
+          height: compact ? 40 : 44,
+          child: Icon(icon, color: Colors.white, size: compact ? 21 : 23),
+        ),
+      ),
+    ),
+  );
+
+  Widget _seekControl(IconData icon, String label, VoidCallback onTap) =>
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.black.withValues(alpha: .46),
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              child: SizedBox(
+                width: 54,
+                height: 54,
+                child: Icon(icon, color: Colors.white, size: 29),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: .88),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      );
+
+  Widget _playerPill(IconData icon, String label, VoidCallback onTap) =>
+      Material(
+        color: Colors.white.withValues(alpha: .13),
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 15, color: Colors.white),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
   void _showPlaybackSpeedDialog() {
     showModalBottomSheet(
       context: context,
@@ -583,68 +607,131 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Playback Speed',
-              style: TextStyle(
-                color: LiquidColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: LiquidColors.textTertiary.withValues(alpha: .45),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            GridView.builder(
-              shrinkWrap: true,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.0,
-              ),
-              itemCount: _playbackSpeeds.length,
-              itemBuilder: (context, index) {
-                final speed = _playbackSpeeds[index];
-                final isSelected = _playbackSpeed == speed;
-                return GestureDetector(
-                  onTap: () {
-                    _changePlaybackSpeed(speed);
-                    Navigator.pop(context);
-                  },
-                  child: Container(
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? const Color(0xFF6366F1)
-                          : LiquidColors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected
-                            ? const Color(0xFF6366F1)
-                            : LiquidColors.cardBorder,
-                        width: 2,
-                      ),
+                      color: LiquidColors.indigo.withValues(alpha: .13),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Center(
-                      child: Text(
-                        '${speed}x',
-                        style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : LiquidColors.textSecondary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                    child: Icon(
+                      Icons.speed_rounded,
+                      color: LiquidColors.indigo,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Playback speed',
+                          style: TextStyle(
+                            color: LiquidColors.textPrimary,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
+                        Text(
+                          'Choose a comfortable pace',
+                          style: TextStyle(
+                            color: LiquidColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: LiquidColors.indigo.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      '${_playbackSpeed}x',
+                      style: TextStyle(
+                        color: LiquidColors.indigo,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
                       ),
                     ),
                   ),
-                );
-              },
-            ),
-
-          ],
+                ],
+              ),
+              const SizedBox(height: 18),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 2.3,
+                ),
+                itemCount: _playbackSpeeds.length,
+                itemBuilder: (context, index) {
+                  final speed = _playbackSpeeds[index];
+                  final isSelected = _playbackSpeed == speed;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? LiquidColors.indigo
+                          : LiquidColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected
+                            ? LiquidColors.indigo
+                            : LiquidColors.cardBorder,
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () {
+                        _changePlaybackSpeed(speed);
+                        Navigator.pop(sheetContext);
+                      },
+                      child: Center(
+                        child: Text(
+                          '${speed}x',
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : LiquidColors.textSecondary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -655,7 +742,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     final hours = twoDigits(duration.inHours);
     final minutes = twoDigits(duration.inMinutes.remainder(60));
     final seconds = twoDigits(duration.inSeconds.remainder(60));
-    return duration.inHours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+    return duration.inHours > 0
+        ? '$hours:$minutes:$seconds'
+        : '$minutes:$seconds';
   }
 
   Widget _buildVideoPlayer() {
@@ -664,17 +753,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              color: Color(0xFF6366F1),
-              strokeWidth: 3,
-            ),
+            CircularProgressIndicator(color: Color(0xFF6366F1), strokeWidth: 3),
             SizedBox(height: 20),
             Text(
               'Loading Video...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
           ],
         ),
@@ -697,7 +780,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-
           Center(
             child: AspectRatio(
               aspectRatio: videoAspectRatio > 0
@@ -723,18 +805,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Widget _buildVideoPlayerWithOrientationHandler() {
     return PopScope(
-      onPopInvokedWithResult: (text, _)async{
+      onPopInvokedWithResult: (text, _) async {
         if (_isFullScreen) {
           await SystemChrome.setPreferredOrientations([
             DeviceOrientation.portraitUp,
             DeviceOrientation.portraitDown,
           ]);
         }
-        return ;
+        return;
       },
       child: OrientationBuilder(
         builder: (context, orientation) {
-
           return AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -747,7 +828,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Widget _buildVideoPlayerContent() {
     if (_isFullScreen) {
-
       return Stack(
         fit: StackFit.expand,
         children: [
@@ -777,7 +857,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ],
       );
     } else {
-
       return SafeArea(
         top: true,
         bottom: true,

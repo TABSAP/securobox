@@ -1,14 +1,14 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/security_settings/decoy_setup_screen.dart';
-import 'package:video_player_app/security_settings/face_scan_screen.dart';
 import 'package:video_player_app/security_settings/intrusion_log_screen.dart';
-import 'package:video_player_app/security_settings/recovery_setup_screen.dart';
+import 'package:video_player_app/security_settings/recovery_questions_setup_screen.dart';
 import 'package:video_player_app/security_settings/widgets/view.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/responsive.dart';
@@ -18,7 +18,7 @@ import 'package:video_player_app/utils/import_settings.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
-import 'package:video_player_app/utils/recovery_service.dart';
+import 'package:video_player_app/utils/recovery_questions_service.dart';
 import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
@@ -34,11 +34,10 @@ class SecuritySettingsScreen extends StatefulWidget {
 }
 
 class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   bool _appLockEnabled = false;
   bool _biometricEnabled = false;
   bool _faceUnlockEnabled = false;
-  bool _faceRecogEnrolled = false;
   bool _intrusionEnabled = false;
   bool _offlineIntegrityLock = false;
   int _intrusionCount = 0;
@@ -76,6 +75,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     _pinLength = PinCrypto.instance.cachedPinLength;
     _newPinLength = _pinLength;
@@ -86,8 +86,17 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _animationController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkBiometricCapability();
+      _loadSecuritySettings();
+    }
   }
 
   void _initAnimations() {
@@ -113,17 +122,14 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       if (initial) {
-
-        try {
-          final avail = await _localAuth.getAvailableBiometrics();
-          if ((prefs.getBool('biometric') ?? false) &&
-              avail.contains(BiometricType.face) &&
-              !avail.contains(BiometricType.fingerprint)) {
-            await prefs.setBool('biometric_face', true);
-            await prefs.setBool('biometric', false);
+        if (!(prefs.getBool('legacy_face_scan_removed_v1') ?? false)) {
+          try {
+            await FaceRecognitionService.instance.clearEnrollment();
+            await prefs.setBool('legacy_face_scan_removed_v1', true);
+          } catch (_) {
+            // Keep loading security settings if legacy template cleanup fails.
           }
-        } catch (_) {}
-
+        }
         await DisguiseService.instance.load();
       }
 
@@ -131,9 +137,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final intrusionEnabledF = IntrusionService.instance.isEnabled();
       final intrusionCountF = IntrusionService.instance.count();
       final deleteOriginalsF = ImportSettings.instance.deleteOriginalsEnabled();
-      final recoveryEnabledF = RecoveryService.instance.isEnabled();
+      final recoveryEnabledF = RecoveryQuestionsService.instance.isEnabled();
       final decoyEnabledF = DecoyService.instance.hasFakePin();
-      final faceRecogEnrolledF = FaceRecognitionService.instance.isEnrolled();
 
       final pinLen = await pinLenF;
       final intrusionEnabled = await intrusionEnabledF;
@@ -141,7 +146,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       final deleteOriginals = await deleteOriginalsF;
       final recoveryEnabled = await recoveryEnabledF;
       final decoyEnabled = await decoyEnabledF;
-      final faceRecogEnrolled = await faceRecogEnrolledF;
       final currentDisguise = DisguiseService.instance.currentKey;
       if (!mounted) return;
       setState(() {
@@ -157,7 +161,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         _currentDisguise = currentDisguise;
         _recoveryEnabled = recoveryEnabled;
         _decoyEnabled = decoyEnabled;
-        _faceRecogEnrolled = faceRecogEnrolled;
       });
     } catch (e) {
       FlushBarHelper.flushBarErrorMessage(
@@ -171,17 +174,17 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   Future<void> _checkBiometricCapability() async {
     try {
-
-      final bool canCheck = await _localAuth.canCheckBiometrics;
-      final bool supported = await _localAuth.isDeviceSupported();
       List<BiometricType> availableBiometrics = const <BiometricType>[];
       try {
         availableBiometrics = await _localAuth.getAvailableBiometrics();
       } catch (_) {}
+      // isDeviceSupported() is true for Android screen credentials too. Only
+      // enrolled biometrics exposed to apps can enable the biometric prompt.
+      final hasAppBiometric = availableBiometrics.isNotEmpty;
 
       if (mounted) {
         setState(() {
-          _biometricAvailable = canCheck || supported;
+          _biometricAvailable = hasAppBiometric;
           _availableBiometrics = availableBiometrics;
 
           if (!_biometricAvailable && _biometricEnabled) {
@@ -189,9 +192,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             _saveSetting('biometric', false);
           }
 
-          if (availableBiometrics.isNotEmpty &&
-              !availableBiometrics.contains(BiometricType.face) &&
-              _faceUnlockEnabled) {
+          final android = defaultTargetPlatform == TargetPlatform.android;
+          final facePreferenceUnavailable = android
+              ? !_biometricAvailable
+              : !availableBiometrics.contains(BiometricType.face);
+          if (facePreferenceUnavailable && _faceUnlockEnabled) {
             _faceUnlockEnabled = false;
             _saveSetting('biometric_face', false);
           }
@@ -243,7 +248,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   Future<void> _toggleSetting(String setting, bool value) async {
-
     if (!value && _wouldDisableAllLocks(setting)) {
       HapticFeedback.heavyImpact();
       FlushBarHelper.flushBarWarningMessage(
@@ -263,6 +267,15 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       return;
     }
     if (setting == 'biometric_face' && value) {
+      // Android's BiometricPrompt owns modality selection and cannot be asked
+      // to enroll or select face specifically. Do not launch a fingerprint
+      // prompt while the user is enabling the Face Unlock preference; save
+      // the preference and let the system use an eligible enrolled biometric
+      // when the vault is locked.
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        await _enableAndroidFaceUnlock();
+        return;
+      }
       await _testAndEnableBiometric(prefKey: 'biometric_face');
       return;
     }
@@ -313,6 +326,63 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       FlushBarHelper.flushBarErrorMessage('Failed to update setting', context);
     }
   }
+
+  Future<void> _enableAndroidFaceUnlock() async {
+    final hasPin = await PinCrypto.instance.hasPin();
+    if (!hasPin) {
+      if (!mounted) return;
+      FlushBarHelper.flushBarWarningMessage(
+        'Set a SecuroBox PIN before enabling biometric unlock.',
+        context,
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _startPinChange();
+      });
+      return;
+    }
+
+    List<BiometricType> enrolled;
+    try {
+      enrolled = await _localAuth.getAvailableBiometrics();
+    } catch (_) {
+      enrolled = const <BiometricType>[];
+    }
+
+    if (!mounted) return;
+    if (enrolled.isEmpty) {
+      _showErrorBottomSheet(
+        'Face unlock unavailable to SecuroBox',
+        'Your phone has not exposed an enrolled biometric to app authentication. Some Android face unlock systems work only at the lock screen. Check whether your phone offers an “Unlock apps” or app authentication option; otherwise use an app-eligible fingerprint or your PIN.',
+      );
+      return;
+    }
+
+    try {
+      await _saveSetting('biometric_face', true);
+      if (!_appLockEnabled) {
+        try {
+          await _saveSetting('appLock', true);
+        } catch (_) {
+          await _saveSetting('biometric_face', false);
+          rethrow;
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _biometricAvailable = true;
+        _faceUnlockEnabled = true;
+        _appLockEnabled = true;
+      });
+      _showBiometricEnabledSuccessSheet(isFace: true);
+    } catch (_) {
+      if (!mounted) return;
+      FlushBarHelper.flushBarErrorMessage(
+        'Could not enable Face Unlock. Please try again.',
+        context,
+      );
+    }
+  }
+
   Future<void> _verifyBiometricBeforeDisable(String setting) async {
     final settingName = setting == 'appLock'
         ? 'App Lock'
@@ -336,7 +406,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         ? [LiquidColors.success, LiquidColors.accentBlue]
         : [LiquidColors.accentPurple, LiquidColors.accentPink];
 
-    final bool verifyWithBiometric = _biometricAvailable &&
+    final bool verifyWithBiometric =
+        _biometricAvailable &&
         (_biometricEnabled || _faceUnlockEnabled) &&
         setting != 'biometric' &&
         setting != 'biometric_face';
@@ -514,7 +585,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         verified = await _localAuth.authenticate(
           localizedReason: 'Verify your identity to disable $settingName',
           biometricOnly: true,
-          sensitiveTransaction: true,
+          sensitiveTransaction: false,
           persistAcrossBackgrounding: true,
         );
       } on LocalAuthException {
@@ -581,25 +652,30 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   Future<void> _testAndEnableBiometric({String prefKey = 'biometric'}) async {
-    if (!_biometricAvailable ||
-        (prefKey == 'biometric_face' && !_faceAvailable)) {
+    final isFace = prefKey == 'biometric_face';
+    if (!_biometricAvailable) {
       _showBiometricNotAvailableSheet();
       return;
     }
-
-    final isFace = prefKey == 'biometric_face';
-
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildBiometricEnableSheet(),
-    );
-
-    if (confirmed != true || !mounted) return;
-
-    await Future<void>.delayed(const Duration(milliseconds: 280));
-    if (!mounted) return;
+    final android = defaultTargetPlatform == TargetPlatform.android;
+    if (isFace && !android && !_faceAvailable) {
+      _showErrorBottomSheet(
+        'Face Unlock unavailable',
+        'Enroll Face Unlock in your phone’s security settings first. SecuroBox can open the system authentication prompt, but only your phone can enroll a face.',
+      );
+      return;
+    }
+    if (!isFace) {
+      final confirmed = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => _buildBiometricEnableSheet(),
+      );
+      if (confirmed != true || !mounted) return;
+      await Future<void>.delayed(const Duration(milliseconds: 280));
+      if (!mounted) return;
+    }
 
     final reason = isFace
         ? 'Authenticate to enable Face Unlock'
@@ -610,6 +686,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       didAuthenticate = await _authenticateOnce(reason);
     } on LocalAuthException catch (e) {
       if (!mounted) return;
+      if (_isAuthCancellation(e.code)) return;
       if (_isTransientAuthCode(e.code)) {
         await Future<void>.delayed(const Duration(milliseconds: 700));
         if (!mounted) return;
@@ -622,7 +699,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           return;
         }
       } else {
-        _showErrorBottomSheet(_authErrorTitle(e.code), _authErrorBody(e.code));
+        _showErrorBottomSheet(
+          _authErrorTitle(e.code),
+          _authErrorBody(e.code, faceOnly: isFace && !android),
+        );
         return;
       }
     } catch (e) {
@@ -646,7 +726,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       return await _localAuth.authenticate(
         localizedReason: reason,
         biometricOnly: true,
-        sensitiveTransaction: true,
+        sensitiveTransaction: false,
         persistAcrossBackgrounding: true,
       );
     } finally {
@@ -657,11 +737,15 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   bool _isTransientAuthCode(LocalAuthExceptionCode code) =>
       code == LocalAuthExceptionCode.biometricHardwareTemporarilyUnavailable ||
       code == LocalAuthExceptionCode.uiUnavailable ||
-      code == LocalAuthExceptionCode.systemCanceled ||
       code == LocalAuthExceptionCode.authInProgress ||
       code == LocalAuthExceptionCode.timeout ||
       code == LocalAuthExceptionCode.deviceError ||
       code == LocalAuthExceptionCode.unknownError;
+
+  bool _isAuthCancellation(LocalAuthExceptionCode code) =>
+      code == LocalAuthExceptionCode.userCanceled ||
+      code == LocalAuthExceptionCode.userRequestedFallback ||
+      code == LocalAuthExceptionCode.systemCanceled;
 
   String _authErrorTitle(LocalAuthExceptionCode? code) {
     switch (code) {
@@ -682,10 +766,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
   }
 
-  String _authErrorBody(LocalAuthExceptionCode? code) {
+  String _authErrorBody(LocalAuthExceptionCode? code, {bool faceOnly = false}) {
     switch (code) {
       case LocalAuthExceptionCode.noBiometricsEnrolled:
-        return 'Enroll a fingerprint or face in your device settings, then try again.';
+        return faceOnly
+            ? 'Enroll Face Unlock in your phone settings, then return here and try again.'
+            : 'Enroll a fingerprint or face in your phone settings, then try again.';
       case LocalAuthExceptionCode.noBiometricHardware:
         return 'This device doesn\'t have biometric hardware.';
       case LocalAuthExceptionCode.noCredentialsSet:
@@ -1344,7 +1430,9 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Text(
-                isFace
+                isFace && defaultTargetPlatform == TargetPlatform.android
+                    ? 'Face unlock is enabled. Android uses face recognition for app prompts when the device allows it; the system may offer another eligible biometric.'
+                    : isFace
                     ? 'You can now use your face to unlock the app.'
                     : 'You can now use your ${label.toLowerCase()} to unlock the app.',
                 textAlign: TextAlign.center,
@@ -1747,7 +1835,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   IconData _getBiometricIcon() {
-    if (_availableBiometrics.contains(BiometricType.face)) {
+    if (defaultTargetPlatform == TargetPlatform.android &&
+        (_availableBiometrics.contains(BiometricType.weak) ||
+            _availableBiometrics.contains(BiometricType.strong))) {
+      return Icons.verified_user_rounded;
+    } else if (_availableBiometrics.contains(BiometricType.face)) {
       return Icons.face_retouching_natural;
     } else if (_availableBiometrics.contains(BiometricType.fingerprint)) {
       return Icons.fingerprint_rounded;
@@ -1758,7 +1850,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   String _getBiometricTypeName() {
-    if (_availableBiometrics.contains(BiometricType.face)) {
+    if (defaultTargetPlatform == TargetPlatform.android &&
+        (_availableBiometrics.contains(BiometricType.weak) ||
+            _availableBiometrics.contains(BiometricType.strong))) {
+      return 'Device biometric';
+    } else if (_availableBiometrics.contains(BiometricType.face)) {
       return 'Face ID';
     } else if (_availableBiometrics.contains(BiometricType.fingerprint)) {
       return 'Fingerprint';
@@ -1845,17 +1941,24 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       (v) => _toggleSetting('appLock', v),
                     ),
                   ),
-                  if (!(_faceAvailable && !_fingerprintAvailable)) ...[
+                  if (defaultTargetPlatform == TargetPlatform.android ||
+                      !(_faceAvailable && !_fingerprintAvailable)) ...[
                     _divider(),
                     _tile(
-                      icon: _fingerprintAvailable
+                      icon: defaultTargetPlatform == TargetPlatform.android
+                          ? Icons.verified_user_rounded
+                          : _fingerprintAvailable
                           ? Icons.fingerprint_rounded
                           : _getBiometricIcon(),
                       color: LiquidColors.accentPurple,
-                      title: _fingerprintAvailable
+                      title: defaultTargetPlatform == TargetPlatform.android
+                          ? 'Device biometrics'
+                          : _fingerprintAvailable
                           ? 'Fingerprint Unlock'
                           : 'Biometric Authentication',
-                      subtitle: _fingerprintAvailable
+                      subtitle: defaultTargetPlatform == TargetPlatform.android
+                          ? 'Use the biometric method provided by Android'
+                          : _fingerprintAvailable
                           ? 'Use your fingerprint to unlock'
                           : 'Use ${_getBiometricTypeName().toLowerCase()} to unlock',
                       trailing: _switch(
@@ -1864,46 +1967,43 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       ),
                     ),
                   ],
-                  if (_faceAvailable) ...[
-                    _divider(),
+                ]),
+                const SizedBox(height: AppSpace.lg),
+
+                AppSectionHeader(
+                  label: 'Identity & PIN',
+                  caption: defaultTargetPlatform == TargetPlatform.android
+                      ? 'Manage device biometrics and your PIN.'
+                      : 'Use your phone’s face unlock and manage your PIN.',
+                ),
+                const SizedBox(height: AppSpace.sm),
+                _group([
+                  if (defaultTargetPlatform != TargetPlatform.android)
                     _tile(
                       icon: Icons.face_retouching_natural,
-                      color: LiquidColors.accentPink,
-                      title: 'Face Unlock',
-                      subtitle: 'Use your face to unlock the app',
+                      color: LiquidColors.accentPurple,
+                      title: 'Face ID',
+                      subtitle: _faceAvailable
+                          ? 'Use your phone’s enrolled face to unlock'
+                          : 'Set up Face ID in your phone settings first',
                       trailing: _switch(
                         _faceUnlockEnabled,
                         (v) => _toggleSetting('biometric_face', v),
                       ),
-                    ),
-                  ],
-                ]),
-                const SizedBox(height: AppSpace.lg),
-
-                const AppSectionHeader(
-                  label: 'Identity & PIN',
-                  caption: 'Enroll your face and manage your PIN.',
-                ),
-                const SizedBox(height: AppSpace.sm),
-                _group([
-                  if (!_faceAvailable) ...[
+                    )
+                  else
                     _tile(
-                      icon: Icons.face_rounded,
+                      icon: Icons.face_retouching_natural,
                       color: LiquidColors.accentPurple,
-                      title: 'Face recognition',
-                      subtitle: _faceRecogEnrolled
-                          ? 'In-app face unlock is enrolled'
-                          : 'Set up in-app face unlock',
-                      trailing: _switch(_faceRecogEnrolled, (v) {
-                        if (v) {
-                          _openFaceEnroll();
-                        } else {
-                          _disableFaceRecognition();
-                        }
-                      }),
+                      title: 'Face Unlock',
+                      subtitle:
+                          'Use your enrolled face at vault unlock when Android allows it.',
+                      trailing: _switch(
+                        _faceUnlockEnabled,
+                        (value) => _toggleSetting('biometric_face', value),
+                      ),
                     ),
-                    _divider(),
-                  ],
+                  _divider(),
                   _tile(
                     icon: Icons.password_rounded,
                     color: LiquidColors.success,
@@ -1948,7 +2048,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
                 const AppSectionHeader(
                   label: 'Session & recovery',
-                  caption: 'Auto-lock timing and recovery key.',
+                  caption: 'Auto-lock timing and forgotten PIN recovery.',
                 ),
                 const SizedBox(height: AppSpace.sm),
                 _group([
@@ -1964,12 +2064,12 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                   ),
                   _divider(),
                   _tile(
-                    icon: Icons.vpn_key_rounded,
+                    icon: Icons.quiz_outlined,
                     color: LiquidColors.accentBlue,
-                    title: 'Recovery Key',
+                    title: 'Recovery questions',
                     subtitle: _recoveryEnabled
-                        ? 'View or re-issue your Recovery Key'
-                        : 'Set up a Recovery Key to reset a forgotten PIN',
+                        ? 'Change your questions and answers'
+                        : 'Set up a fallback for a forgotten PIN',
                     trailing: _chevron(),
                     onTap: _openRecoverySetup,
                   ),
@@ -2254,9 +2354,11 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                     entry.value,
                     style: TextStyle(color: LiquidColors.textPrimary),
                   ),
-                  trailing:
-                      entry.key == SessionManager.instance.autoLockSeconds
-                      ? Icon(Icons.check_rounded, color: LiquidColors.accentBlue)
+                  trailing: entry.key == SessionManager.instance.autoLockSeconds
+                      ? Icon(
+                          Icons.check_rounded,
+                          color: LiquidColors.accentBlue,
+                        )
                       : null,
                 ),
               const SizedBox(height: AppSpace.sm),
@@ -2525,222 +2627,55 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     );
   }
 
-  Future<void> _openFaceEnroll() async {
-    final ok = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => const FaceScanScreen(mode: FaceScanMode.enroll),
-      ),
-    );
-    if (!mounted) return;
-    if (ok == true) {
-      if (!_appLockEnabled) {
-        await _saveSetting('appLock', true);
-        if (mounted) setState(() => _appLockEnabled = true);
-      }
-      await _loadSecuritySettings();
-      if (!mounted) return;
-      FlushBarHelper.flushBarSuccessMessage('Face Unlock set up', context);
-    }
-  }
-
-  Future<void> _disableFaceRecognition() async {
-    HapticFeedback.lightImpact();
-    final bool verifyWithBiometric =
-        _biometricAvailable && (_biometricEnabled || _faceUnlockEnabled);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: LiquidColors.backgroundLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Turn off In-App Face Unlock?',
-          style: TextStyle(
-            color: LiquidColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        content: Text(
-          verifyWithBiometric
-              ? 'Your enrolled face data will be deleted from this device. '
-                    'Verify with your ${_getBiometricTypeName().toLowerCase()} '
-                    'or app PIN to turn it off.'
-              : 'Your enrolled face data will be deleted from this device. '
-                    'Enter your app PIN to turn it off.',
-          style: TextStyle(color: LiquidColors.textSecondary, height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: LiquidColors.textSecondary),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: LiquidColors.error,
-              foregroundColor: LiquidColors.textPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Verify & turn off',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-
-    bool verified = false;
-    if (verifyWithBiometric) {
-      SessionManager.instance.beginTrustedInteraction();
-      try {
-        verified = await _localAuth.authenticate(
-          localizedReason: 'Verify your identity to turn off Face Unlock',
-          biometricOnly: true,
-          sensitiveTransaction: true,
-          persistAcrossBackgrounding: true,
-        );
-      } on LocalAuthException {
-      } catch (_) {
-      } finally {
-        SessionManager.instance.endTrustedInteraction();
-      }
-    }
-    if (!mounted) return;
-
-    if (!verified) {
-      verified = await PinUnlockDialog.show(
-        context,
-        title: 'Confirm with PIN',
-        subtitle: 'Enter your app PIN to turn off In-App Face Unlock',
-      );
-      if (!mounted) return;
-    }
-
-    if (!verified) {
-      FlushBarHelper.flushBarErrorMessage(
-        'Verification failed — Face Unlock stays on.',
-        context,
-      );
-      return;
-    }
-
-    await FaceRecognitionService.instance.clearEnrollment();
-    await _loadSecuritySettings();
-    if (!mounted) return;
-    FlushBarHelper.flushBarSuccessMessage('Face Unlock turned off', context);
-  }
-
   Future<void> _openRecoverySetup() async {
     HapticFeedback.lightImpact();
     final wasEnabled = _recoveryEnabled;
 
-    // Gate re-issuing an existing key behind the app's PIN/biometric.
-    if (wasEnabled) {
-      final verified = await _gateBeforeReissue();
-      if (!verified || !mounted) return;
+    var verified = false;
+    if (_biometricAvailable && (_biometricEnabled || _faceUnlockEnabled)) {
+      try {
+        verified = await _authenticateOnce(
+          'Verify to change PIN recovery questions',
+        );
+      } catch (_) {
+        verified = false;
+      }
     }
+    if (!verified && mounted) {
+      try {
+        verified = await PinUnlockDialog.show(
+          context,
+          title: 'Confirm with PIN',
+          subtitle: 'Enter your app PIN to change recovery questions',
+        );
+      } catch (_) {
+        verified = false;
+      }
+    }
+    if (!verified || !mounted) return;
 
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => RecoverySetupScreen(reissue: wasEnabled),
-      ),
-    );
+    bool? result;
+    try {
+      result = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const RecoveryQuestionsSetupScreen()),
+      );
+    } catch (_) {
+      if (mounted) {
+        FlushBarHelper.flushBarErrorMessage(
+          'Could not open recovery question setup. Please try again.',
+          context,
+        );
+      }
+      return;
+    }
     if (result == true && mounted) {
       await _loadSecuritySettings();
       if (!mounted) return;
       FlushBarHelper.flushBarSuccessMessage(
-        wasEnabled ? 'Recovery Key re-issued' : 'Recovery Key set up',
+        wasEnabled ? 'Recovery questions updated' : 'Recovery questions set up',
         context,
       );
     }
-  }
-
-  Future<bool> _gateBeforeReissue() async {
-    // Prefer biometric verification when it's available and enabled.
-    final useBiometric = _biometricAvailable &&
-        (_biometricEnabled || _faceUnlockEnabled);
-    if (useBiometric) {
-      try {
-        return await _authenticateOnce('Verify to re-issue your Recovery Key');
-      } catch (_) {
-        return false;
-      }
-    }
-
-    // Otherwise fall back to an explicit confirmation.
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: LiquidColors.backgroundLight,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.autorenew_rounded,
-                color: LiquidColors.accentBlue,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Re-issue Recovery Key?',
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'A new Recovery Key will be generated and shown to you. Your current '
-          'key stops working as soon as you save the new one.',
-          style: TextStyle(
-            color: LiquidColors.textSecondary,
-            height: 1.5,
-            fontSize: 13,
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(
-                color: LiquidColors.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(
-              'Re-issue',
-              style: TextStyle(
-                color: LiquidColors.accentBlue,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    return ok == true;
   }
 
   Future<void> _openDecoySetup() async {
@@ -2765,6 +2700,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     }
     _startPinLengthChange();
   }
+
   Widget _buildPinLengthSelector() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -2909,10 +2845,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
       _Protection(
         'Face Unlock',
-        _faceUnlockEnabled || _faceRecogEnrolled,
-        _openFaceEnroll,
+        _faceUnlockEnabled,
+        () => _toggleSetting('biometric_face', true),
       ),
-      _Protection('PIN Recovery', _recoveryEnabled, _openRecoverySetup),
+      _Protection('Recovery questions', _recoveryEnabled, _openRecoverySetup),
       _Protection(
         'Intrusion Detection',
         _intrusionEnabled,
@@ -3051,7 +2987,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       ),
     );
   }
-
 }
 
 class _Protection {

@@ -9,9 +9,7 @@ import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/onboarding_screen/forgot_pin_screen.dart';
-import 'package:video_player_app/security_settings/face_scan_screen.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
-import 'package:video_player_app/utils/face_recognition_service.dart';
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/network_guard.dart';
 import 'package:video_player_app/utils/pbkdf2.dart';
@@ -38,7 +36,7 @@ class _AppLockScreenState extends State<AppLockScreen>
   int _pinLength = PinCrypto.defaultPinLength;
 
   bool _biometricEnabled = false;
-  bool _faceRecogEnrolled = false;
+  bool _faceUnlockEnabled = false;
   bool _isAuthenticating = false;
   bool _isUnlocking = false;
   bool _hasError = false;
@@ -101,32 +99,30 @@ class _AppLockScreenState extends State<AppLockScreen>
   Future<void> _loadPreferences() async {
     final prefsF = SharedPreferences.getInstance();
     final pinLenF = PinCrypto.instance.getPinLength();
-    final faceEnrolledF = FaceRecognitionService.instance.isEnrolled();
-    final bioCooldownF = SessionManager.instance.getBiometricCooldownRemaining();
+    final bioCooldownF = SessionManager.instance
+        .getBiometricCooldownRemaining();
     final bioFailsF = SessionManager.instance.getFailedBiometricAttempts();
 
     final prefs = await prefsF;
     final pinLen = await pinLenF;
-    final faceEnrolled = await faceEnrolledF;
     final bioCooldown = await bioCooldownF;
     final bioFails = await bioFailsF;
     if (!mounted) return;
-    final bioEnabled =
-        (prefs.getBool('biometric') ?? false) ||
-        (prefs.getBool('biometric_face') ?? false);
+    final biometricEnabled = prefs.getBool('biometric') ?? false;
+    final faceUnlockEnabled = prefs.getBool('biometric_face') ?? false;
     setState(() {
-      _biometricEnabled = bioEnabled;
-      _faceRecogEnrolled = faceEnrolled;
+      _biometricEnabled = biometricEnabled;
+      _faceUnlockEnabled = faceUnlockEnabled;
       _pinLength = pinLen;
       _bioCooldownRemaining = bioCooldown;
       _bioFailCount = bioFails;
-      if (!bioEnabled && !faceEnrolled) _showPin = true;
+      if (!(biometricEnabled || faceUnlockEnabled)) _showPin = true;
     });
 
     if (_cooldownRemaining == null &&
         mounted &&
         !NetworkGuard.instance.blockUnlock) {
-      if (_biometricEnabled && !_bioLocked) {
+      if ((biometricEnabled || faceUnlockEnabled) && !_bioLocked) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted && !_showPin && !_bioLocked) _useBiometric();
         });
@@ -136,19 +132,9 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   bool get _padDisabled => _cooldownRemaining != null;
   bool get _bioLocked => _bioCooldownRemaining != null;
-
-  Future<void> _recordBioFailure() async {
-    final count = await SessionManager.instance.recordFailedBiometricAttempt();
-    final remaining = await SessionManager.instance
-        .getBiometricCooldownRemaining();
-    if (!mounted) return;
-    final justLocked = !_bioLocked && remaining != null;
-    setState(() {
-      _bioCooldownRemaining = remaining;
-      _bioFailCount = count;
-    });
-    if (justLocked) HapticFeedback.heavyImpact();
-  }
+  bool get _biometricUnlockEnabled => _biometricEnabled || _faceUnlockEnabled;
+  bool get _androidPlatform =>
+      Theme.of(context).platform == TargetPlatform.android;
 
   Widget _wrongPinBanner() {
     return AnimatedSwitcher(
@@ -403,7 +389,7 @@ class _AppLockScreenState extends State<AppLockScreen>
       final result = await BiometricAuthSheet.show(
         context,
         title: 'Verify Your Identity',
-        subtitle: 'Use Fingerprint or Face ID to unlock SecuroBox',
+        subtitle: 'Use an enrolled device biometric to unlock SecuroBox.',
         localizedReason: 'Unlock SecuroBox',
       );
       if (!mounted) return;
@@ -425,76 +411,26 @@ class _AppLockScreenState extends State<AppLockScreen>
     }
   }
 
-  Future<void> _useFaceUnlock() async {
-    if (_isAuthenticating || _padDisabled || _bioLocked) return;
-    setState(() => _isAuthenticating = true);
-    try {
-      final ok = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (_) => const FaceScanScreen(mode: FaceScanMode.verify),
-          fullscreenDialog: true,
-        ),
-      );
-      if (!mounted) return;
-      if (ok == true) {
-        VaultContext.instance.exitDecoy();
-        // Same as fingerprint: surface the loader the moment Face ID passes.
-        setState(() => _isUnlocking = true);
-        await _unlockApp();
-      } else {
-        await _recordBioFailure();
-        if (_bioFailCount >= SessionManager.bioCooldownThreshold) {
-          unawaited(IntrusionService.instance.captureSilently());
-        }
-      }
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _isAuthenticating = false);
-    }
-  }
-
   Widget _buildBiometricOptions() {
-    final showFace = _faceRecogEnrolled && !_padDisabled && !_bioLocked;
-    final fingerprintActive =
-        (_biometricEnabled || _padDisabled) && !_bioLocked;
-    if (!fingerprintActive && !showFace && !_faceRecogEnrolled && !_bioLocked) {
-      return const SizedBox.shrink();
-    }
-
-    final String? bioLockHint = _bioLocked
-        ? 'Try again in ${_formatCooldown(_bioCooldownRemaining!)}'
-        : null;
-
-    final fpTile = _BioTile(
-      icon: Icons.fingerprint_rounded,
-      label: 'Fingerprint',
-      accent: LiquidColors.accentBlue,
-      busy: _isAuthenticating,
-      onTap: (fingerprintActive && !_isAuthenticating) ? _useBiometric : null,
-      disabledHint: bioLockHint ?? 'Enable in Settings',
-    );
-    final faceTile = _BioTile(
-      icon: Icons.face_retouching_natural,
-      label: 'Face Scan',
-      accent: LiquidColors.accentPurple,
-      onTap: (showFace && !_isAuthenticating) ? _useFaceUnlock : null,
-      disabledHint:
-          bioLockHint ??
-          (_padDisabled
-              ? 'Locked during cooldown'
-              : (_faceRecogEnrolled ? null : 'Set up in Settings')),
-    );
-
-    if (_padDisabled || _bioLocked) {
-      return Center(child: SizedBox(width: 210, child: fpTile));
-    }
-
-    return Row(
-      children: [
-        Expanded(child: fpTile),
-        const SizedBox(width: 12),
-        Expanded(child: faceTile),
-      ],
+    return Center(
+      child: SizedBox(
+        width: 220,
+        child: _BioTile(
+          icon: Icons.verified_user_rounded,
+          label: _androidPlatform ? 'Device biometric' : 'Face ID or Touch ID',
+          accent: LiquidColors.accentBlue,
+          busy: _isAuthenticating,
+          onTap:
+              (_biometricUnlockEnabled || _padDisabled) &&
+                  !_bioLocked &&
+                  !_isAuthenticating
+              ? _useBiometric
+              : null,
+          disabledHint: _bioLocked
+              ? 'Try again in ${_formatCooldown(_bioCooldownRemaining!)}'
+              : null,
+        ),
+      ),
     );
   }
 
@@ -532,8 +468,11 @@ class _AppLockScreenState extends State<AppLockScreen>
         ),
         const SizedBox(height: 8),
         Text(
-          'Too many failed tries. You can try Face ID or fingerprint again in '
-          '${_formatCooldown(_bioCooldownRemaining!)}, or unlock with your PIN below.',
+          _androidPlatform
+              ? 'Too many failed tries. You can retry your device biometric in '
+                    '${_formatCooldown(_bioCooldownRemaining!)}, or unlock with your PIN below.'
+              : 'Too many failed tries. You can try Face ID or fingerprint again in '
+                    '${_formatCooldown(_bioCooldownRemaining!)}, or unlock with your PIN below.',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: LiquidColors.textSecondary,
@@ -573,30 +512,21 @@ class _AppLockScreenState extends State<AppLockScreen>
 
   Widget _buildBiometricStage() {
     if (_bioLocked) return _bioLockedStage();
-    final faceOnly = !_biometricEnabled && _faceRecogEnrolled;
-    final icon = faceOnly
-        ? Icons.face_retouching_natural
-        : Icons.fingerprint_rounded;
-    final accent = faceOnly
-        ? LiquidColors.accentPurple
-        : LiquidColors.accentBlue;
+    const icon = Icons.verified_user_rounded;
+    final accent = LiquidColors.accentBlue;
 
     void primary() {
       if (_isAuthenticating) return;
-      if (_biometricEnabled) {
-        _useBiometric();
-      } else if (_faceRecogEnrolled) {
-        _useFaceUnlock();
-      }
+      if (_biometricUnlockEnabled) _useBiometric();
     }
 
     final String status = _isAuthenticating
         ? 'Checking your identity…'
         : _padDisabled
         ? 'Your PIN is locked for now — tap to unlock with biometrics.'
-        : faceOnly
-        ? 'Tap to unlock with Face ID.'
-        : 'Tap to unlock with your fingerprint or face.';
+        : _androidPlatform
+        ? 'Follow your device’s biometric prompt to unlock.'
+        : 'Tap to unlock with an enrolled device biometric.';
 
     return Column(
       children: [
@@ -658,25 +588,6 @@ class _AppLockScreenState extends State<AppLockScreen>
         ),
         _bioAttemptsBanner(),
         const SizedBox(height: 24),
-        if (_biometricEnabled && _faceRecogEnrolled && !_padDisabled) ...[
-          TextButton.icon(
-            onPressed: _isAuthenticating ? null : _useFaceUnlock,
-            icon: Icon(
-              Icons.face_retouching_natural,
-              size: 18,
-              color: LiquidColors.accentPurple,
-            ),
-            label: Text(
-              'Scan Face instead',
-              style: TextStyle(
-                color: LiquidColors.accentPurple,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 2),
-        ],
         OutlinedButton.icon(
           onPressed: _isAuthenticating
               ? null
@@ -844,11 +755,13 @@ class _AppLockScreenState extends State<AppLockScreen>
                                       itemBuilder: (context, index) {
                                         if (index == 9) {
                                           return LiquidActionButton(
-                                            icon: Icons.fingerprint,
+                                            icon: _androidPlatform
+                                                ? Icons.verified_user_rounded
+                                                : Icons.fingerprint,
                                             color: LiquidColors.success,
                                             onPressed: _useBiometric,
                                             isEnabled:
-                                                _biometricEnabled &&
+                                                _biometricUnlockEnabled &&
                                                 !_isAuthenticating &&
                                                 !_bioLocked,
                                           );
@@ -944,26 +857,6 @@ class _AppLockScreenState extends State<AppLockScreen>
 
                                   if (_padDisabled) _buildBiometricOptions(),
 
-                                  if (!_padDisabled &&
-                                      _faceRecogEnrolled &&
-                                      !_bioLocked &&
-                                      !_isAuthenticating)
-                                    TextButton.icon(
-                                      onPressed: _useFaceUnlock,
-                                      icon: Icon(
-                                        Icons.face_retouching_natural,
-                                        size: 18,
-                                        color: LiquidColors.accentPurple,
-                                      ),
-                                      label: Text(
-                                        'Use Face Scan instead',
-                                        style: TextStyle(
-                                          color: LiquidColors.accentPurple,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
                                   _bioAttemptsBanner(),
                                 ],
                               )

@@ -39,7 +39,9 @@ class PinCrypto {
 
   Uint8List _randomBytes(int length) {
     final r = Random.secure();
-    return Uint8List.fromList(List<int>.generate(length, (_) => r.nextInt(256)));
+    return Uint8List.fromList(
+      List<int>.generate(length, (_) => r.nextInt(256)),
+    );
   }
 
   Future<void> setPin(String pin) async {
@@ -126,12 +128,39 @@ class PinCrypto {
   }
 
   Future<void> clearPin() async {
-    await _secure.delete(key: _kHashKey);
-    await _secure.delete(key: _kSaltKey);
-    await _secure.delete(key: _kIterKey);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('appPin');
-    await prefs.remove('secure_pin');
+    final oldValues = <String, String?>{
+      _kHashKey: await _secure.read(key: _kHashKey),
+      _kSaltKey: await _secure.read(key: _kSaltKey),
+      _kIterKey: await _secure.read(key: _kIterKey),
+    };
+    final oldAppPin = prefs.getStringList('appPin');
+    final oldSecurePin = prefs.getStringList('secure_pin');
+    try {
+      await _secure.delete(key: _kHashKey);
+      await _secure.delete(key: _kSaltKey);
+      await _secure.delete(key: _kIterKey);
+      await prefs.remove('appPin');
+      await prefs.remove('secure_pin');
+    } catch (_) {
+      for (final entry in oldValues.entries) {
+        try {
+          final value = entry.value;
+          if (value == null) {
+            await _secure.delete(key: entry.key);
+          } else {
+            await _secure.write(key: entry.key, value: value);
+          }
+        } catch (_) {}
+      }
+      try {
+        if (oldAppPin != null) await prefs.setStringList('appPin', oldAppPin);
+        if (oldSecurePin != null) {
+          await prefs.setStringList('secure_pin', oldSecurePin);
+        }
+      } catch (_) {}
+      rethrow;
+    }
     _cachedPinLength = defaultPinLength;
   }
 

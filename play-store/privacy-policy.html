@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Privacy Policy — SecuroBox</title>
-<meta name="description" content="SecuroBox is a 100% offline media vault. We do not collect, store, transmit, sell, or share any personal data.">
+<meta name="description" content="SecuroBox is an on-device encrypted media vault. We do not collect personal data or upload files automatically. Optional backups are passphrase-encrypted before export.">
 <style>
   :root {
     --bg: #ffffff;
@@ -95,14 +95,16 @@
   <p class="meta"><strong>Effective date:</strong> 2026-05-29 &nbsp;·&nbsp; <strong>Contact:</strong> <a href="mailto:info@tabsap.com">info@tabsap.com</a></p>
 
   <h2>Summary</h2>
-  <p>SecuroBox is a 100% offline application. We do not collect, store, transmit, sell, or share any personal data. This privacy policy exists because the Google Play Store requires every app to publish one, even when the app collects nothing.</p>
+  <p>SecuroBox stores vault files on your device by default. We do not collect analytics or upload files automatically. If you create an optional encrypted backup, SecuroBox protects it with your passphrase before the system file picker saves it to a location you choose. A connected cloud-drive provider may store that encrypted backup under its own terms.</p>
 
   <h2>What data the app handles</h2>
-  <p>The app handles only the files <strong>you choose to import</strong> into the in-app vault, plus any photos or videos you capture with the in-app Secure Capture camera. These files are AES-256-CTR encrypted on your device and stored in the app's private sandbox. They never leave your device.</p>
+  <p>The app handles only the files <strong>you choose to import</strong> into the in-app vault, plus any photos or videos you capture with the in-app Secure Capture camera. These files are AES-256-CTR encrypted on your device and stored in the app's private sandbox. They remain on your device unless you explicitly export or share them.</p>
+  <p><strong>Encrypted backups:</strong> A backup includes vault media and library metadata. It is encrypted with a key derived from a passphrase you enter before it is handed to the system file picker. SecuroBox does not receive your cloud-provider credentials and does not upload the backup itself. The file provider or cloud service you select may receive and store the encrypted backup. You are responsible for keeping the passphrase; it cannot be recovered by SecuroBox.</p>
   <p>When you import a photo or video, by default the app <strong>moves</strong> it into the vault: the file is encrypted into the vault and its original is removed from your device gallery (your device shows a confirmation before anything is removed). You can turn this off in Settings to keep the gallery copy, and you can move a file back out at any time with <strong>Save to gallery</strong>.</p>
   <p>Specifically, the app does <strong>not</strong>:</p>
   <ul>
-    <li>send any data to any server we control or to any third party</li>
+    <li>upload files automatically or send data to a server we control</li>
+    <li>access your chosen backup destination beyond the system file-picker operation you initiate</li>
     <li>include any analytics SDK (no Google Analytics, Firebase, Mixpanel, etc.)</li>
     <li>include any advertising SDK (no AdMob, no IronSource, etc.)</li>
     <li>include any crash reporting SDK that uploads off-device</li>
@@ -147,7 +149,7 @@
     <li><strong>Master encryption key</strong>: 32 random bytes generated on first launch, stored in the same OS-backed secure storage.</li>
     <li><strong>Break-in photos</strong>: encrypted with the same master key and stored under <code>vault/intrusions/</code> in the app's private sandbox.</li>
     <li><strong>Face Unlock data</strong>: a numeric geometric face signature (not a photo), stored in OS-backed secure storage. No face image is kept.</li>
-    <li><strong>Recovery email (optional)</strong>: if you turn on PIN recovery, the email address you enter and a salted PBKDF2 hash of your one-time recovery code are stored in OS-backed secure storage. They are never transmitted — there is no server.</li>
+    <li><strong>PIN recovery answers (optional)</strong>: if you enable recovery, three salted PBKDF2 answer verifiers and their question identifiers are stored in OS-backed secure storage. Clear-text answers are not stored or transmitted. Answers are device-local and can be easier to guess than a random recovery code.</li>
   </ul>
   <p>When you uninstall the app, the operating system automatically deletes all of its private storage, removing every file you imported and every key.</p>
 

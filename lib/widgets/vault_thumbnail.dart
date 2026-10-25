@@ -37,6 +37,7 @@ class VaultThumbnail extends StatefulWidget {
 
 class _VaultThumbnailState extends State<VaultThumbnail> {
   File? _image;
+  int _loadGeneration = 0;
 
   bool get _isImage => widget.item.type == 'image';
   bool get _isVideo => widget.item.type == 'video';
@@ -58,6 +59,7 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.item.path != widget.item.path ||
         oldWidget.item.isLocked != widget.item.isLocked) {
+      _loadGeneration++;
       _image = _canPreview
           ? ThumbnailCache.instance.peek(widget.item.id)
           : null;
@@ -66,12 +68,21 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
   }
 
   Future<void> _load() async {
+    final generation = ++_loadGeneration;
     try {
       final file = await ThumbnailCache.instance.ensure(widget.item);
-      if (mounted && file != null) setState(() => _image = file);
+      if (mounted && generation == _loadGeneration && file != null) {
+        setState(() => _image = file);
+      }
     } catch (_) {
       // Keep the fallback icon on any decrypt/read failure.
     }
+  }
+
+  @override
+  void dispose() {
+    _loadGeneration++;
+    super.dispose();
   }
 
   @override
@@ -81,48 +92,68 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
     final radius = BorderRadius.circular(widget.radius);
     final dpr = MediaQuery.of(context).devicePixelRatio;
 
-    return Container(
-      width: widget.width,
-      height: widget.height,
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.28),
-            blurRadius: 10,
-            spreadRadius: -3,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: radius,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LiquidColors.getMediaGradient(type),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layoutWidth = widget.width.isFinite
+            ? widget.width
+            : constraints.maxWidth;
+        final cacheWidth = _safeCacheDimension(layoutWidth, dpr);
+        return Container(
+          width: widget.width,
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.28),
+                blurRadius: 10,
+                spreadRadius: -3,
+                offset: const Offset(0, 4),
               ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: radius,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LiquidColors.getMediaGradient(type),
+                  ),
+                ),
+                if (_image != null)
+                  Image.file(
+                    _image!,
+                    fit: BoxFit.cover,
+                    cacheWidth: cacheWidth,
+                    gaplessPlayback: true,
+                    errorBuilder: (_, _, _) => _iconLayer(type),
+                  )
+                else
+                  _iconLayer(type),
+                if (widget.item.isLocked)
+                  _badge(Icons.lock_rounded)
+                else if (type == 'video')
+                  Center(child: _playBadge()),
+              ],
             ),
-            if (_image != null)
-              Image.file(
-                _image!,
-                fit: BoxFit.cover,
-                cacheWidth: (widget.width * dpr).round(),
-                gaplessPlayback: true,
-                errorBuilder: (_, _, _) => _iconLayer(type),
-              )
-            else
-              _iconLayer(type),
-            if (widget.item.isLocked)
-              _badge(Icons.lock_rounded)
-            else if (type == 'video')
-              Center(child: _playBadge()),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
+  }
+
+  int? _safeCacheDimension(double logicalWidth, double devicePixelRatio) {
+    if (!logicalWidth.isFinite ||
+        logicalWidth <= 0 ||
+        !devicePixelRatio.isFinite ||
+        devicePixelRatio <= 0) {
+      return null;
+    }
+    final physicalWidth = logicalWidth * devicePixelRatio;
+    if (!physicalWidth.isFinite || physicalWidth <= 0) return null;
+    return physicalWidth.round().clamp(1, 4096);
   }
 
   Widget _iconLayer(String type) {

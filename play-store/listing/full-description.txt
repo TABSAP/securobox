@@ -1,8 +1,8 @@
-SecuroBox is a 100% offline private media vault. Keep your videos, audio, photos and documents safe behind a PIN and biometric lock — nothing ever leaves your device.
+SecuroBox is an on-device private media vault. Keep your videos, audio, photos and documents safe behind a PIN and biometric lock. Vault files stay on your device by default. You can optionally save a passphrase-encrypted backup to a location you choose, including a connected cloud drive; SecuroBox never uploads files automatically.
 
 ★ Why SecuroBox
 
-• 100% offline — your files never touch the cloud
+• Offline vault storage by default — no account, analytics, or automatic uploads
 • PIN + biometric (fingerprint / face) lock for the entire app
 • Screenshot blocking — prevents screen recording and screen capture
 • AES-256-CTR encryption for every file at rest
@@ -31,12 +31,15 @@ SecuroBox is a 100% offline private media vault. Keep your videos, audio, photos
 • Create your own custom folders
 • Quick search across your vault
 • Recycle bin for accidentally deleted files
+• Sort by newest imported, oldest imported, or name
+• Lock selected categories with your PIN or biometrics
 
 ★ Import options
 
 • Capture photos and videos straight into the vault with the in-app Secure Camera
 • Pick existing files from your device storage
 • Move-to-vault: imported photos and videos are removed from your gallery and kept safely in the vault — move them back out anytime
+• Foreground album rules with a review queue and an option to keep Gallery originals
 • Download from a direct URL into your vault
 • Files are encrypted into a private app folder, isolated from the rest of your phone
 
@@ -55,10 +58,19 @@ SecuroBox is a 100% offline private media vault. Keep your videos, audio, photos
 • Decoy PIN — open a separate decoy vault under duress while your real vault stays hidden
 • Offline Integrity Lock — optionally seal the vault whenever the device is connected to any network
 • Optional PIN recovery using a one-time code you set up
+• Guest View lets you show only selected photos or videos and requires authentication to exit
+
+★ Backup & recovery
+
+• Create a portable backup protected by a passphrase
+• Restore and re-encrypt your files on this or a new device
+• Use the system file picker to save the backup to Files or a connected cloud drive
+• Current backup limit: 128 MB of media
 
 ★ Privacy promise
 
-We do not collect, store, or transmit any of your data.
+We do not collect analytics or upload files automatically.
+If you export a backup, it is passphrase-encrypted before it is saved to the location you choose.
 We have no servers. We do not see your files.
 You are in control — always.
 

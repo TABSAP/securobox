@@ -1,11 +1,13 @@
 # SecuroBox
 
-**A 100% offline, on-device encrypted media vault for Android & iOS.**
+**An on-device encrypted media vault with optional encrypted backups.**
 
 SecuroBox keeps your private videos, photos, audio, PDFs, and documents locked
-behind AES‑256 encryption and unlocked only by your PIN or biometrics.
-Everything stays on your device — **no cloud, no accounts, no analytics, no
-servers**. If the app can't reach a plaintext copy, neither can anyone else.
+behind AES‑256 encryption and unlocked only by your PIN or biometrics. Vault
+files stay on your device by default. You can optionally create a passphrase-
+encrypted backup and save it through the system file picker, including to a
+connected cloud drive. SecuroBox has **no account, server, analytics, or
+automatic uploads**.
 
 - **Platforms:** Android & iOS (Flutter)
 - **App ID:** `app.securobox.vault`
@@ -41,8 +43,8 @@ inside the app's private storage. To view anything you must unlock the app with
 a PIN or biometrics. Locking the app (manually, on inactivity, on backgrounding,
 or when a network connection appears) wipes every decrypted temporary file.
 
-Because it is fully offline, there is nothing to sign up for and nothing leaves
-the device.
+Normal vault use works offline. Only a backup you explicitly export can leave
+the device, and the backup is encrypted with a passphrase before export.
 
 ---
 
@@ -62,6 +64,15 @@ the device.
 - **Real‑time UI** — every change (import, delete, favorite, rename, restore)
   reflects instantly across the app; there is no manual refresh.
 - **Original filenames** preserved on import.
+- **Safety Center** — check missing vault files and Gallery access, and create or
+  restore passphrase-protected backups (up to 128 MB of media).
+- **Guest View** — select photos or videos to show with no library navigation;
+  authentication is required to exit.
+- **Category locks** — gate selected categories with the configured PIN or
+  biometrics.
+- **Foreground auto-import rules** — monitor selected albums while the rules
+  screen is open, review new files, and choose whether to keep Gallery originals.
+- **Library sorting** — order by newest imported, oldest imported, or name.
 
 ### Security & privacy
 - **AES‑256 encryption at rest** with Encrypt‑then‑MAC (HMAC‑SHA256) integrity.
@@ -81,8 +92,8 @@ the device.
   privacy shield.
 - **App disguise** (Android) — swap the home‑screen icon/name to look like a
   Calculator, Notes, etc.
-- **PIN recovery** via a self‑issued, one‑time recovery code emailed to yourself
-  (only a hash of the code is stored on device).
+- **PIN recovery** using three locally stored, salted recovery-answer verifiers
+  with escalating cooldowns. Answers stay on device and are never synced.
 
 ### Experience
 - Material 3, light/dark theme, and a shared design system for consistent
@@ -169,7 +180,7 @@ lib/
 │   ├── face_recognition_service.dart
 │   ├── disguise_service.dart     # Android app-icon disguise
 │   ├── screen_security.dart      # Screenshot/recording blocking (Android)
-│   ├── recovery_service.dart     # PIN recovery codes
+│   ├── recovery_questions_service.dart # Local PIN recovery question verifiers
 │   ├── theme_controller.dart     # Light/dark theme
 │   ├── liquid_colors.dart        # Theme-aware color tokens
 │   ├── media_importer.dart / media_helper.dart / title_helper.dart / import_settings.dart
@@ -340,10 +351,11 @@ Shared tokens and widgets (`AppSpace`, `AppRadius`, `AppCard`,
 
 ## Privacy
 
-SecuroBox is privacy‑first by architecture: it is fully offline, requests only
-the permissions it needs at the point of use, stores secrets only in encrypted
-OS‑backed storage, and wipes decrypted temporary files on lock. No data is
-collected, transmitted, or shared.
+SecuroBox is privacy‑first by architecture: it requests permissions at the
+point of use, stores secrets only in encrypted OS‑backed storage, and wipes
+decrypted temporary files on lock. The app collects no telemetry and performs
+no automatic uploads. If you export a backup to a cloud provider using the
+system file picker, that provider stores the encrypted backup you selected.
 
 ---
 

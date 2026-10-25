@@ -1,5 +1,9 @@
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:native_glass_navbar/native_glass_navbar.dart';
 
 import 'package:video_player_app/utils/intrusion_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
@@ -30,40 +34,80 @@ class LiquidBottomNav extends StatelessWidget {
     _NavItem(Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
   ];
 
-  void _onTap(BuildContext context, int i) {
+  void _onTap(int i) {
     HapticFeedback.selectionClick();
     AppNav.tab.value = i;
-    final route = ModalRoute.of(context);
-    if (route != null && !route.isFirst) {
-      Navigator.of(context).popUntil((r) => r.isFirst);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final current = selectedIndex ?? 0;
-    // Clean, flat navigation bar: theme-adaptive surface with a single hairline
-    // divider on top — no pills or heavy shadows.
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: LiquidColors.backgroundDeep,
-        border: Border(top: BorderSide(color: LiquidColors.divider)),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          height: 52,
-          child: Row(
-            children: List.generate(_navItems.length, (i) {
-              return Expanded(
-                child: _NavButton(
-                  item: _navItems[i],
-                  selected: i == current,
-                  showBadge: false,
-                  onTap: () => _onTap(context, i),
+    final fallback = _buildPremiumFallback(context, current);
+    if (defaultTargetPlatform != TargetPlatform.iOS) return fallback;
+
+    return NativeGlassNavBar(
+      currentIndex: current,
+      onTap: _onTap,
+      tintColor: LiquidColors.indigo,
+      tabs: const [
+        NativeGlassNavBarItem(
+          label: 'Library',
+          symbol: 'rectangle.stack',
+          selectedSymbol: 'rectangle.stack.fill',
+        ),
+        NativeGlassNavBarItem(
+          label: 'Settings',
+          symbol: 'gearshape',
+          selectedSymbol: 'gearshape.fill',
+        ),
+      ],
+      // The plugin automatically uses this on iOS versions without Liquid
+      // Glass. Keeping it custom also gives the app a polished Android bar.
+      fallback: fallback,
+    );
+  }
+
+  Widget _buildPremiumFallback(BuildContext context, int current) {
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.only(bottom: 5),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(27),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              height: 66,
+              decoration: BoxDecoration(
+                color: LiquidColors.surface.withValues(
+                  alpha: LiquidColors.isDark ? 0.82 : 0.88,
                 ),
-              );
-            }),
+                borderRadius: BorderRadius.circular(27),
+                border: Border.all(
+                  color: LiquidColors.cardBorder.withValues(alpha: 0.9),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: LiquidColors.shadow,
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: List.generate(_navItems.length, (i) {
+                  return Expanded(
+                    child: _NavButton(
+                      item: _navItems[i],
+                      selected: i == current,
+                      showBadge: false,
+                      onTap: () => _onTap(i),
+                    ),
+                  );
+                }),
+              ),
+            ),
           ),
         ),
       ),
@@ -90,10 +134,23 @@ class _NavButton extends StatelessWidget {
     // secondary colour (dark in light theme, light in dark theme).
     final color = selected ? LiquidColors.indigo : LiquidColors.textSecondary;
 
-    Widget icon = Icon(
-      selected ? item.activeIcon : item.icon,
-      size: 22,
-      color: color,
+    Widget icon = AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+      decoration: BoxDecoration(
+        color: selected
+            ? LiquidColors.indigo.withValues(
+                alpha: LiquidColors.isDark ? 0.2 : 0.1,
+              )
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Icon(
+        selected ? item.activeIcon : item.icon,
+        size: 21,
+        color: color,
+      ),
     );
     if (showBadge) {
       icon = Stack(
@@ -146,16 +203,17 @@ class _NavButton extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           icon,
-          const SizedBox(height: 3),
-          Text(
-            item.label,
+          const SizedBox(height: 2),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 180),
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 10.5,
               height: 1,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: color,
-              letterSpacing: 0.1,
+              letterSpacing: 0.15,
             ),
+            child: Text(item.label),
           ),
         ],
       ),

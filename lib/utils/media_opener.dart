@@ -26,14 +26,16 @@ final MediaService _mediaService = MediaService();
 /// granted (or when no protection is enabled).
 Future<bool> authenticateForProtected(
   BuildContext context,
-  String reason,
-) async {
+  String reason, {
+  bool requireAuth = false,
+}) async {
   final prefs = await SharedPreferences.getInstance();
-  final biometricEnabled = (prefs.getBool('biometric') ?? false) ||
+  final biometricEnabled =
+      (prefs.getBool('biometric') ?? false) ||
       (prefs.getBool('biometric_face') ?? false);
   final appLockEnabled = prefs.getBool('appLock') ?? false;
 
-  if (!biometricEnabled && !appLockEnabled) return true;
+  if (!biometricEnabled && !appLockEnabled) return !requireAuth;
 
   if (biometricEnabled &&
       await _mediaService.authenticateUser(reason: reason)) {

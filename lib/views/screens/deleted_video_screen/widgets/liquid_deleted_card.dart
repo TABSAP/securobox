@@ -247,11 +247,18 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
         if (widget.video.deletedDate != null)
           Row(
             children: [
-              Icon(Icons.access_time, size: 14, color: LiquidColors.textTertiary),
+              Icon(
+                Icons.access_time,
+                size: 14,
+                color: LiquidColors.textTertiary,
+              ),
               const SizedBox(width: 4),
               Text(
                 'Deleted ${widget.formatDate(widget.video.deletedDate!)}',
-                style: TextStyle(fontSize: 12, color: LiquidColors.textTertiary),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: LiquidColors.textTertiary,
+                ),
               ),
             ],
           ),
@@ -475,7 +482,7 @@ class _LiquidDeletedCardState extends State<LiquidDeletedCard>
             ),
             const SizedBox(height: 12),
             Text(
-              '"${widget.video.title}" will be hidden from the app. You can recover it later using your Recovery Key.',
+              '"${widget.video.title}" will be hidden from the app. You can recover it later from the recycle bin after unlocking with your PIN.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: LiquidColors.textSecondary),
             ),

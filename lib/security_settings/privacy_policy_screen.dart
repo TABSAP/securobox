@@ -88,10 +88,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
               _section(
                 title: 'Your PIN',
                 body:
-                    'Hashed with PBKDF2-HMAC-SHA256 (100,000 iterations) '
-                    'and a random per-install salt. The PIN itself is never '
-                    'stored, transmitted, or recoverable. If you forget '
-                    'your PIN, your data cannot be recovered.',
+                    'Hashed with PBKDF2-HMAC-SHA256 and a random salt. The PIN itself is never stored or transmitted. If you forget it, locally stored recovery-question verifiers can let you choose a new PIN; your encrypted files remain on this device. Recovery answers are not synced or recoverable if you lose access to this device.',
               ),
               _section(
                 title: 'Permissions we ask for',

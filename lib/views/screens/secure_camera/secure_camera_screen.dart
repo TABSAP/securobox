@@ -29,6 +29,9 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   int _cameraIndex = 0;
   bool _initializing = true;
   bool _capturing = false;
+  bool _startingController = false;
+  bool _appIsActive = true;
+  int _controllerGeneration = 0;
   int _savedCount = 0;
   String? _error;
 
@@ -56,6 +59,9 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // Invalidate any initialize() call still in flight. It will dispose its
+    // controller when it completes instead of attaching to a dead screen.
+    _controllerGeneration++;
     _recordTimer?.cancel();
     _reviewVideo?.dispose();
     _wipeReviewFile(_reviewPath);
@@ -67,6 +73,10 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final c = _controller;
     if (state == AppLifecycleState.inactive) {
+      _appIsActive = false;
+      // A resume can arrive before initialize() completes. Invalidate that
+      // pending start so it cannot race a second controller into existence.
+      _controllerGeneration++;
       _recordTimer?.cancel();
       if (_reviewPath != null) {
         _wipeReviewFile(_reviewPath);
@@ -89,10 +99,21 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         c.dispose();
       }
     } else if (state == AppLifecycleState.resumed) {
-      if (_controller == null && _cameras.isNotEmpty && _error == null) {
-        _startController(_cameras[_cameraIndex]);
-      }
+      _appIsActive = true;
+      _resumeControllerIfNeeded();
     }
+  }
+
+  void _resumeControllerIfNeeded() {
+    if (!mounted ||
+        !_appIsActive ||
+        _startingController ||
+        _controller != null ||
+        _cameras.isEmpty ||
+        _error != null) {
+      return;
+    }
+    unawaited(_startController(_cameras[_cameraIndex]));
   }
 
   Future<void> _setup() async {
@@ -127,6 +148,9 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   }
 
   Future<void> _startController(CameraDescription camera) async {
+    if (!mounted || _startingController || _controller != null) return;
+    _startingController = true;
+    final generation = ++_controllerGeneration;
     final controller = CameraController(
       camera,
       ResolutionPreset.high,
@@ -137,13 +161,22 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
       await controller.initialize();
     } catch (_) {
       await controller.dispose();
-      _fail('Could not start the camera.');
+      if (generation != _controllerGeneration) {
+        _startingController = false;
+        _resumeControllerIfNeeded();
+      } else if (mounted) {
+        _fail('Could not start the camera.');
+        _startingController = false;
+      }
       return;
     }
-    if (!mounted) {
+    if (!mounted || generation != _controllerGeneration) {
       await controller.dispose();
+      _startingController = false;
+      _resumeControllerIfNeeded();
       return;
     }
+    _startingController = false;
     setState(() {
       _controller = controller;
       _initializing = false;
@@ -274,11 +307,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     try {
       final result = await MediaImporter.instance.importFiles(
         items: [
-          PickedMedia(
-            File(path),
-            origin: 'camera',
-            originAlbum: 'DCIM/Camera',
-          ),
+          PickedMedia(File(path), origin: 'camera', originAlbum: 'DCIM/Camera'),
         ],
         category: _reviewIsVideo ? 'Videos' : 'Photos',
       );
@@ -361,12 +390,10 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         child: _reviewing
             ? _reviewView()
             : _error != null
-                ? _errorView()
-                : (_initializing || _controller == null)
-                    ? const Center(
-                        child: AppLoader(color: Colors.white),
-                      )
-                    : _cameraView(),
+            ? _errorView()
+            : (_initializing || _controller == null)
+            ? const Center(child: AppLoader(color: Colors.white))
+            : _cameraView(),
       ),
     );
   }
@@ -399,8 +426,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
 
   Widget _preview() {
     final c = _controller!;
-    var scale =
-        MediaQuery.of(context).size.aspectRatio * c.value.aspectRatio;
+    var scale = MediaQuery.of(context).size.aspectRatio * c.value.aspectRatio;
     if (scale < 1) scale = 1 / scale;
     return ClipRect(
       child: Transform.scale(
@@ -473,8 +499,11 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline_rounded,
-              color: Colors.white, size: 16),
+          const Icon(
+            Icons.error_outline_rounded,
+            color: Colors.white,
+            size: 16,
+          ),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
@@ -511,8 +540,11 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.shield_rounded,
-                    color: LiquidColors.success, size: 13),
+                Icon(
+                  Icons.shield_rounded,
+                  color: LiquidColors.success,
+                  size: 13,
+                ),
                 const SizedBox(width: 6),
                 const Text(
                   'SECURE CAPTURE',
@@ -549,8 +581,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
               SizedBox(
                 width: 56,
                 child: (_cameras.length > 1 && !_recording)
-                    ? _circleButton(
-                        Icons.flip_camera_ios_rounded, _flipCamera)
+                    ? _circleButton(Icons.flip_camera_ios_rounded, _flipCamera)
                     : null,
               ),
               const Spacer(),
@@ -642,9 +673,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
           shape: BoxShape.circle,
           color: Colors.white54,
         ),
-        child: Center(
-          child: AppLoader(size: 26),
-        ),
+        child: Center(child: AppLoader(size: 26)),
       );
     } else if (_mode == _CaptureMode.photo) {
       inner = const DecoratedBox(
@@ -847,8 +876,7 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.delete_outline_rounded,
-                  color: Colors.white, size: 18),
+              Icon(Icons.delete_outline_rounded, color: Colors.white, size: 18),
               SizedBox(width: 8),
               Text(
                 'Discard',
@@ -913,8 +941,11 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.no_photography_rounded,
-                color: Colors.white.withValues(alpha: 0.6), size: 56),
+            Icon(
+              Icons.no_photography_rounded,
+              color: Colors.white.withValues(alpha: 0.6),
+              size: 56,
+            ),
             const SizedBox(height: 18),
             Text(
               _error ?? 'Camera unavailable',

@@ -74,16 +74,24 @@ class ThumbnailCache {
             ? await VaultCrypto.instance.decryptToTemp(item.path)
             : item.path;
         final dir = await VaultCrypto.instance.previewTempDir();
-        final thumbPath = await VideoThumbnail.thumbnailFile(
-          video: videoPath,
-          thumbnailPath: dir.path,
-          imageFormat: ImageFormat.JPEG,
-          maxWidth: 256,
-          quality: 55,
-        );
-        if (thumbPath == null) return null;
-        final t = File(thumbPath);
-        return await t.exists() ? t : null;
+        // Many phone videos begin with a black frame. A frame around one
+        // second in usually gives a useful preview; fall back to the first
+        // frame for very short clips or formats that cannot seek reliably.
+        for (final timeMs in const [1000, 0]) {
+          final thumbPath = await VideoThumbnail.thumbnailFile(
+            video: videoPath,
+            thumbnailPath: dir.path,
+            imageFormat: ImageFormat.JPEG,
+            maxWidth: 256,
+            quality: 65,
+            timeMs: timeMs,
+          );
+          if (thumbPath == null) continue;
+          final thumbnail = File(thumbPath);
+          if (await thumbnail.exists() && await thumbnail.length() > 0) {
+            return thumbnail;
+          }
+        }
       }
     } catch (_) {
       // Fall back to the type icon on any decrypt/extract failure.

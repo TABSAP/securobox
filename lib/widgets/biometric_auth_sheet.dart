@@ -23,7 +23,7 @@ class BiometricAuthSheet extends StatefulWidget {
   const BiometricAuthSheet({
     super.key,
     this.title = 'Verify Your Identity',
-    this.subtitle = 'Use Fingerprint or Face ID to continue',
+    this.subtitle = 'Use an enrolled device biometric to continue.',
     this.localizedReason,
     this.allowPinFallback = true,
     this.fallbackLabel = 'Use PIN instead',
@@ -34,7 +34,7 @@ class BiometricAuthSheet extends StatefulWidget {
   static Future<BiometricAuthResult?> show(
     BuildContext context, {
     String title = 'Verify Your Identity',
-    String subtitle = 'Use Fingerprint or Face ID to continue',
+    String subtitle = 'Use an enrolled device biometric to continue.',
     String? localizedReason,
     bool allowPinFallback = true,
     String fallbackLabel = 'Use PIN instead',
@@ -71,16 +71,13 @@ class BiometricAuthSheet extends StatefulWidget {
   State<BiometricAuthSheet> createState() => _BiometricAuthSheetState();
 }
 
-enum _AuthPhase { idle, scanning, success, failed }
+enum _AuthPhase { idle, scanning, success, cancelled, failed }
 
 class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     with TickerProviderStateMixin {
   final LocalAuthentication _auth = LocalAuthentication();
 
   _AuthPhase _phase = _AuthPhase.idle;
-  bool _hasFace = false;
-  bool _hasFingerprint = false;
-  bool _preferFace = true;
   bool _bioReady = false;
   bool _introDone = false;
   bool _canAuthenticate = false;
@@ -144,8 +141,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     if (!mounted) return;
     if (!_canAuthenticate) {
       _toFailed(
-        'To unlock with biometrics, set a screen lock and enroll a '
-        'fingerprint or face in your device settings.',
+        Theme.of(context).platform == TargetPlatform.android
+            ? 'Android has not exposed an enrolled biometric to apps. Some face unlock systems work only at the lock screen. Use an app-eligible fingerprint or your PIN.'
+            : 'Enroll Face ID or Touch ID in your device settings, then use your PIN to continue.',
       );
       return;
     }
@@ -156,45 +154,24 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
   Future<void> _detectBiometrics() async {
     try {
-      final supportedF = _auth.isDeviceSupported();
-      final canCheckF = _auth.canCheckBiometrics;
-      final listF = _auth.getAvailableBiometrics();
-      final supported = await supportedF;
-      final canCheck = await canCheckF;
-      List<BiometricType> list = const <BiometricType>[];
-      try {
-        list = await listF;
-      } catch (_) {}
+      final enrolled = await _auth.getAvailableBiometrics();
       if (!mounted) return;
       setState(() {
-        _canAuthenticate = supported || canCheck;
-        final hasFace = list.contains(BiometricType.face);
-        final hasFp =
-            list.contains(BiometricType.fingerprint) ||
-            (!hasFace && list.isNotEmpty) ||
-            (!hasFace && _canAuthenticate);
-        _hasFace = hasFace;
-        _hasFingerprint = hasFp;
-        _preferFace = hasFace;
+        // isDeviceSupported() can reflect an enrolled screen PIN or password.
+        // This sheet is biometric-only, so require an enrolled biometric that
+        // the platform exposes to app authentication.
+        _canAuthenticate = enrolled.isNotEmpty;
         _bioReady = true;
       });
     } catch (_) {
       if (mounted) {
         setState(() {
           _bioReady = true;
-          _canAuthenticate = true;
-          _hasFingerprint = true;
+          _canAuthenticate = false;
         });
       }
     }
   }
-
-  bool get _showFaceIcon => _preferFace && _hasFace;
-
-  IconData get _bioIcon =>
-      _showFaceIcon ? Icons.face_retouching_natural : Icons.fingerprint_rounded;
-
-  String get _methodName => _showFaceIcon ? 'Face ID' : 'Fingerprint';
 
   Future<void> _authenticate() async {
     if (_running) return;
@@ -223,17 +200,30 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         localizedReason:
             widget.localizedReason ?? 'Verify your identity to continue',
         biometricOnly: true,
-        sensitiveTransaction: true,
+        // Allow Android's passive modalities (such as enrolled face unlock)
+        // to complete without an extra confirmation tap. The OS still owns
+        // verification and reports success only after an enrolled biometric.
+        sensitiveTransaction: false,
         persistAcrossBackgrounding: true,
       );
       if (!mounted) return;
       if (ok) {
         _toSuccess();
       } else {
-        _toFailed('Verification was cancelled. Tap "Try Again" to retry.');
+        _toFailed(
+          'Biometric verification didn’t match. Try again or use your PIN.',
+        );
       }
     } on LocalAuthException catch (e) {
       if (!mounted) return;
+      if (e.code == LocalAuthExceptionCode.userRequestedFallback) {
+        _close(BiometricAuthResult.usePin);
+        return;
+      }
+      if (_isCancellation(e.code)) {
+        _toCancelled('Verification was cancelled. Try again or use your PIN.');
+        return;
+      }
       if (!_retriedWarmup && _isTransient(e.code)) {
         _retriedWarmup = true;
         Future<void>.delayed(const Duration(milliseconds: 700), () {
@@ -248,8 +238,13 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       } else {
         _toFailed(msg);
       }
-    } on PlatformException catch (_) {
+    } on PlatformException catch (e) {
       if (!mounted) return;
+      final code = e.code.toLowerCase();
+      if (code.contains('cancel')) {
+        _toCancelled('Verification was cancelled. Try again or use your PIN.');
+        return;
+      }
       if (!_retriedWarmup) {
         _retriedWarmup = true;
         Future<void>.delayed(const Duration(milliseconds: 700), () {
@@ -272,16 +267,20 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   bool _isTransient(LocalAuthExceptionCode code) =>
       code == LocalAuthExceptionCode.biometricHardwareTemporarilyUnavailable ||
       code == LocalAuthExceptionCode.uiUnavailable ||
-      code == LocalAuthExceptionCode.systemCanceled ||
       code == LocalAuthExceptionCode.authInProgress ||
       code == LocalAuthExceptionCode.timeout ||
       code == LocalAuthExceptionCode.deviceError ||
       code == LocalAuthExceptionCode.unknownError;
 
+  bool _isCancellation(LocalAuthExceptionCode code) =>
+      code == LocalAuthExceptionCode.userCanceled ||
+      code == LocalAuthExceptionCode.userRequestedFallback ||
+      code == LocalAuthExceptionCode.systemCanceled;
+
   Future<void> _registerFailure(String message) async {
     await SessionManager.instance.recordFailedBiometricAttempt();
-    final remaining =
-        await SessionManager.instance.getBiometricCooldownRemaining();
+    final remaining = await SessionManager.instance
+        .getBiometricCooldownRemaining();
     if (!mounted) return;
     if (remaining != null) {
       _startCooldown(remaining, message);
@@ -303,8 +302,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     _shake.forward(from: 0);
     HapticFeedback.heavyImpact();
     _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) async {
-      final remaining =
-          await SessionManager.instance.getBiometricCooldownRemaining();
+      final remaining = await SessionManager.instance
+          .getBiometricCooldownRemaining();
       if (!mounted) {
         t.cancel();
         return;
@@ -369,6 +368,16 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     );
   }
 
+  void _toCancelled(String message) {
+    _sweep.stop();
+    _pulse.stop();
+    _ping.stop();
+    setState(() {
+      _phase = _AuthPhase.cancelled;
+      _errorMessage = message;
+    });
+  }
+
   void _retry() {
     if (_cooldownLeft != null) return;
     _cooldownTimer?.cancel();
@@ -383,12 +392,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     _authenticate();
   }
 
-  void _switchMethod() {
-    HapticFeedback.selectionClick();
-    setState(() => _preferFace = !_preferFace);
-    _retry();
-  }
-
   void _close(BiometricAuthResult result) {
     if (_resolved) return;
     _resolved = true;
@@ -399,6 +402,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     switch (_phase) {
       case _AuthPhase.success:
         return LiquidColors.success;
+      case _AuthPhase.cancelled:
+        return LiquidColors.textTertiary;
       case _AuthPhase.failed:
         return LiquidColors.error;
       case _AuthPhase.idle:
@@ -411,6 +416,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     switch (_phase) {
       case _AuthPhase.success:
         return [LiquidColors.success, LiquidColors.accentBlue];
+      case _AuthPhase.cancelled:
+        return [LiquidColors.textSecondary, LiquidColors.textTertiary];
       case _AuthPhase.failed:
         return [const Color(0xFFFF6B6B), LiquidColors.error];
       case _AuthPhase.idle:
@@ -422,7 +429,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final double disc = (size.shortestSide * 0.36).clamp(124.0, 168.0).toDouble();
+    final double disc = (size.shortestSide * 0.36)
+        .clamp(124.0, 168.0)
+        .toDouble();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: LiquidColors.systemOverlayStyle,
@@ -613,11 +622,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.shield_rounded,
-            size: 13,
-            color: LiquidColors.accentBlue,
-          ),
+          Icon(Icons.shield_rounded, size: 13, color: LiquidColors.accentBlue),
           const SizedBox(width: 7),
           Text(
             'SECURE VERIFICATION',
@@ -760,7 +765,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                                         gradient: LinearGradient(
                                           colors: [
                                             Colors.white.withValues(alpha: 0.0),
-                                            Colors.white.withValues(alpha: 0.92),
+                                            Colors.white.withValues(
+                                              alpha: 0.92,
+                                            ),
                                             Colors.white.withValues(alpha: 0.0),
                                           ],
                                         ),
@@ -804,12 +811,14 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         return _cooldownLeft != null
             ? Icons.lock_clock_rounded
             : Icons.priority_high_rounded;
+      case _AuthPhase.cancelled:
+        return Icons.pause_circle_outline_rounded;
       case _AuthPhase.scanning:
-        return _bioIcon;
+        return Icons.verified_user_rounded;
       case _AuthPhase.idle:
         return (!_bioReady || !_introDone)
             ? Icons.lock_outline_rounded
-            : _bioIcon;
+            : Icons.verified_user_rounded;
     }
   }
 
@@ -823,6 +832,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         text = _cooldownLeft != null
             ? 'Too Many Attempts'
             : 'Verification Failed';
+        break;
+      case _AuthPhase.cancelled:
+        text = 'Verification canceled';
         break;
       case _AuthPhase.scanning:
         text = 'Verifying…';
@@ -852,10 +864,11 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         text = 'Your identity has been confirmed.';
         break;
       case _AuthPhase.failed:
+      case _AuthPhase.cancelled:
         text = _errorMessage;
         break;
       case _AuthPhase.scanning:
-        text = 'Authenticating with $_methodName…';
+        text = 'Authenticating with your device…';
         break;
       case _AuthPhase.idle:
         text = (!_bioReady)
@@ -914,17 +927,13 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              _showFaceIcon
-                  ? Icons.face_retouching_natural
-                  : Icons.fingerprint_rounded,
+              Icons.verified_user_rounded,
               size: 16,
               color: LiquidColors.textTertiary,
             ),
             const SizedBox(width: 7),
             Text(
-              _showFaceIcon
-                  ? 'Look at the camera to verify'
-                  : 'Touch the fingerprint sensor',
+              'Follow your device’s biometric prompt',
               style: TextStyle(
                 color: LiquidColors.textTertiary,
                 fontSize: 12.5,
@@ -936,6 +945,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         );
       case _AuthPhase.failed:
       case _AuthPhase.success:
+      case _AuthPhase.cancelled:
         return const SizedBox.shrink();
     }
   }
@@ -968,7 +978,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
 
       case _AuthPhase.failed:
         final coolingDown = _cooldownLeft != null;
-        final canSwitch = _hasFace && _hasFingerprint;
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -995,16 +1004,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                 onTap: _retry,
               ),
               const SizedBox(height: 10),
-              if (canSwitch) ...[
-                _secondaryButton(
-                  icon: _showFaceIcon
-                      ? Icons.fingerprint_rounded
-                      : Icons.face_retouching_natural,
-                  label: 'Use ${_showFaceIcon ? 'Fingerprint' : 'Face ID'}',
-                  onTap: _switchMethod,
-                ),
-                const SizedBox(height: 10),
-              ],
               if (widget.allowPinFallback) ...[
                 _secondaryButton(
                   icon: widget.fallbackIcon,
@@ -1018,6 +1017,31 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                 onTap: () => _close(BiometricAuthResult.cancelled),
               ),
             ],
+          ],
+        );
+
+      case _AuthPhase.cancelled:
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _primaryButton(
+              icon: Icons.refresh_rounded,
+              label: 'Try Again',
+              onTap: _retry,
+            ),
+            if (widget.allowPinFallback) ...[
+              const SizedBox(height: 10),
+              _secondaryButton(
+                icon: widget.fallbackIcon,
+                label: widget.fallbackLabel,
+                onTap: () => _close(BiometricAuthResult.usePin),
+              ),
+            ],
+            const SizedBox(height: 6),
+            _textLink(
+              'Cancel',
+              onTap: () => _close(BiometricAuthResult.cancelled),
+            ),
           ],
         );
     }

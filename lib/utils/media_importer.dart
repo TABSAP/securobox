@@ -64,13 +64,15 @@ class MediaImporter {
     required List<PickedMedia> items,
     String? category,
     bool encrypt = true,
+    bool? deleteOriginalsOverride,
     void Function(int done, int total)? onProgress,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final libKey = VaultContext.instance.libraryKey;
     final list = prefs.getStringList(libKey) ?? [];
-    final deleteOriginals = await ImportSettings.instance
-        .deleteOriginalsEnabled();
+    final deleteOriginals =
+        deleteOriginalsOverride ??
+        await ImportSettings.instance.deleteOriginalsEnabled();
     const galleryTypes = {'image', 'audio', 'video'};
     // Resolved once so previews can be primed synchronously inside the loop.
     final previewDir = await VaultCrypto.instance.previewTempDir();

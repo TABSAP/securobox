@@ -16,7 +16,7 @@ Private offline media vault
 ================================================================
 PROMOTIONAL TEXT (max 170 chars — editable anytime without review)
 ================================================================
-Lock your private videos, photos, audio and documents behind a PIN or Face ID. 100% offline, AES-256 encrypted — no cloud, no accounts, no tracking.
+Lock your private videos, photos, audio and documents behind a PIN or Face ID. AES-256 encrypted on-device storage, optional passphrase-protected backup, no accounts or tracking.
 
 ================================================================
 KEYWORDS (max 100 chars, comma-separated, NO spaces after commas)
@@ -26,11 +26,11 @@ vault,hide photos,private,secure,encrypt,lock,folder,password,album,privacy,offl
 ================================================================
 DESCRIPTION
 ================================================================
-SecuroBox is a 100% offline private media vault. Keep your videos, photos, audio and documents locked behind a PIN and Face ID — nothing ever leaves your device.
+SecuroBox is an on-device private media vault. Keep your videos, photos, audio and documents locked behind a PIN and Face ID. Vault files stay on your device by default. You can optionally export a passphrase-encrypted backup to a location you choose; SecuroBox never uploads files automatically.
 
 ★ Why SecuroBox
 
-• 100% offline — your files never touch the cloud
+• Offline vault storage by default — no accounts, tracking, or automatic uploads
 • PIN + Face ID / Touch ID lock for the entire app
 • AES-256 encryption for every file at rest
 • Protected by iOS Data Protection (hardware-backed)
@@ -59,12 +59,15 @@ SecuroBox is a 100% offline private media vault. Keep your videos, photos, audio
 • Create your own custom folders
 • Quick search across your vault
 • Recycle bin for accidentally deleted files
+• Sort by newest imported, oldest imported, or name
+• Lock selected categories with your PIN or biometrics
 
 ★ Import options
 
 • Capture photos and videos straight into the vault with the in-app Secure Camera
 • Import existing photos, videos and audio from your library
 • Move-to-vault: imported photos and videos are removed from your library and kept safely in the vault — move them back out anytime
+• Foreground album rules with a review queue and an option to keep library originals
 • Files are encrypted into a private app container, isolated from the rest of your phone
 
 ★ Security model
@@ -81,10 +84,17 @@ SecuroBox is a 100% offline private media vault. Keep your videos, photos, audio
 • Decoy PIN — open a separate decoy vault under duress while your real vault stays hidden
 • Offline Integrity Lock — optionally seal the vault whenever the device is connected to a network
 • Optional PIN recovery using a one-time code you set up
+• Guest View lets you show only selected photos or videos and requires authentication to exit
+
+★ Backup & recovery
+
+• Create a portable passphrase-encrypted backup and restore it on a new device
+• Save backups to Files or a connected cloud drive using the system file picker
+• Current backup limit: 128 MB of media
 
 ★ Privacy promise
 
-We do not collect, store, or transmit any of your data.
+We do not collect analytics or upload files automatically. Exported backups are passphrase-encrypted before being saved to the location you choose.
 We have no servers. We do not see your files.
 You are in control — always.
 

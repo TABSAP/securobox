@@ -51,7 +51,9 @@ class VaultCrypto {
 
   Uint8List _randomBytes(int length) {
     final r = Random.secure();
-    return Uint8List.fromList(List<int>.generate(length, (_) => r.nextInt(256)));
+    return Uint8List.fromList(
+      List<int>.generate(length, (_) => r.nextInt(256)),
+    );
   }
 
   Future<Uint8List> _getMasterKey({bool forceReal = false}) async {
@@ -120,7 +122,12 @@ class VaultCrypto {
 
     final sourceLength = await source.length();
 
-    await _encryptFile(srcPath: source.path, dstPath: outPath, key: key, iv: iv);
+    await _encryptFile(
+      srcPath: source.path,
+      dstPath: outPath,
+      key: key,
+      iv: iv,
+    );
 
     final outFile = File(outPath);
     final outLength = await outFile.exists() ? await outFile.length() : -1;
@@ -175,7 +182,8 @@ class VaultCrypto {
     final magic = await raf.read(_kMagicLength);
     await raf.close();
 
-    final authenticated = magic.length == _kMagicLength &&
+    final authenticated =
+        magic.length == _kMagicLength &&
         magic[0] == _kMagic[0] &&
         magic[1] == _kMagic[1] &&
         magic[2] == _kMagic[2] &&
@@ -201,6 +209,18 @@ class VaultCrypto {
 
   bool hasCachedPlaintext(String encryptedPath) =>
       _plainCache.containsKey(encryptedPath);
+
+  /// Removes one decrypted cache entry when a secondary vault is locked.
+  /// This lets Private Locker clear only its own working files without wiping
+  /// previews that another active vault screen may still be using.
+  Future<void> forgetCachedPlaintext(String encryptedPath) async {
+    final cached = _plainCache.remove(encryptedPath);
+    if (cached == null) return;
+    try {
+      final file = File(cached);
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
 
   Future<void> wipeTempCache() async {
     _plainCache.clear();

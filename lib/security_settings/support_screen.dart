@@ -119,7 +119,7 @@ class SupportScreen extends StatelessWidget {
       'Enable biometric authentication for faster, secure access.',
       'Lock individual videos for extra protection on sensitive files.',
       'Change your PIN every few months for better security.',
-      'Set up a Recovery Key so a forgotten PIN doesn\'t mean wiping the vault.',
+      'Set up recovery questions so you can reset a forgotten PIN without removing encrypted files.',
     ];
     return _card(
       child: Column(
@@ -138,23 +138,24 @@ class SupportScreen extends StatelessWidget {
     const items = <_Faq>[
       _Faq(
         q: 'Where are my files stored?',
-        a: 'Only on this device. Imports are encrypted with AES-256-CTR and '
+        a:
+            'Only on this device. Imports are encrypted with AES-256-CTR and '
             'never sent to a server.',
       ),
       _Faq(
         q: 'What happens if I forget my PIN?',
-        a: 'If you set up a Recovery Key, enter it on the Forgot PIN screen to '
-            'reset your PIN. Without your Recovery Key, the only option is to '
-            'wipe the vault.',
+        a: 'If you set up recovery questions, answer all three on the Forgot PIN screen to choose a new PIN. Without recovery questions, a forgotten PIN cannot be reset from this device. Recovery answers are device-local and should be difficult to guess.',
       ),
       _Faq(
         q: 'Does SecuroBox work without internet?',
-        a: 'Yes — everything works fully offline. The app never makes network '
+        a:
+            'Yes — everything works fully offline. The app never makes network '
             'requests for security features.',
       ),
       _Faq(
         q: 'Can someone see my files if my phone is unlocked?',
-        a: 'Enable App Lock, Biometric, or Face Unlock so SecuroBox always '
+        a:
+            'Enable App Lock, Biometric, or Face Unlock so SecuroBox always '
             'prompts for verification before opening.',
       ),
     ];

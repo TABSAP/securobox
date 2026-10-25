@@ -10,6 +10,7 @@ import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/media_opener.dart';
 import 'package:video_player_app/utils/vault_context.dart';
+import 'package:video_player_app/utils/category_lock_service.dart';
 import 'package:video_player_app/views/screens/secure_camera/secure_camera_screen.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 import 'package:video_player_app/widgets/app_empty_state.dart';
@@ -23,8 +24,6 @@ class HomeScreen extends StatefulWidget {
   final VideoItem? autoOpen;
   final String? screenTitle;
 
-  /// Opens the screen pre-filtered to this category chip (used for custom
-  /// categories, which filter by name rather than by media type).
   final String? initialCategory;
 
   const HomeScreen({
@@ -62,8 +61,10 @@ class HomeScreenState extends State<HomeScreen>
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _searchDebounce;
   String _selectedCategory = "All";
+  String _sortMode = 'newest';
 
   bool _selectionMode = false;
+  bool _categoryGatePending = false;
   final Set<String> _selectedIds = {};
 
   static const String _favoritesFilter = 'Favorites';
@@ -96,7 +97,16 @@ class HomeScreenState extends State<HomeScreen>
         widget.initialCategory!.trim().isNotEmpty) {
       _selectedCategory = widget.initialCategory!;
     }
+    final gateKey =
+        widget.initialCategory ??
+        (widget.typeFilter == null ? null : _categoryLabel(widget.typeFilter!));
+    _categoryGatePending = gateKey != null;
     _loadMedia();
+    if (gateKey != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _authorizeCategory(gateKey),
+      );
+    }
     _scrollController.addListener(_onScroll);
     MediaService.revision.addListener(_onLibraryRevision);
 
@@ -127,6 +137,48 @@ class HomeScreenState extends State<HomeScreen>
         if (mounted) _openMedia(widget.autoOpen!);
       });
     }
+  }
+
+  Future<void> _authorizeCategory(String key) async {
+    if (!await CategoryLockService.instance.isLocked(key)) {
+      if (mounted) setState(() => _categoryGatePending = false);
+      return;
+    }
+    if (!mounted) return;
+    final ok = await authenticateForProtected(
+      context,
+      'Unlock $key',
+      requireAuth: true,
+    );
+    if (!mounted) return;
+    if (!ok) {
+      Navigator.of(context).maybePop();
+    } else {
+      setState(() => _categoryGatePending = false);
+    }
+  }
+
+  Future<void> _selectCategory(String category) async {
+    if (_selectedCategory == category) {
+      setState(() => _selectedCategory = 'All');
+      _filterMedia();
+      return;
+    }
+    if (category != 'All') {
+      final locked = await CategoryLockService.instance.isLocked(category);
+      if (!mounted) return;
+      if (locked &&
+          !await authenticateForProtected(
+            context,
+            'Unlock $category',
+            requireAuth: true,
+          )) {
+        return;
+      }
+    }
+    if (!mounted) return;
+    _selectedCategory = category;
+    _filterMedia();
   }
 
   String _categoryLabel(String type) {
@@ -194,29 +246,38 @@ class HomeScreenState extends State<HomeScreen>
 
       if (typeFilter == null && query.isEmpty && _selectedCategory == "All") {
         _filteredMedia.addAll(_allMedia);
-        return;
-      }
+      } else {
+        final selectedCat = _selectedCategory.trim().toLowerCase();
+        for (final media in _allMedia) {
+          if (typeFilter != null && media.type != typeFilter) continue;
+          if (favoritesOnly && !media.isFavorite) continue;
 
-      final selectedCat = _selectedCategory.trim().toLowerCase();
-      for (final media in _allMedia) {
-        if (typeFilter != null && media.type != typeFilter) continue;
-        if (favoritesOnly && !media.isFavorite) continue;
+          bool matchesCategory =
+              typeFilter != null ||
+              favoritesOnly ||
+              _selectedCategory == "All" ||
+              media.category.trim().toLowerCase() == selectedCat;
 
-        bool matchesCategory =
-            typeFilter != null ||
-            favoritesOnly ||
-            _selectedCategory == "All" ||
-            media.category.trim().toLowerCase() == selectedCat;
+          bool matchesSearch =
+              query.isEmpty ||
+              media.title.toLowerCase().contains(query) ||
+              media.category.toLowerCase().contains(query);
 
-        bool matchesSearch =
-            query.isEmpty ||
-            media.title.toLowerCase().contains(query) ||
-            media.category.toLowerCase().contains(query);
-
-        if (matchesCategory && matchesSearch) {
-          _filteredMedia.add(media);
+          if (matchesCategory && matchesSearch) {
+            _filteredMedia.add(media);
+          }
         }
       }
+      _filteredMedia.sort((a, b) {
+        switch (_sortMode) {
+          case 'oldest':
+            return (int.tryParse(a.id) ?? 0).compareTo(int.tryParse(b.id) ?? 0);
+          case 'name':
+            return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+          default:
+            return (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0);
+        }
+      });
     });
   }
 
@@ -230,8 +291,6 @@ class HomeScreenState extends State<HomeScreen>
 
   Future<void> _openAddSheet() async {
     HapticFeedback.lightImpact();
-    // Import straight into the category the user is currently viewing, with a
-    // picker filtered to that category — no Quick Import grid.
     final tf = widget.typeFilter;
     String? category;
     if (tf != null) {
@@ -948,10 +1007,6 @@ class HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // Unlock = restore + remove. The file is written back to the album/folder it
-  // was imported from, and only once that succeeds is SecuroBox's encrypted
-  // copy deleted, so it disappears from the app. A failed or denied restore
-  // never loses the file.
   Future<void> _toggleGalleryVisibility(VideoItem media) async {
     if (media.isLocked) {
       final ok = await _unlockProtectedItem(
@@ -1163,7 +1218,9 @@ class HomeScreenState extends State<HomeScreen>
                 switchOutCurve: Curves.easeIn,
                 transitionBuilder: (child, anim) =>
                     FadeTransition(opacity: anim, child: child),
-                child: _isLoading && _allMedia.isEmpty
+                child: _categoryGatePending
+                    ? const Center(child: CircularProgressIndicator())
+                    : _isLoading && _allMedia.isEmpty
                     ? KeyedSubtree(
                         key: const ValueKey('loading'),
                         child: _buildLoadingState(),
@@ -1393,10 +1450,9 @@ class HomeScreenState extends State<HomeScreen>
               label: category,
               selected: isSelected,
               isCustom: isCustom,
-              onTap: () {
+              onTap: () async {
                 HapticFeedback.selectionClick();
-                _selectedCategory = isSelected ? "All" : category;
-                _filterMedia();
+                await _selectCategory(isSelected ? 'All' : category);
               },
             );
           },
@@ -1420,6 +1476,42 @@ class HomeScreenState extends State<HomeScreen>
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
+            ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Sort library',
+            initialValue: _sortMode,
+            onSelected: (value) {
+              HapticFeedback.selectionClick();
+              setState(() => _sortMode = value);
+              _filterMedia();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'newest', child: Text('Newest first')),
+              PopupMenuItem(value: 'oldest', child: Text('Oldest first')),
+              PopupMenuItem(value: 'name', child: Text('Name A–Z')),
+            ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.sort_rounded,
+                    size: 15,
+                    color: LiquidColors.accentBlue,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Sort',
+                    style: TextStyle(
+                      color: LiquidColors.accentBlue,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           AnimatedSwitcher(

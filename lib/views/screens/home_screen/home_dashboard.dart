@@ -10,6 +10,7 @@ import 'package:video_player_app/notifications_screen/notification_preview_sheet
 import 'package:video_player_app/services/media_service.dart';
 import 'package:video_player_app/utils/app_rating.dart';
 import 'package:video_player_app/utils/category_service.dart';
+import 'package:video_player_app/utils/category_lock_service.dart';
 import 'package:video_player_app/utils/category_style.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
@@ -46,6 +47,7 @@ class HomeDashboardState extends State<HomeDashboard> {
   List<VideoItem> _all = const [];
   // Visible categories (defaults + custom) in the user's chosen order.
   List<CategoryInfo> _categories = const [];
+  Set<String> _lockedCategoryKeys = const {};
   bool _loading = true;
   String _query = '';
   // Items sitting in the Recycle Bin, shown as a badge on the bin icon.
@@ -82,15 +84,24 @@ class HomeDashboardState extends State<HomeDashboard> {
     final cats = await CategoryService.instance.load();
     // Same filter the Recycle Bin uses, so the badge always matches its list.
     final deleted = await _mediaService.getDeletedMedia();
+    final locked = await CategoryLockService.instance.lockedKeys();
     final deletedCount = deleted.where((m) => !m.isHidden).length;
     if (!mounted) return;
     setState(() {
       _all = media;
       _categories = cats.where((c) => !c.hidden).toList();
+      _lockedCategoryKeys = locked;
       _deletedCount = deletedCount;
       _loading = false;
     });
   }
+
+  List<VideoItem> get _accessibleItems => _all.where((item) {
+    if (item.isFavorite && _lockedCategoryKeys.contains('favorites')) {
+      return false;
+    }
+    return !_lockedCategoryKeys.contains(item.category.toLowerCase());
+  }).toList();
 
   int _countFor(CategoryInfo cat) {
     if (cat.type == 'favorite') {
@@ -110,7 +121,10 @@ class HomeDashboardState extends State<HomeDashboard> {
         builder: (_) {
           if (cat.type == 'favorite') {
             // Smart category: filter by the favourite flag.
-            return HomeScreen(initialCategory: 'Favorites', screenTitle: cat.name);
+            return HomeScreen(
+              initialCategory: 'Favorites',
+              screenTitle: cat.name,
+            );
           }
           if (cat.isDefault && cat.type != null) {
             return HomeScreen(typeFilter: cat.type, screenTitle: cat.name);
@@ -123,9 +137,9 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   Future<void> _openManageCategories() async {
     HapticFeedback.lightImpact();
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CategoryManagementScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const CategoryManagementScreen()));
     // Categories may have changed (rename/hide/reorder/delete) while managing.
     if (mounted) _load();
   }
@@ -176,7 +190,6 @@ class HomeDashboardState extends State<HomeDashboard> {
       ),
     );
   }
-
 
   Future<void> _openSecureCamera() async {
     HapticFeedback.lightImpact();
@@ -288,13 +301,23 @@ class HomeDashboardState extends State<HomeDashboard> {
         actions: [
           _notificationsAction(),
           const SizedBox(width: 8),
-          _appBarAction(Icons.photo_camera_rounded, 'Secure Camera', _openSecureCamera),
+          _appBarAction(
+            Icons.photo_camera_rounded,
+            'Secure Camera',
+            _openSecureCamera,
+          ),
           const SizedBox(width: 8),
           _recycleBinAction(),
           const SizedBox(width: 12),
         ],
       ),
-      floatingActionButton: _importFab(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.paddingOf(context).bottom - 10,
+        ),
+        child: _importFab(),
+      ),
       body: _body(),
     );
   }
@@ -314,8 +337,8 @@ class HomeDashboardState extends State<HomeDashboard> {
           child: _loading
               ? const Center(child: AppLoader(size: 34))
               : _query.isNotEmpty
-                  ? _searchResults(inset)
-                  : _dashboardContent(inset),
+              ? _searchResults(inset)
+              : _dashboardContent(inset),
         ),
       ],
     );
@@ -326,7 +349,7 @@ class HomeDashboardState extends State<HomeDashboard> {
     // so importing an 11th file pushes the oldest entry out of Recently Added.
     // This only trims the displayed list; the files stay stored in their
     // categories and are never deleted.
-    final recent = _all.take(10).toList();
+    final recent = _accessibleItems.take(10).toList();
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.only(bottom: AppSpace.xl + 40),
@@ -353,10 +376,7 @@ class HomeDashboardState extends State<HomeDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AppSectionHeader(
-                label: 'Categories',
-                trailing: _manageButton(),
-              ),
+              AppSectionHeader(label: 'Categories', trailing: _manageButton()),
               const SizedBox(height: AppSpace.sm),
               GridView.count(
                 shrinkWrap: true,
@@ -392,10 +412,12 @@ class HomeDashboardState extends State<HomeDashboard> {
       for (final c in _categories)
         if (c.name.toLowerCase().contains(q)) _categoryCard(c),
     ];
-    final files = _all
-        .where((m) =>
-            m.title.toLowerCase().contains(q) ||
-            m.category.toLowerCase().contains(q))
+    final files = _accessibleItems
+        .where(
+          (m) =>
+              m.title.toLowerCase().contains(q) ||
+              m.category.toLowerCase().contains(q),
+        )
         .toList();
 
     if (catCards.isEmpty && files.isEmpty) {
@@ -449,13 +471,19 @@ class HomeDashboardState extends State<HomeDashboard> {
         fillColor: LiquidColors.surfaceMuted,
         hintText: 'Search',
         hintStyle: TextStyle(color: LiquidColors.textTertiary, fontSize: 15),
-        prefixIcon:
-            Icon(Icons.search_rounded, color: LiquidColors.textTertiary, size: 20),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          color: LiquidColors.textTertiary,
+          size: 20,
+        ),
         suffixIcon: _query.isEmpty
             ? null
             : IconButton(
-                icon: Icon(Icons.close_rounded,
-                    color: LiquidColors.textTertiary, size: 20),
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: LiquidColors.textTertiary,
+                  size: 20,
+                ),
                 onPressed: () {
                   _searchController.clear();
                   FocusScope.of(context).unfocus();
@@ -496,7 +524,12 @@ class HomeDashboardState extends State<HomeDashboard> {
             child: Row(
               children: [
                 VaultThumbnail(
-                    item: m, width: 46, height: 46, radius: 12, iconSize: 20),
+                  item: m,
+                  width: 46,
+                  height: 46,
+                  radius: 12,
+                  iconSize: 20,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -526,8 +559,11 @@ class HomeDashboardState extends State<HomeDashboard> {
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded,
-                    color: LiquidColors.textTertiary, size: 20),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: LiquidColors.textTertiary,
+                  size: 20,
+                ),
               ],
             ),
           ),
@@ -565,16 +601,7 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   // FAB to import files: pick files → choose a category → save into it.
   Widget _importFab() {
-    return FloatingActionButton.extended(
-      onPressed: _importFlow,
-      backgroundColor: LiquidColors.indigo,
-      foregroundColor: Colors.white,
-      icon: const Icon(Icons.file_download_outlined),
-      label: const Text(
-        'Import',
-        style: TextStyle(fontWeight: FontWeight.w700),
-      ),
-    );
+    return _PremiumImportFab(onPressed: _importFlow);
   }
 
   Future<void> _importFlow() async {
@@ -592,17 +619,22 @@ class HomeDashboardState extends State<HomeDashboard> {
       for (final pf in result.files) {
         final path = pf.path;
         if (path != null && await File(path).exists()) {
-          items.add(PickedMedia(
-            File(path),
-            identifier: pf.identifier,
-            originalName: pf.name,
-            origin: 'file',
-          ));
+          items.add(
+            PickedMedia(
+              File(path),
+              identifier: pf.identifier,
+              originalName: pf.name,
+              origin: 'file',
+            ),
+          );
         }
       }
     } catch (e) {
       if (mounted) {
-        FlushBarHelper.flushBarErrorMessage('Couldn\'t read files: $e', context);
+        FlushBarHelper.flushBarErrorMessage(
+          'Couldn\'t read files: $e',
+          context,
+        );
       }
       return;
     } finally {
@@ -623,7 +655,8 @@ class HomeDashboardState extends State<HomeDashboard> {
       builder: (_) => Center(
         child: AppLoader(
           size: 56,
-          label: 'Encrypting ${items.length} file${items.length == 1 ? '' : 's'}…',
+          label:
+              'Encrypting ${items.length} file${items.length == 1 ? '' : 's'}…',
         ),
       ),
     );
@@ -650,17 +683,17 @@ class HomeDashboardState extends State<HomeDashboard> {
         '${res.added} file${res.added == 1 ? '' : 's'} added to ${category ?? 'your vault'}',
         context,
       );
-      unawaited(NotificationService.instance.addEvent(
-        title: 'Files added to your vault',
-        body: '${res.added} file${res.added == 1 ? '' : 's'} were encrypted and added.',
-        kind: 'info',
-      ));
+      unawaited(
+        NotificationService.instance.addEvent(
+          title: 'Files added to your vault',
+          body:
+              '${res.added} file${res.added == 1 ? '' : 's'} were encrypted and added.',
+          kind: 'info',
+        ),
+      );
       AppRating.recordImportAndMaybeAsk();
     } else {
-      FlushBarHelper.flushBarErrorMessage(
-        'Nothing was imported',
-        context,
-      );
+      FlushBarHelper.flushBarErrorMessage('Nothing was imported', context);
     }
   }
 
@@ -697,8 +730,8 @@ class HomeDashboardState extends State<HomeDashboard> {
                 child: Icon(
                   isDefault
                       ? (cat.type == 'favorite'
-                          ? Icons.favorite_rounded
-                          : MediaHelper.getMediaIcon(cat.type!))
+                            ? Icons.favorite_rounded
+                            : MediaHelper.getMediaIcon(cat.type!))
                       : Icons.folder_rounded,
                   color: color,
                   size: 20,
@@ -814,5 +847,117 @@ class HomeDashboardState extends State<HomeDashboard> {
       ),
     );
   }
+}
 
+class _PremiumImportFab extends StatefulWidget {
+  final VoidCallback onPressed;
+
+  const _PremiumImportFab({required this.onPressed});
+
+  @override
+  State<_PremiumImportFab> createState() => _PremiumImportFabState();
+}
+
+class _PremiumImportFabState extends State<_PremiumImportFab>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  );
+  bool _reducedMotion = false;
+  bool _pressed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse.repeat(reverse: true);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final reducedMotion = MediaQuery.of(context).disableAnimations;
+    if (reducedMotion == _reducedMotion) return;
+    _reducedMotion = reducedMotion;
+    if (_reducedMotion) {
+      _pulse.stop();
+      _pulse.value = 0;
+    } else if (!_pulse.isAnimating) {
+      _pulse.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Import photos, videos, or files',
+      child: Semantics(
+        button: true,
+        label: 'Import photos, videos, or files into your vault',
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, child) {
+            final t = _reducedMotion ? 0.0 : _pulse.value;
+            final scale = _reducedMotion
+                ? 1.0
+                : (_pressed ? 0.97 : 1 + 0.012 * t);
+            return Transform.scale(
+              scale: scale,
+              child: Material(
+                color: Colors.transparent,
+                child: Ink(
+                  height: 62,
+                  decoration: BoxDecoration(
+                    gradient: LiquidColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(23),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: InkWell(
+                    onTap: widget.onPressed,
+                    onHighlightChanged: (pressed) {
+                      if (mounted) setState(() => _pressed = pressed);
+                    },
+                    borderRadius: BorderRadius.circular(23),
+                    child: child,
+                  ),
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 15),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.add_to_photos_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

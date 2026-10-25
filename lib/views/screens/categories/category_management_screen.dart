@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:video_player_app/utils/category_service.dart';
+import 'package:video_player_app/utils/category_lock_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
 
 /// Unified category management: default (built-in) and custom categories live
@@ -25,6 +27,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   static const List<String> _reserved = ['All', 'Favorites'];
 
   List<CategoryInfo> _items = [];
+  Set<String> _locked = {};
   bool _loading = true;
 
   @override
@@ -35,9 +38,11 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
 
   Future<void> _reload() async {
     final list = await CategoryService.instance.load();
+    final locked = await CategoryLockService.instance.lockedKeys();
     if (!mounted) return;
     setState(() {
       _items = list;
+      _locked = locked;
       _loading = false;
     });
   }
@@ -105,6 +110,27 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   Future<void> _toggleHidden(CategoryInfo item) async {
     HapticFeedback.selectionClick();
     await CategoryService.instance.setHidden(item.key, !item.hidden);
+    await _reload();
+  }
+
+  Future<void> _toggleLock(CategoryInfo item) async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasGate =
+        (prefs.getBool('appLock') ?? false) ||
+        (prefs.getBool('biometric') ?? false) ||
+        (prefs.getBool('biometric_face') ?? false);
+    if (!hasGate) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Set up a PIN or biometrics in Security first.'),
+          ),
+        );
+      }
+      return;
+    }
+    final lock = !_locked.contains(item.key.toLowerCase());
+    await CategoryLockService.instance.setLocked(item.key, lock);
     await _reload();
   }
 
@@ -189,8 +215,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
             return AlertDialog(
               backgroundColor: LiquidColors.backgroundLight,
               surfaceTintColor: Colors.transparent,
-              shape:
-                  const RoundedRectangleBorder(borderRadius: AppRadius.rLg),
+              shape: const RoundedRectangleBorder(borderRadius: AppRadius.rLg),
               title: Text(
                 originalName == null ? 'New category' : 'Rename category',
                 style: TextStyle(
@@ -216,16 +241,17 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                   errorText: errorText,
                   counterStyle: TextStyle(color: LiquidColors.textTertiary),
                   filled: true,
-                  fillColor:
-                      LiquidColors.backgroundDeep.withValues(alpha: 0.6),
+                  fillColor: LiquidColors.backgroundDeep.withValues(alpha: 0.6),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: AppRadius.rMd,
                     borderSide: BorderSide(color: LiquidColors.cardBorder),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: AppRadius.rMd,
-                    borderSide:
-                        BorderSide(color: LiquidColors.indigo, width: 1.5),
+                    borderSide: BorderSide(
+                      color: LiquidColors.indigo,
+                      width: 1.5,
+                    ),
                   ),
                   errorBorder: OutlineInputBorder(
                     borderRadius: AppRadius.rMd,
@@ -233,8 +259,10 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                   ),
                   focusedErrorBorder: OutlineInputBorder(
                     borderRadius: AppRadius.rMd,
-                    borderSide:
-                        BorderSide(color: LiquidColors.error, width: 1.5),
+                    borderSide: BorderSide(
+                      color: LiquidColors.error,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -296,9 +324,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
         ],
       ),
       body: _loading
-          ? Center(
-              child: CircularProgressIndicator(color: LiquidColors.indigo),
-            )
+          ? Center(child: CircularProgressIndicator(color: LiquidColors.indigo))
           : _buildList(),
       bottomNavigationBar: _loading
           ? null
@@ -331,11 +357,9 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
       itemCount: _items.length,
-      onReorder: _onReorder,
-      proxyDecorator: (child, index, animation) => Material(
-        color: Colors.transparent,
-        child: child,
-      ),
+      onReorderItem: _onReorder,
+      proxyDecorator: (child, index, animation) =>
+          Material(color: Colors.transparent, child: child),
       itemBuilder: (context, index) {
         final item = _items[index];
         return Padding(
@@ -347,6 +371,8 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
             icon: _iconFor(item),
             onRename: () => _renameCategory(item),
             onToggleHidden: () => _toggleHidden(item),
+            onToggleLock: () => _toggleLock(item),
+            isLocked: _locked.contains(item.key.toLowerCase()),
             onDelete: item.isDefault ? null : () => _deleteCategory(item),
           ),
         );
@@ -361,6 +387,8 @@ class _CategoryTile extends StatelessWidget {
   final IconData icon;
   final VoidCallback onRename;
   final VoidCallback onToggleHidden;
+  final VoidCallback onToggleLock;
+  final bool isLocked;
   final VoidCallback? onDelete;
 
   const _CategoryTile({
@@ -369,6 +397,8 @@ class _CategoryTile extends StatelessWidget {
     required this.icon,
     required this.onRename,
     required this.onToggleHidden,
+    required this.onToggleLock,
+    required this.isLocked,
     this.onDelete,
   });
 
@@ -439,6 +469,12 @@ class _CategoryTile extends StatelessWidget {
             icon: Icons.edit_rounded,
             color: LiquidColors.textSecondary,
             onPressed: onRename,
+          ),
+          _action(
+            tooltip: isLocked ? 'Unlock category' : 'Lock category',
+            icon: isLocked ? Icons.lock_rounded : Icons.lock_open_rounded,
+            color: isLocked ? LiquidColors.indigo : LiquidColors.textSecondary,
+            onPressed: onToggleLock,
           ),
           _action(
             tooltip: item.hidden ? 'Show' : 'Hide',
