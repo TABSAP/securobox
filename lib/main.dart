@@ -51,6 +51,7 @@ void main() async {
     } catch (_) {}
   }());
 
+  // Self test vault crypto
   VaultCrypto.lastSelfTestResult = await VaultCrypto.instance.selfTest();
 
   unawaited(VaultCrypto.instance.wipeAllTempCache());

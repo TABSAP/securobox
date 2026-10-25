@@ -181,6 +181,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
             ),
         ],
       ),
+      child: Icon(MediaHelper.getMediaIcon(_m.type), color: Colors.white, size: 24),
     );
   }
 

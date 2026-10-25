@@ -69,6 +69,10 @@ class HomeScreenState extends State<HomeScreen>
 
   static const String _favoritesFilter = 'Favorites';
 
+  /// Pseudo-category for the Favorites filter — kept out of [_allCategoriesForFilter]
+  /// so it never appears as an assignable folder in the Change Category menu.
+  static const String _favoritesFilter = 'Favorites';
+
   List<String> get _allCategoriesForFilter {
     final base = MediaHelper.mediaCategories;
     if (_customCategories.isEmpty) return base;
