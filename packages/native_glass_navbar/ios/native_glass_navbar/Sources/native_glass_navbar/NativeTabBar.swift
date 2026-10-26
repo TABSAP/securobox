@@ -1,0 +1,472 @@
+import Flutter
+import UIKit
+
+class NativeTabBarFactory: NSObject, FlutterPlatformViewFactory {
+	private var messenger: FlutterBinaryMessenger
+
+	init(messenger: FlutterBinaryMessenger) {
+		self.messenger = messenger
+		super.init()
+	}
+
+	func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?)
+		-> FlutterPlatformView
+	{
+		return NativeTabBarPlatformView(
+			frame: frame,
+			viewId: viewId,
+			args: args,
+			messenger: messenger
+		)
+	}
+
+	func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
+		return FlutterStandardMessageCodec.sharedInstance()
+	}
+}
+
+class NativeTabBarPlatformView: NSObject, FlutterPlatformView {
+	private let controller: LiquidGlassTabBarController
+
+	init(frame: CGRect, viewId: Int64, args: Any?, messenger: FlutterBinaryMessenger) {
+		self.controller = LiquidGlassTabBarController(
+			viewId: viewId,
+			messenger: messenger,
+			args: args
+		)
+		super.init()
+	}
+
+	func view() -> UIView {
+		return controller.view
+	}
+}
+
+struct NativeTabConfig: Equatable {
+	let label: String
+	let symbol: String
+	let selectedSymbol: String
+	let badgeValue: String?
+
+	init(from dict: [String: Any]) {
+		self.label = dict["label"] as? String ?? ""
+		self.symbol = dict["symbol"] as? String ?? "questionmark"
+		self.selectedSymbol = dict["selectedSymbol"] as? String ?? self.symbol
+		self.badgeValue = dict["badgeValue"] as? String
+	}
+}
+
+struct TabBarConfig: Equatable {
+	var tabs: [NativeTabConfig] = []
+	var actionButtonSymbol: String = ""  // Default to empty
+	var tintColor: UIColor = .systemBlue
+	var tintColorARGB: Int = 0xFF007AFF
+	var selectedIndex: Int = 0
+	var isDark: Bool = false
+
+	var standardItemCount: Int {
+		return tabs.count
+	}
+
+	var hasActionButton: Bool {
+		return !actionButtonSymbol.isEmpty
+	}
+
+	init(from dict: [String: Any]?) {
+		guard let dict = dict else { return }
+		if let tabs = dict["tabs"] as? [[String: Any]] {
+			self.tabs = tabs.map(NativeTabConfig.init)
+		}
+
+		if let action = dict["actionButtonSymbol"] as? String {
+			self.actionButtonSymbol = action
+		}
+
+		if let colorInt = dict["tintColor"] as? NSNumber {
+			self.tintColorARGB = colorInt.intValue
+			self.tintColor = TabBarConfig.uiColorFromARGB(tintColorARGB)
+		}
+		if let idx = dict["selectedIndex"] as? Int {
+			self.selectedIndex = idx
+		}
+		if let isDark = dict["isDark"] as? Bool {
+			self.isDark = isDark
+		}
+	}
+
+	func structuralChange(from other: TabBarConfig) -> Bool {
+		return standardItemCount != other.standardItemCount
+			|| hasActionButton != other.hasActionButton
+	}
+
+	static func == (lhs: TabBarConfig, rhs: TabBarConfig) -> Bool {
+		return lhs.tabs == rhs.tabs
+			&& lhs.actionButtonSymbol == rhs.actionButtonSymbol
+			&& lhs.tintColorARGB == rhs.tintColorARGB
+			&& lhs.selectedIndex == rhs.selectedIndex
+			&& lhs.isDark == rhs.isDark
+	}
+
+	private static func uiColorFromARGB(_ argb: Int) -> UIColor {
+		let a = CGFloat((argb >> 24) & 0xFF) / 255.0
+		let r = CGFloat((argb >> 16) & 0xFF) / 255.0
+		let g = CGFloat((argb >> 8) & 0xFF) / 255.0
+		let b = CGFloat(argb & 0xFF) / 255.0
+		return UIColor(red: r, green: g, blue: b, alpha: a)
+	}
+}
+
+class LiquidGlassTabBarController: UITabBarController, UITabBarControllerDelegate {
+	private static let actionTabIdentifier = "native_glass_navbar.action"
+
+	private let channel: FlutterMethodChannel
+	private var config: TabBarConfig
+	private var currentAppearanceIsDark: Bool
+	private var currentTintColorARGB: Int
+
+	init(viewId: Int64, messenger: FlutterBinaryMessenger, args: Any?) {
+		self.channel = FlutterMethodChannel(
+			name: "NativeTabBar_\(viewId)",
+			binaryMessenger: messenger
+		)
+		self.config = TabBarConfig(from: args as? [String: Any])
+		self.currentAppearanceIsDark = config.isDark
+		self.currentTintColorARGB = config.tintColorARGB
+		super.init(nibName: nil, bundle: nil)
+	}
+
+	required init?(coder: NSCoder) {
+		fatalError("init(coder:) has not been implemented")
+	}
+
+	override func viewDidLoad() {
+		super.viewDidLoad()
+
+		self.view.backgroundColor = .clear
+		self.view.isOpaque = false
+		self.delegate = self
+		overrideUserInterfaceStyle = config.isDark ? .dark : .light
+
+		configureAppearance()
+		performFullRebuild()
+
+		channel.setMethodCallHandler { [weak self] call, result in
+			self?.handle(call, result: result)
+		}
+	}
+
+	override func viewDidLayoutSubviews() {
+		super.viewDidLayoutSubviews()
+		self.view.backgroundColor = .clear
+	}
+
+	private func configureAppearance() {
+		let appearance = UITabBarAppearance()
+		appearance.configureWithDefaultBackground()
+		appearance.backgroundColor = .clear
+		appearance.shadowColor = .clear
+		appearance.backgroundEffect = UIBlurEffect(style: config.isDark ? .dark : .light)
+
+		let itemAppearance = UITabBarItemAppearance()
+		itemAppearance.normal.iconColor = .systemGray
+		itemAppearance.selected.iconColor = config.tintColor
+
+		appearance.stackedLayoutAppearance = itemAppearance
+		appearance.inlineLayoutAppearance = itemAppearance
+		appearance.compactInlineLayoutAppearance = itemAppearance
+
+		tabBar.standardAppearance = appearance
+		if #available(iOS 15.0, *) {
+			tabBar.scrollEdgeAppearance = appearance
+		}
+
+		tabBar.isTranslucent = true
+		tabBar.tintColor = config.tintColor
+	}
+
+	private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+		if call.method == "update", let dict = call.arguments as? [String: Any] {
+			let newConfig = TabBarConfig(from: dict)
+			let oldConfig = self.config
+
+			if newConfig == oldConfig {
+				result(nil)
+				return
+			}
+
+			if newConfig.structuralChange(from: oldConfig) {
+				self.config = newConfig
+				performFullRebuild()  // Destructive
+			} else {
+				// 2. Light Updates (In-Place)
+				self.config = newConfig
+
+				updateTabItemsInPlace(from: oldConfig)
+				updateSelectionAndColors()
+			}
+
+			result(nil)
+		} else {
+			result(FlutterMethodNotImplemented)
+		}
+	}
+
+	private func updateTabItemsInPlace(from oldConfig: TabBarConfig) {
+		#if compiler(>=6.4)
+		if #available(iOS 27.0, *) {
+			updateModernTabsInPlace(from: oldConfig)
+			return
+		}
+		#endif
+
+		guard let vcs = self.viewControllers else { return }
+
+		for i in 0..<config.standardItemCount {
+			guard i < vcs.count, let item = vcs[i].tabBarItem else { continue }
+			let newLabel = label(at: i, in: config)
+			let newSymbol = symbol(at: i, in: config)
+			let newSelectedSymbol = config.tabs[i].selectedSymbol
+
+			if newLabel != label(at: i, in: oldConfig) {
+				item.title = newLabel
+			}
+
+			if newSymbol != symbol(at: i, in: oldConfig) {
+				item.image = resolveSymbol(newSymbol)
+			}
+
+			if newSelectedSymbol != oldConfig.tabs[i].selectedSymbol {
+				item.selectedImage = resolveSymbol(newSelectedSymbol)
+			}
+
+			if config.tabs[i].badgeValue != oldConfig.tabs[i].badgeValue {
+				item.badgeValue = config.tabs[i].badgeValue
+			}
+		}
+
+		if oldConfig.actionButtonSymbol != config.actionButtonSymbol,
+			let actionVC = vcs.first(where: { $0.tabBarItem.tag == 99 })
+		{
+			actionVC.tabBarItem.image = resolveSymbol(config.actionButtonSymbol)
+		}
+	}
+
+	#if compiler(>=6.4)
+	@available(iOS 27.0, *)
+	private func updateModernTabsInPlace(from oldConfig: TabBarConfig) {
+		performBatchUpdates {
+			for i in 0..<config.standardItemCount {
+				guard let tab = tab(forIdentifier: tabIdentifier(at: i)) else { continue }
+				let newLabel = label(at: i, in: config)
+				let newSymbol = symbol(at: i, in: config)
+
+				if newLabel != label(at: i, in: oldConfig) {
+					tab.title = newLabel
+				}
+
+				if newSymbol != symbol(at: i, in: oldConfig) {
+					tab.image = resolveSymbol(newSymbol)
+				}
+
+				if config.tabs[i].selectedSymbol != oldConfig.tabs[i].selectedSymbol {
+					tab.selectedImage = resolveSymbol(config.tabs[i].selectedSymbol)
+				}
+
+				if config.tabs[i].badgeValue != oldConfig.tabs[i].badgeValue {
+					tab.badgeValue = config.tabs[i].badgeValue
+				}
+			}
+
+			if oldConfig.actionButtonSymbol != config.actionButtonSymbol,
+				let actionTab = tab(forIdentifier: Self.actionTabIdentifier)
+			{
+				actionTab.image = resolveSymbol(config.actionButtonSymbol)
+			}
+		}
+	}
+	#endif
+
+	private func label(at index: Int, in config: TabBarConfig) -> String {
+		return config.tabs[index].label
+	}
+
+	private func symbol(at index: Int, in config: TabBarConfig) -> String {
+		return config.tabs[index].symbol
+	}
+
+	private func tabIdentifier(at index: Int) -> String {
+		return "native_glass_navbar.tab.\(index)"
+	}
+
+	private func performFullRebuild() {
+		#if compiler(>=6.4)
+		if #available(iOS 27.0, *) {
+			performModernFullRebuild()
+			return
+		}
+		#endif
+
+		var controllers: [UIViewController] = []
+		let count = config.standardItemCount
+
+		// Standard Tabs
+		for i in 0..<count {
+			let dummyVC = UIViewController()
+			dummyVC.view.backgroundColor = .clear
+
+			let item = UITabBarItem(
+				title: label(at: i, in: config),
+				image: resolveSymbol(symbol(at: i, in: config)),
+				selectedImage: resolveSymbol(config.tabs[i].selectedSymbol)
+			)
+			item.tag = i
+			item.badgeValue = config.tabs[i].badgeValue
+			dummyVC.tabBarItem = item
+			controllers.append(dummyVC)
+		}
+
+		// Action Button
+		if !config.actionButtonSymbol.isEmpty {
+			let actionVC = UIViewController()
+			actionVC.view.backgroundColor = .clear
+
+			let item = UITabBarItem(tabBarSystemItem: .search, tag: 99)
+			item.image = resolveSymbol(config.actionButtonSymbol)
+
+			actionVC.tabBarItem = item
+			controllers.append(actionVC)
+		}
+
+		self.setViewControllers(controllers, animated: false)
+		updateSelectionAndColors()
+	}
+
+	#if compiler(>=6.4)
+	@available(iOS 27.0, *)
+	private func performModernFullRebuild() {
+		var newTabs: [UITab] = []
+
+		for i in 0..<config.standardItemCount {
+			let tab = UITab(
+				title: label(at: i, in: config),
+				image: resolveSymbol(symbol(at: i, in: config)),
+				identifier: tabIdentifier(at: i)
+			) { _ in
+				let viewController = UIViewController()
+				viewController.view.backgroundColor = .clear
+				return viewController
+			}
+			tab.selectedImage = resolveSymbol(config.tabs[i].selectedSymbol)
+			tab.badgeValue = config.tabs[i].badgeValue
+			tab.userInfo = i
+			newTabs.append(tab)
+		}
+
+		if config.hasActionButton {
+			let actionTab = UITab(
+				title: "",
+				image: resolveSymbol(config.actionButtonSymbol),
+				identifier: Self.actionTabIdentifier
+			) { _ in
+				let viewController = UIViewController()
+				viewController.view.backgroundColor = .clear
+				return viewController
+			}
+			actionTab.preferredPlacement = .pinned
+			newTabs.append(actionTab)
+		}
+
+		setTabs(newTabs, animated: false)
+		prominentTabIdentifier = config.hasActionButton ? Self.actionTabIdentifier : nil
+		updateSelectionAndColors()
+	}
+	#endif
+
+	private func updateSelectionAndColors() {
+		let needsAppearanceUpdate =
+			currentTintColorARGB != config.tintColorARGB
+			|| currentAppearanceIsDark != config.isDark
+
+		if needsAppearanceUpdate {
+			tabBar.tintColor = config.tintColor
+			currentTintColorARGB = config.tintColorARGB
+			currentAppearanceIsDark = config.isDark
+			overrideUserInterfaceStyle = config.isDark ? .dark : .light
+			configureAppearance()
+		}
+
+		#if compiler(>=6.4)
+		if #available(iOS 27.0, *) {
+			guard config.selectedIndex >= 0,
+				config.selectedIndex < config.standardItemCount,
+				let requestedTab = tab(forIdentifier: tabIdentifier(at: config.selectedIndex))
+			else { return }
+
+			if selectedTab?.identifier != requestedTab.identifier {
+				selectedTab = requestedTab
+			}
+			return
+		}
+		#endif
+
+		if self.selectedIndex != config.selectedIndex {
+			if let vcs = self.viewControllers,
+				config.selectedIndex >= 0,
+				config.selectedIndex < vcs.count,
+				vcs[config.selectedIndex].tabBarItem.tag != 99
+			{
+				self.selectedIndex = config.selectedIndex
+			}
+		}
+	}
+
+    private func resolveSymbol(_ name: String) -> UIImage? {
+        return UIImage(systemName: name) ?? UIImage(named: name)
+    }
+
+	// MARK: - Delegate
+	func tabBarController(
+		_ tabBarController: UITabBarController,
+		shouldSelect viewController: UIViewController
+	) -> Bool {
+		if viewController.tabBarItem.tag == 99 {
+			channel.invokeMethod("actionButtonPressed", arguments: nil)
+			return false
+		}
+		return true
+	}
+
+	func tabBarController(
+		_ tabBarController: UITabBarController,
+		didSelect viewController: UIViewController
+	) {
+		let tag = viewController.tabBarItem.tag
+		if tag != 99 {
+			config.selectedIndex = tag
+			channel.invokeMethod("valueChanged", arguments: ["index": tag])
+		}
+	}
+
+	@available(iOS 18.0, *)
+	func tabBarController(
+		_ tabBarController: UITabBarController,
+		shouldSelectTab tab: UITab
+	) -> Bool {
+		if tab.identifier == Self.actionTabIdentifier {
+			channel.invokeMethod("actionButtonPressed", arguments: nil)
+			return false
+		}
+		return true
+	}
+
+	@available(iOS 18.0, *)
+	func tabBarController(
+		_ tabBarController: UITabBarController,
+		didSelectTab selectedTab: UITab,
+		previousTab: UITab?
+	) {
+		guard let index = selectedTab.userInfo as? Int else { return }
+		config.selectedIndex = index
+		channel.invokeMethod("valueChanged", arguments: ["index": index])
+	}
+}

@@ -754,10 +754,9 @@ packages:
   native_glass_navbar:
     dependency: "direct main"
     description:
-      name: native_glass_navbar
-      sha256: "25631e3a1c96fab5de385175c5413bcf77c8b4c2101eb4f2d95c6d6668141b93"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/native_glass_navbar"
+      relative: true
+    source: path
     version: "1.2.0"
   nested:
     dependency: transitive

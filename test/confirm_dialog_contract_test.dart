@@ -76,4 +76,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(confirmed, isFalse);
   });
+
+  testWidgets('renders Unlock & Restore with single-line maxLines and confirms', (tester) async {
+    var confirmed = false;
+    await pump(tester, Builder(builder: (ctx) => ElevatedButton(
+      onPressed: () async {
+        await showDialog<void>(
+          context: ctx,
+          builder: (_) => AppConfirmDialog(
+            icon: Icons.lock_open_rounded,
+            accent: Colors.indigo,
+            title: 'Unlock this file?',
+            message: 'File will be restored.',
+            confirmLabel: 'Unlock & Restore',
+            onConfirm: () => confirmed = true,
+          ),
+        );
+      },
+      child: const Text('open'),
+    )));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    final textWidget = tester.widget<Text>(find.text('Unlock & Restore'));
+    expect(textWidget.maxLines, 1);
+
+    await tester.tap(find.text('Unlock & Restore'));
+    await tester.pumpAndSettle();
+    expect(confirmed, isTrue);
+  });
 }

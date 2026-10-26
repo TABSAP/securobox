@@ -181,7 +181,6 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
             ),
         ],
       ),
-      child: Icon(MediaHelper.getMediaIcon(_m.type), color: Colors.white, size: 24),
     );
   }
 
@@ -320,7 +319,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
         _menuItem(
           'gallery',
           Icons.lock_open_rounded,
-          _m.inGallery ? 'Remove from SecuroBox' : 'Unlock & restore',
+          _m.inGallery ? 'Remove from SecuroBox' : 'Unlock & Restore',
           LiquidColors.indigo,
         ),
         const PopupMenuDivider(height: 6),

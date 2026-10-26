@@ -17,6 +17,7 @@ import 'package:video_player_app/utils/pin_crypto.dart';
 import 'package:video_player_app/video_player_screen/video_player_screen.dart';
 import 'package:video_player_app/widgets/decrypt_gate.dart';
 import 'package:video_player_app/widgets/image_viewer_screen.dart';
+import 'package:video_player_app/widgets/liquid_bottom_nav.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 
 final MediaService _mediaService = MediaService();
@@ -129,14 +130,20 @@ Future<void> openVaultMedia(
     }
   }
 
-  await Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (_) => DecryptGate(
-        source: media.path,
-        encrypted: media.encrypted,
-        builder: (_, path) => viewerFor(path),
+  final hideBottomNav = media.type.toLowerCase() == 'video';
+  if (hideBottomNav) AppNav.bottomBarVisible.value = false;
+  try {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DecryptGate(
+          source: media.path,
+          encrypted: media.encrypted,
+          builder: (_, path) => viewerFor(path),
+        ),
       ),
-    ),
-  );
+    );
+  } finally {
+    if (hideBottomNav) AppNav.bottomBarVisible.value = true;
+  }
   onChanged?.call();
 }

@@ -61,13 +61,10 @@ class HomeScreenState extends State<HomeScreen>
   final FocusNode _searchFocusNode = FocusNode();
   Timer? _searchDebounce;
   String _selectedCategory = "All";
-  String _sortMode = 'newest';
 
   bool _selectionMode = false;
   bool _categoryGatePending = false;
   final Set<String> _selectedIds = {};
-
-  static const String _favoritesFilter = 'Favorites';
 
   /// Pseudo-category for the Favorites filter — kept out of [_allCategoriesForFilter]
   /// so it never appears as an assignable folder in the Change Category menu.
@@ -272,16 +269,9 @@ class HomeScreenState extends State<HomeScreen>
           }
         }
       }
-      _filteredMedia.sort((a, b) {
-        switch (_sortMode) {
-          case 'oldest':
-            return (int.tryParse(a.id) ?? 0).compareTo(int.tryParse(b.id) ?? 0);
-          case 'name':
-            return a.title.toLowerCase().compareTo(b.title.toLowerCase());
-          default:
-            return (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0);
-        }
-      });
+      _filteredMedia.sort(
+        (a, b) => (int.tryParse(b.id) ?? 0).compareTo(int.tryParse(a.id) ?? 0),
+      );
     });
   }
 
@@ -1126,7 +1116,7 @@ class HomeScreenState extends State<HomeScreen>
                   'will be deleted and it will no longer appear in the app.'
             : '"${media.title}" will be restored to where it came from on your '
                   'device, then removed from SecuroBox.',
-        confirmLabel: 'Unlock & restore',
+        confirmLabel: 'Unlock & Restore',
         onConfirm: () => confirmed = true,
       ),
     );
@@ -1210,7 +1200,13 @@ class HomeScreenState extends State<HomeScreen>
                 const SizedBox(width: 12),
               ],
       ),
-      floatingActionButton: _selectionMode ? null : _buildAddFab(),
+      floatingActionButton: _selectionMode
+          ? null
+          : Padding(
+              // Lift this nested-screen action above MainScreen's glass bar.
+              padding: const EdgeInsets.only(bottom: 88),
+              child: _buildAddFab(),
+            ),
       body: LiquidBackground(
         child: Column(
           children: [
@@ -1480,42 +1476,6 @@ class HomeScreenState extends State<HomeScreen>
               fontSize: 11,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.3,
-            ),
-          ),
-          PopupMenuButton<String>(
-            tooltip: 'Sort library',
-            initialValue: _sortMode,
-            onSelected: (value) {
-              HapticFeedback.selectionClick();
-              setState(() => _sortMode = value);
-              _filterMedia();
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'newest', child: Text('Newest first')),
-              PopupMenuItem(value: 'oldest', child: Text('Oldest first')),
-              PopupMenuItem(value: 'name', child: Text('Name A–Z')),
-            ],
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.sort_rounded,
-                    size: 15,
-                    color: LiquidColors.accentBlue,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Sort',
-                    style: TextStyle(
-                      color: LiquidColors.accentBlue,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
           AnimatedSwitcher(

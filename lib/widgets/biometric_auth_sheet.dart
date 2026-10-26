@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:video_player_app/utils/biometric_policy.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -196,15 +197,9 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     HapticFeedback.lightImpact();
     SessionManager.instance.beginTrustedInteraction();
     try {
-      final ok = await _auth.authenticate(
-        localizedReason:
-            widget.localizedReason ?? 'Verify your identity to continue',
-        biometricOnly: true,
-        // Allow Android's passive modalities (such as enrolled face unlock)
-        // to complete without an extra confirmation tap. The OS still owns
-        // verification and reports success only after an enrolled biometric.
-        sensitiveTransaction: false,
-        persistAcrossBackgrounding: true,
+      final ok = await BiometricPolicy.authenticate(
+        _auth,
+        reason: widget.localizedReason ?? 'Verify your identity to continue',
       );
       if (!mounted) return;
       if (ok) {
@@ -214,6 +209,8 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
           'Biometric verification didn’t match. Try again or use your PIN.',
         );
       }
+    } on UnsupportedBiometricModality catch (e) {
+      if (mounted) _toFailed(e.message);
     } on LocalAuthException catch (e) {
       if (!mounted) return;
       if (e.code == LocalAuthExceptionCode.userRequestedFallback) {

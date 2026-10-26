@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/security_settings/about_screen.dart';
 import 'package:video_player_app/security_settings/security_setting.dart';
 import 'package:video_player_app/security_settings/safety_center_screen.dart';
-import 'package:video_player_app/security_settings/guest_view_screen.dart';
 import 'package:video_player_app/security_settings/auto_import_screen.dart';
 import 'package:video_player_app/security_settings/private_locker_screen.dart';
 import 'package:video_player_app/security_settings/support_screen.dart';
@@ -97,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context.contentInset(phone: 16),
             AppSpace.sm,
             context.contentInset(phone: 16),
-            AppSpace.xl,
+            MediaQuery.paddingOf(context).bottom + 100,
           ),
           children: [
             _statusHeader(),
@@ -106,15 +105,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const AppSectionHeader(label: 'Security & privacy'),
             const SizedBox(height: AppSpace.sm),
             _group([
-              _tile(
-                icon: Icons.visibility_rounded,
-                color: LiquidColors.indigo,
-                title: 'Guest View',
-                subtitle: 'Show selected files without exposing your library',
-                trailing: _chevron(),
-                onTap: () => _open(const GuestViewScreen()),
-              ),
-              _divider(),
               _tile(
                 icon: Icons.shield_moon_rounded,
                 color: LiquidColors.indigo,

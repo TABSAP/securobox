@@ -1,3 +1,4 @@
+import 'package:video_player_app/utils/biometric_policy.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -270,17 +271,18 @@ class MediaService {
     }
   }
 
-  Future<bool> authenticateUser({String reason = 'Authenticate to access locked media'}) async {
+  Future<bool> authenticateUser({
+    String reason = 'Authenticate to access locked media',
+  }) async {
     SessionManager.instance.beginTrustedInteraction();
     try {
       final bool canCheck = await _localAuth.canCheckBiometrics;
       final bool supported = await _localAuth.isDeviceSupported();
       if (!canCheck && !supported) return false;
-      return await _localAuth.authenticate(
-        localizedReason: reason,
-        biometricOnly: true,
+      return await BiometricPolicy.authenticate(
+        _localAuth,
+        reason: reason,
         sensitiveTransaction: true,
-        persistAcrossBackgrounding: true,
       );
     } catch (e) {
       return false;

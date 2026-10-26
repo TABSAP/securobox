@@ -79,6 +79,12 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   Future<void> refresh() => _load();
 
+  void resetToTop() {
+    if (_searchController.text.isNotEmpty) {
+      _searchController.clear();
+    }
+  }
+
   Future<void> _load() async {
     final media = await _mediaService.loadMedia();
     final cats = await CategoryService.instance.load();
@@ -312,10 +318,10 @@ class HomeDashboardState extends State<HomeDashboard> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      // The parent glass bar overlays this nested tab. Lift the FAB above its
+      // hit area while leaving the shared navigation itself unchanged.
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.paddingOf(context).bottom - 10,
-        ),
+        padding: const EdgeInsets.only(bottom: 88),
         child: _importFab(),
       ),
       body: _body(),
@@ -849,111 +855,44 @@ class HomeDashboardState extends State<HomeDashboard> {
   }
 }
 
-class _PremiumImportFab extends StatefulWidget {
+class _PremiumImportFab extends StatelessWidget {
   final VoidCallback onPressed;
 
   const _PremiumImportFab({required this.onPressed});
 
   @override
-  State<_PremiumImportFab> createState() => _PremiumImportFabState();
-}
-
-class _PremiumImportFabState extends State<_PremiumImportFab>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2200),
-  );
-  bool _reducedMotion = false;
-  bool _pressed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse.repeat(reverse: true);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final reducedMotion = MediaQuery.of(context).disableAnimations;
-    if (reducedMotion == _reducedMotion) return;
-    _reducedMotion = reducedMotion;
-    if (_reducedMotion) {
-      _pulse.stop();
-      _pulse.value = 0;
-    } else if (!_pulse.isAnimating) {
-      _pulse.repeat(reverse: true);
-    }
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: 'Import photos, videos, or files',
-      child: Semantics(
-        button: true,
-        label: 'Import photos, videos, or files into your vault',
-        child: AnimatedBuilder(
-          animation: _pulse,
-          builder: (context, child) {
-            final t = _reducedMotion ? 0.0 : _pulse.value;
-            final scale = _reducedMotion
-                ? 1.0
-                : (_pressed ? 0.97 : 1 + 0.012 * t);
-            return Transform.scale(
-              scale: scale,
-              child: Material(
-                color: Colors.transparent,
-                child: Ink(
-                  height: 62,
-                  decoration: BoxDecoration(
-                    gradient: LiquidColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(23),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: InkWell(
-                    onTap: widget.onPressed,
-                    onHighlightChanged: (pressed) {
-                      if (mounted) setState(() => _pressed = pressed);
-                    },
-                    borderRadius: BorderRadius.circular(23),
-                    child: child,
-                  ),
-                ),
+      message: 'Import media',
+      child: Material(
+        color: Colors.transparent,
+        elevation: 6,
+        shadowColor: LiquidColors.indigo.withValues(alpha: 0.35),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Ink(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: LiquidColors.primaryGradient,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(18),
+            splashColor: Colors.white.withValues(alpha: 0.25),
+            highlightColor: Colors.white.withValues(alpha: 0.1),
+            child: const Center(
+              child: Icon(
+                Icons.add_to_photos_rounded,
+                color: Colors.white,
+                size: 26,
               ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(13),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.add_to_photos_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ],
             ),
           ),
         ),

@@ -38,6 +38,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     SessionManager.instance.markActive();
     _startInactivityTimer();
     AppNav.tab.value = 0;
+    AppNav.onTabSelected = _handleTabSelection;
     AppNav.tab.addListener(_onTabRequested);
     // The vault is unlocked once we reach the main screen — release any files
     // that were shared into the app while it was locked. Deferred off the build
@@ -50,16 +51,34 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   void _onTabRequested() {
     final i = AppNav.tab.value;
-    if (!mounted) return;
-    if (i == _selectedIndex) {
-      // Reselecting the active tab returns that tab to its root screen.
-      _navigatorFor(i)?.popUntil((route) => route.isFirst);
-      return;
+    if (_selectedIndex != i) {
+      _handleTabSelection(i);
     }
+  }
+
+  void _handleTabSelection(int i) {
+    if (!mounted || i < 0 || i >= 2) return;
     HapticFeedback.selectionClick();
     SessionManager.instance.markActive();
-    setState(() => _selectedIndex = i);
-    if (i == 0) _libraryKey.currentState?.refresh();
+
+    // Wherever the user is in the app, pop any pushed sub-screens back to root
+    // so they arrive directly at the target root screen (Library or Settings).
+    if (_libraryNavigatorKey.currentState?.canPop() ?? false) {
+      _libraryNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+    }
+    if (_settingsNavigatorKey.currentState?.canPop() ?? false) {
+      _settingsNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+    }
+
+    if (_selectedIndex != i) {
+      setState(() => _selectedIndex = i);
+    }
+    AppNav.tab.value = i;
+
+    if (i == 0) {
+      _libraryKey.currentState?.resetToTop();
+      _libraryKey.currentState?.refresh();
+    }
   }
 
   NavigatorState? _navigatorFor(int index) => index == 0
@@ -71,7 +90,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (navigator?.canPop() ?? false) {
       navigator!.pop();
     } else if (_selectedIndex != 0) {
-      AppNav.tab.value = 0;
+      _handleTabSelection(0);
     } else if (Theme.of(context).platform == TargetPlatform.android) {
       SystemNavigator.pop();
     }
@@ -79,6 +98,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    if (AppNav.onTabSelected == _handleTabSelection) {
+      AppNav.onTabSelected = null;
+    }
     ShareIntake.instance.markLocked();
     SessionManager.instance.shouldLock.removeListener(_onLockRequested);
     AppNav.tab.removeListener(_onTabRequested);
@@ -248,6 +270,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             children: [
               Scaffold(
                 backgroundColor: LiquidColors.backgroundDeep,
+                // Preserve the original glass effect: tab content continues
+                // beneath the translucent shared navigation bar.
                 extendBody: true,
                 body: IndexedStack(
                   index: _selectedIndex,
@@ -274,8 +298,18 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                     ),
                   ],
                 ),
-                bottomNavigationBar: LiquidBottomNav(
-                  selectedIndex: _selectedIndex,
+                bottomNavigationBar: ValueListenableBuilder<bool>(
+                  valueListenable: AppNav.bottomBarVisible,
+                  builder: (context, visible, _) => visible
+                      ? LiquidBottomNav(
+                          key: const ValueKey('main-bottom-nav'),
+                          selectedIndex: _selectedIndex,
+                        )
+                      : const SizedBox(
+                          key: ValueKey('hidden-bottom-nav'),
+                          width: double.infinity,
+                          height: 0,
+                        ),
                 ),
               ),
               if (_showPrivacyShield) const _PrivacyShield(),

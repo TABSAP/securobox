@@ -26,15 +26,19 @@ class AppConfirmDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gradientEnd = accent == LiquidColors.indigo
+        ? LiquidColors.indigoDeep
+        : (Color.lerp(accent, Colors.black, 0.14) ?? accent);
+
     return Dialog(
       backgroundColor: LiquidColors.backgroundMid,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 36, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadius.xl),
         side: BorderSide(color: LiquidColors.cardBorder),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppSpace.lg),
+        padding: const EdgeInsets.fromLTRB(22, 24, 22, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -45,12 +49,16 @@ class AppConfirmDialog extends StatelessWidget {
               builder: (context, v, child) =>
                   Transform.scale(scale: v, child: child),
               child: Container(
-                width: 56,
-                height: 56,
+                width: 58,
+                height: 58,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.22),
+                    width: 1.5,
+                  ),
                 ),
                 child: Icon(icon, color: accent, size: 28),
               ),
@@ -61,8 +69,9 @@ class AppConfirmDialog extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: LiquidColors.textPrimary,
-                fontSize: 18,
+                fontSize: 18.5,
                 fontWeight: FontWeight.w800,
+                letterSpacing: -0.2,
               ),
             ),
             const SizedBox(height: AppSpace.sm),
@@ -79,43 +88,87 @@ class AppConfirmDialog extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: LiquidColors.textSecondary,
-                      backgroundColor: LiquidColors.textPrimary.withValues(
-                        alpha: 0.05,
+                  flex: 2,
+                  child: SizedBox(
+                    height: 48,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        foregroundColor: LiquidColors.textSecondary,
+                        backgroundColor: LiquidColors.textPrimary.withValues(
+                          alpha: 0.06,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: AppRadius.rMd,
+                      child: Text(
+                        cancelLabel,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    child: Text(
-                      cancelLabel,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
-                const SizedBox(width: AppSpace.sm),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      HapticFeedback.mediumImpact();
-                      onConfirm();
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: accent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: const RoundedRectangleBorder(
-                        borderRadius: AppRadius.rMd,
+                  flex: 3,
+                  child: SizedBox(
+                    height: 48,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [accent, gradientEnd],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accent.withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                    ),
-                    child: Text(
-                      confirmLabel,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            HapticFeedback.mediumImpact();
+                            onConfirm();
+                          },
+                          borderRadius: BorderRadius.circular(14),
+                          splashColor: Colors.white.withValues(alpha: 0.25),
+                          highlightColor: Colors.white.withValues(alpha: 0.1),
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  confirmLabel,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.2,
+                                  ),
+                                  maxLines: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

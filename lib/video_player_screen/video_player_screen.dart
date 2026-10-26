@@ -764,10 +764,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       );
     }
 
-    final videoAspectRatio = _videoPlayerController.value.aspectRatio;
-    final screenSize = MediaQuery.of(context).size;
-    final screenAspectRatio = screenSize.width / screenSize.height;
-
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -780,12 +776,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Center(
-            child: AspectRatio(
-              aspectRatio: videoAspectRatio > 0
-                  ? videoAspectRatio
-                  : screenAspectRatio,
-              child: VideoPlayer(_videoPlayerController),
+          Positioned.fill(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox(
+                width: _videoPlayerController.value.size.width,
+                height: _videoPlayerController.value.size.height,
+                child: VideoPlayer(_videoPlayerController),
+              ),
             ),
           ),
 
@@ -798,7 +797,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      // Keep letterbox/system inset areas dark while the video fills the
+      // player viewport, so no white bands flash around a portrait clip.
+      backgroundColor: Colors.black,
       body: _buildVideoPlayerWithOrientationHandler(),
     );
   }
@@ -857,13 +858,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ],
       );
     } else {
-      return SafeArea(
-        top: true,
-        bottom: true,
-        left: true,
-        right: true,
-        child: _buildVideoPlayer(),
-      );
+      return _buildVideoPlayer();
     }
   }
 }

@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  native_glass_navbar: ^1.2.0
   video_player: ^2.10.1
   shared_preferences: ^2.5.4
   local_auth: ^3.0.1
@@ -44,7 +45,6 @@ dependencies:
   # build time (splash codegen); the shipped native plugin is a tiny no-op.
   flutter_native_splash: ^2.4.7
   video_thumbnail: ^0.5.6
-  native_glass_navbar: ^1.2.0
   # Offline document viewing: unzip OOXML (docx/xlsx/pptx) and parse their XML
   # to render content in-app without external apps.
   archive: ^4.0.9
@@ -52,6 +52,12 @@ dependencies:
   # Pinned to 1.8.1: 1.9.0 requires compileSdk 37 (a preview-only Android SDK
   # that isn't cleanly installable), which breaks the Gradle build.
   receive_sharing_intent: 1.8.1
+
+dependency_overrides:
+  # Keep native_glass_navbar's iOS 27 tab APIs behind an SDK compiler guard so
+  # Xcode 26 can still build its legacy native UITabBar path.
+  native_glass_navbar:
+    path: packages/native_glass_navbar
 
 dev_dependencies:
   flutter_test:

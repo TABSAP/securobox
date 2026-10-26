@@ -41,7 +41,7 @@ class SupportScreen extends StatelessWidget {
           context.contentInset(phone: 20),
           8,
           context.contentInset(phone: 20),
-          40,
+          MediaQuery.paddingOf(context).bottom + 100,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

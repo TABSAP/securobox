@@ -272,15 +272,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       );
       if (ok) {
         final prefs = await SharedPreferences.getInstance();
-        final avail = await _localAuth.getAvailableBiometrics();
-        final hasFace = avail.contains(BiometricType.face);
-        final hasFingerprint = avail.contains(BiometricType.fingerprint);
-        if (hasFace && !hasFingerprint) {
-          await prefs.setBool('biometric_face', true);
-        } else {
-          await prefs.setBool('biometric', true);
-          if (hasFace) await prefs.setBool('biometric_face', true);
-        }
+        // Onboarding explicitly offers device biometrics, not a modality.
+        await prefs.setBool('biometric', true);
+        await prefs.setBool('biometric_face', false);
       }
     } catch (_) {}
     _goToApp();
@@ -341,126 +335,135 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _welcome() {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            Container(
-              width: 110,
-              height: 110,
-              decoration: BoxDecoration(
-                gradient: LiquidColors.primaryGradient,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.primaryStart.withValues(alpha: 0.4),
-                    blurRadius: 30,
-                    spreadRadius: 4,
-                  ),
-                ],
-              ),
-              child: Icon(Icons.shield_rounded, color: Colors.white, size: 60),
-            ),
-            const SizedBox(height: 36),
-            Text(
-              'Welcome to SecuroBox',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                color: LiquidColors.textPrimary,
-                letterSpacing: 0.3,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'A private offline vault for your videos, photos, audio and documents. Files stay on your device — protected by a PIN you control.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: LiquidColors.textSecondary,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 36),
-            _featureRow(
-              Icons.lock_outline_rounded,
-              'AES-256 encryption for every file',
-            ),
-            const SizedBox(height: 14),
-            _featureRow(Icons.fingerprint_rounded, 'PIN + biometric unlock'),
-            const SizedBox(height: 14),
-            _featureRow(
-              Icons.cloud_off_rounded,
-              '100% offline — no cloud, no tracking',
-            ),
-            const SizedBox(height: 28),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: LiquidColors.warning.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: LiquidColors.warning.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    color: LiquidColors.warning,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'Set recovery questions after choosing your PIN. They let you reset a forgotten PIN on this device; choose answers others cannot easily guess.',
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    Container(
+                      width: 104,
+                      height: 104,
+                      decoration: BoxDecoration(
+                        gradient: LiquidColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(26),
+                        boxShadow: [
+                          BoxShadow(
+                            color: LiquidColors.primaryStart.withValues(alpha: 0.35),
+                            blurRadius: 28,
+                            spreadRadius: 3,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.shield_rounded, color: Colors.white, size: 56),
+                    ),
+                    const SizedBox(height: 28),
+                    Text(
+                      'Welcome to SecuroBox',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: LiquidColors.textSecondary,
-                        fontSize: 12,
-                        height: 1.4,
+                        fontSize: 27,
+                        fontWeight: FontWeight.w800,
+                        color: LiquidColors.textPrimary,
+                        letterSpacing: 0.3,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Text(
+                      'A private offline vault for your videos, photos, audio and documents. Files stay on your device — protected by a PIN you control.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        color: LiquidColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    _featureRow(
+                      Icons.lock_outline_rounded,
+                      'AES-256 encryption for every file',
+                    ),
+                    const SizedBox(height: 14),
+                    _featureRow(Icons.fingerprint_rounded, 'PIN + biometric unlock'),
+                    const SizedBox(height: 14),
+                    _featureRow(
+                      Icons.cloud_off_rounded,
+                      '100% offline — no cloud, no tracking',
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: LiquidColors.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: LiquidColors.warning.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: LiquidColors.warning,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Set recovery questions after choosing your PIN. They let you reset a forgotten PIN on this device; choose answers others cannot easily guess.',
+                              style: TextStyle(
+                                color: LiquidColors.textSecondary,
+                                fontSize: 12,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          setState(() => _step = _Step.pickLength);
+                          _animateForward();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          backgroundColor: LiquidColors.accentBlue,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Get Started',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  setState(() => _step = _Step.pickLength);
-                  _animateForward();
-                },
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 18),
-                  backgroundColor: LiquidColors.accentBlue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Get Started',
-
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
