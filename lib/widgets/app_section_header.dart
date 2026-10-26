@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
 
 class AppSectionHeader extends StatelessWidget {
@@ -17,6 +16,7 @@ class AppSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(left: AppSpace.xs, bottom: AppSpace.sm),
       child: Row(
@@ -28,7 +28,7 @@ class AppSectionHeader extends StatelessWidget {
                 Text(
                   label.toUpperCase(),
                   style: TextStyle(
-                    color: LiquidColors.textSecondary,
+                    color: colors.onSurface.withValues(alpha: 0.68),
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1.0,
@@ -39,7 +39,7 @@ class AppSectionHeader extends StatelessWidget {
                   Text(
                     caption!,
                     style: TextStyle(
-                      color: LiquidColors.textTertiary,
+                      color: colors.onSurface.withValues(alpha: 0.52),
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500,
                       height: 1.3,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show ImageFilter;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +50,7 @@ class HomeDashboardState extends State<HomeDashboard> {
   List<CategoryInfo> _categories = const [];
   Set<String> _lockedCategoryKeys = const {};
   bool _loading = true;
+  bool _isImportFlowActive = false;
   String _query = '';
   // Items sitting in the Recycle Bin, shown as a badge on the bin icon.
   int _deletedCount = 0;
@@ -285,20 +287,24 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         // Status-bar icons follow the theme (dark on white, light on black).
-        systemOverlayStyle: LiquidColors.systemOverlayStyle,
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         titleSpacing: 20,
         title: Text(
           'Library',
           style: TextStyle(
-            color: LiquidColors.textPrimary,
+            color: theme.colorScheme.onSurface,
             fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
@@ -333,18 +339,24 @@ class HomeDashboardState extends State<HomeDashboard> {
     // The screen chrome renders immediately; a small loader fills the content
     // area while the library loads, so arriving here (e.g. straight after a
     // fingerprint/Face ID unlock) never looks like the app has frozen.
-    return Column(
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        Padding(
-          padding: EdgeInsets.fromLTRB(inset, 0, inset, AppSpace.sm),
-          child: _searchBar(),
-        ),
-        Expanded(
-          child: _loading
-              ? const Center(child: AppLoader(size: 34))
-              : _query.isNotEmpty
-              ? _searchResults(inset)
-              : _dashboardContent(inset),
+        const _LibraryAmbientBackground(),
+        Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(inset, 0, inset, AppSpace.sm),
+              child: _searchBar(),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: AppLoader(size: 34))
+                  : _query.isNotEmpty
+                  ? _searchResults(inset)
+                  : _dashboardContent(inset),
+            ),
+          ],
         ),
       ],
     );
@@ -432,7 +444,12 @@ class HomeDashboardState extends State<HomeDashboard> {
           padding: EdgeInsets.symmetric(horizontal: inset),
           child: Text(
             'No matches for "$_query"',
-            style: TextStyle(color: LiquidColors.textTertiary, fontSize: 14),
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.58),
+              fontSize: 14,
+            ),
           ),
         ),
       );
@@ -466,47 +483,52 @@ class HomeDashboardState extends State<HomeDashboard> {
   }
 
   Widget _searchBar() {
-    return TextField(
-      controller: _searchController,
-      style: TextStyle(color: LiquidColors.textPrimary, fontSize: 15),
-      cursorColor: LiquidColors.indigo,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: LiquidColors.surfaceMuted,
-        hintText: 'Search',
-        hintStyle: TextStyle(color: LiquidColors.textTertiary, fontSize: 15),
-        prefixIcon: Icon(
-          Icons.search_rounded,
-          color: LiquidColors.textTertiary,
-          size: 20,
+    return _LibraryGlassPanel(
+      radius: 18,
+      child: TextField(
+        controller: _searchController,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontSize: 15,
         ),
-        suffixIcon: _query.isEmpty
-            ? null
-            : IconButton(
-                icon: Icon(
-                  Icons.close_rounded,
-                  color: LiquidColors.textTertiary,
-                  size: 20,
+        cursorColor: LiquidColors.indigo,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          isDense: true,
+          filled: false,
+          hintText: 'Search',
+          hintStyle: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.48),
+            fontSize: 15,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.50),
+            size: 20,
+          ),
+          suffixIcon: _query.isEmpty
+              ? null
+              : IconButton(
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.58),
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    _searchController.clear();
+                    FocusScope.of(context).unfocus();
+                  },
                 ),
-                onPressed: () {
-                  _searchController.clear();
-                  FocusScope.of(context).unfocus();
-                },
-              ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: LiquidColors.indigo, width: 1.4),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
         ),
       ),
     );
@@ -520,13 +542,9 @@ class HomeDashboardState extends State<HomeDashboard> {
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadius.lg),
           onTap: () => _openItem(m),
-          child: Container(
+          child: _LibraryGlassPanel(
+            radius: AppRadius.lg,
             padding: const EdgeInsets.all(AppSpace.sm + 2),
-            decoration: BoxDecoration(
-              color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: LiquidColors.cardBorder),
-            ),
             child: Row(
               children: [
                 VaultThumbnail(
@@ -547,7 +565,7 @@ class HomeDashboardState extends State<HomeDashboard> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: LiquidColors.textPrimary,
+                          color: Theme.of(context).colorScheme.onSurface,
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                         ),
@@ -558,7 +576,9 @@ class HomeDashboardState extends State<HomeDashboard> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: LiquidColors.textTertiary,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.52),
                           fontSize: 11.5,
                         ),
                       ),
@@ -567,7 +587,9 @@ class HomeDashboardState extends State<HomeDashboard> {
                 ),
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: LiquidColors.textTertiary,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.48),
                   size: 20,
                 ),
               ],
@@ -611,47 +633,59 @@ class HomeDashboardState extends State<HomeDashboard> {
   }
 
   Future<void> _importFlow() async {
+    if (_isImportFlowActive || !mounted) return;
+    _isImportFlowActive = true;
     HapticFeedback.lightImpact();
-    // 1) Open the device file picker directly.
-    final items = <PickedMedia>[];
-    SessionManager.instance.beginTrustedInteraction();
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        allowMultiple: true,
-        withData: false,
-      );
-      if (result == null) return;
-      for (final pf in result.files) {
-        final path = pf.path;
-        if (path != null && await File(path).exists()) {
-          items.add(
-            PickedMedia(
-              File(path),
-              identifier: pf.identifier,
-              originalName: pf.name,
-              origin: 'file',
-            ),
+      // 1) Open the device file picker directly. Keep the vault session active
+      // while iOS presents its document picker outside the Flutter lifecycle.
+      final items = <PickedMedia>[];
+      SessionManager.instance.beginTrustedInteraction();
+      try {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.any,
+          allowMultiple: true,
+          withData: false,
+        );
+        if (result == null || result.files.isEmpty) {
+          // iOS calls documentPickerWasCancelled and returns null on dismissal.
+          // Treat it as a normal exit and restart the inactivity clock.
+          await SessionManager.instance.markActive();
+          return;
+        }
+        for (final pf in result.files) {
+          final path = pf.path;
+          if (path != null && await File(path).exists()) {
+            items.add(
+              PickedMedia(
+                File(path),
+                identifier: pf.identifier,
+                originalName: pf.name,
+                origin: 'file',
+              ),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          FlushBarHelper.flushBarErrorMessage(
+            'Couldn\'t read files: $e',
+            context,
           );
         }
+        return;
+      } finally {
+        SessionManager.instance.endTrustedInteraction();
       }
-    } catch (e) {
-      if (mounted) {
-        FlushBarHelper.flushBarErrorMessage(
-          'Couldn\'t read files: $e',
-          context,
-        );
-      }
-      return;
+
+      if (items.isEmpty || !mounted) return;
+
+      // 2) Encrypt + import. Each file's category is auto-detected from its
+      // type (video/image/document) — no manual picker.
+      await _runImportInto(items, null);
     } finally {
-      SessionManager.instance.endTrustedInteraction();
+      _isImportFlowActive = false;
     }
-
-    if (items.isEmpty || !mounted) return;
-
-    // 2) Encrypt + import. Each file's category is auto-detected from its type
-    // (video/image/document) — no manual picker.
-    await _runImportInto(items, null);
   }
 
   Future<void> _runImportInto(List<PickedMedia> items, String? category) async {
@@ -707,18 +741,15 @@ class HomeDashboardState extends State<HomeDashboard> {
     final count = _countFor(cat);
     final isDefault = cat.isDefault && cat.type != null;
     final color = CategoryStyle.forCategory(cat.name);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () => _openCategoryInfo(cat),
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Container(
+        child: _LibraryGlassPanel(
+          radius: AppRadius.lg,
           padding: const EdgeInsets.all(AppSpace.sm + 2),
-          decoration: BoxDecoration(
-            color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: LiquidColors.cardBorder),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -730,7 +761,7 @@ class HomeDashboardState extends State<HomeDashboard> {
                 height: 40,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
+                  color: color.withValues(alpha: isDark ? 0.18 : 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -752,7 +783,7 @@ class HomeDashboardState extends State<HomeDashboard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: LiquidColors.textPrimary,
+                      color: Theme.of(context).colorScheme.onSurface,
                       fontSize: 14.5,
                       fontWeight: FontWeight.w700,
                     ),
@@ -763,7 +794,9 @@ class HomeDashboardState extends State<HomeDashboard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: LiquidColors.textTertiary,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.52),
                       fontSize: 11.5,
                     ),
                   ),
@@ -815,7 +848,9 @@ class HomeDashboardState extends State<HomeDashboard> {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: LiquidColors.textSecondary,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.70),
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
               ),
@@ -827,6 +862,8 @@ class HomeDashboardState extends State<HomeDashboard> {
   }
 
   Widget _appBarAction(IconData icon, String tooltip, VoidCallback onTap) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Tooltip(
@@ -836,17 +873,57 @@ class HomeDashboardState extends State<HomeDashboard> {
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 40,
-              alignment: Alignment.center,
+            child: DecoratedBox(
               decoration: BoxDecoration(
-                color: LiquidColors.textPrimary.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: LiquidColors.textPrimary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.07),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [
+                                Colors.white.withValues(alpha: 0.12),
+                                theme.colorScheme.surface.withValues(
+                                  alpha: 0.64,
+                                ),
+                              ]
+                            : [
+                                Colors.white.withValues(alpha: 0.70),
+                                const Color(0xFFE8EBF1).withValues(alpha: 0.48),
+                              ],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.22)
+                            : Colors.white.withValues(alpha: 0.88),
+                        width: 1,
+                      ),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: theme.colorScheme.onSurface,
+                      size: 20,
+                    ),
+                  ),
                 ),
               ),
-              child: Icon(icon, color: LiquidColors.textPrimary, size: 20),
             ),
           ),
         ),
@@ -862,38 +939,192 @@ class _PremiumImportFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Tooltip(
       message: 'Import media',
-      child: Material(
-        color: Colors.transparent,
-        elevation: 6,
-        shadowColor: LiquidColors.indigo.withValues(alpha: 0.35),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Ink(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: LiquidColors.primaryGradient,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15),
-              width: 1,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(19),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.10),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
             ),
-          ),
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(18),
-            splashColor: Colors.white.withValues(alpha: 0.25),
-            highlightColor: Colors.white.withValues(alpha: 0.1),
-            child: const Center(
-              child: Icon(
-                Icons.add_to_photos_rounded,
-                color: Colors.white,
-                size: 26,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(19),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withValues(alpha: isDark ? 0.14 : 0.72),
+                    theme.colorScheme.surface.withValues(
+                      alpha: isDark ? 0.62 : 0.82,
+                    ),
+                    (isDark ? Colors.white : const Color(0xFFE5E7EB))
+                        .withValues(alpha: isDark ? 0.07 : 0.55),
+                  ],
+                  stops: const [0, 0.52, 1],
+                ),
+                borderRadius: BorderRadius.circular(19),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: isDark ? 0.24 : 0.92),
+                  width: 1.1,
+                ),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onPressed,
+                  borderRadius: BorderRadius.circular(19),
+                  splashColor: Colors.white.withValues(alpha: 0.24),
+                  highlightColor: Colors.white.withValues(alpha: 0.10),
+                  child: Center(
+                    child: Icon(
+                      Icons.add_to_photos_rounded,
+                      color: theme.colorScheme.onSurface,
+                      size: 26,
+                      shadows: [
+                        Shadow(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.30,
+                          ),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ambient color keeps the transparent surfaces legible while allowing their
+/// blur to pick up a subtle indigo reflection as the library scrolls.
+class _LibraryAmbientBackground extends StatelessWidget {
+  const _LibraryAmbientBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background = Theme.of(context).scaffoldBackgroundColor;
+    return DecoratedBox(
+      decoration: BoxDecoration(color: background),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned(
+            top: -100,
+            right: -110,
+            child: IgnorePointer(
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      LiquidColors.indigo.withValues(
+                        alpha: isDark ? 0.18 : 0.075,
+                      ),
+                      LiquidColors.indigo.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 70,
+            left: -150,
+            child: IgnorePointer(
+              child: Container(
+                width: 280,
+                height: 280,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      LiquidColors.accentBlue.withValues(
+                        alpha: isDark ? 0.12 : 0.05,
+                      ),
+                      LiquidColors.accentBlue.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shared glass treatment for Library controls and content cards.
+class _LibraryGlassPanel extends StatelessWidget {
+  final Widget child;
+  final double radius;
+  final EdgeInsetsGeometry padding;
+
+  const _LibraryGlassPanel({
+    required this.child,
+    this.radius = 20,
+    this.padding = EdgeInsets.zero,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.07),
+            blurRadius: 18,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withValues(alpha: isDark ? 0.08 : 0.68),
+                  theme.colorScheme.surface.withValues(
+                    alpha: isDark ? 0.40 : 0.58,
+                  ),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: isDark ? 0.16 : 0.82),
+                width: 1,
+              ),
+            ),
+            child: Padding(padding: padding, child: child),
           ),
         ),
       ),
