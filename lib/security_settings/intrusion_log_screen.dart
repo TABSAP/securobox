@@ -7,6 +7,8 @@ import 'package:video_player_app/widgets/app_loader.dart';
 import '../utils/intrusion_service.dart';
 import '../utils/liquid_colors.dart';
 import '../utils/vault_crypto.dart';
+import '../widgets/liquid_glass_surface.dart';
+import '../widgets/liquid_glass_button.dart';
 
 class IntrusionLogScreen extends StatefulWidget {
   const IntrusionLogScreen({super.key});
@@ -72,11 +74,27 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
   }
 
   static const _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   static const _weekdays = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
   String _time(DateTime d) {
@@ -140,7 +158,8 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
         icon: Icons.delete_outline_rounded,
         accent: LiquidColors.error,
         title: 'Delete this capture?',
-        message: 'The photo will be permanently removed from the encrypted log.',
+        message:
+            'The photo will be permanently removed from the encrypted log.',
         confirmLabel: 'Delete',
         onCancel: () => Navigator.pop(ctx, false),
         onConfirm: () => Navigator.pop(ctx, true),
@@ -174,54 +193,62 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
 
   void _viewFull(IntrusionEntry entry, String path) {
     HapticFeedback.selectionClick();
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (ctx) => Scaffold(
-        backgroundColor: LiquidColors.backgroundDeep,
-        appBar: AppBar(
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => Scaffold(
           backgroundColor: LiquidColors.backgroundDeep,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          iconTheme: IconThemeData(color: LiquidColors.textPrimary),
-          title: Text(
-            _fullDate(entry.when),
-            style: TextStyle(color: LiquidColors.textPrimary, fontSize: 14),
-          ),
-          actions: [
-            IconButton(
-              tooltip: 'Delete',
-              icon: Icon(Icons.delete_outline_rounded,
-                  color: LiquidColors.error),
-              onPressed: () async {
-                final deleted = await _confirmDelete(entry);
-                if (deleted && ctx.mounted) Navigator.of(ctx).pop();
-              },
+          appBar: AppBar(
+            backgroundColor: LiquidColors.backgroundDeep,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            iconTheme: IconThemeData(color: LiquidColors.textPrimary),
+            title: Text(
+              _fullDate(entry.when),
+              style: TextStyle(color: LiquidColors.textPrimary, fontSize: 14),
             ),
-          ],
-        ),
-        body: Center(
-          child: Hero(
-            tag: 'intrusion_${entry.timestamp}',
-            child: InteractiveViewer(
-              minScale: 1,
-              maxScale: 5,
-              child: Image.file(
-                File(path),
-                errorBuilder: (_, _, _) => Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.broken_image_rounded,
-                          color: Colors.white38, size: 64),
-                      const SizedBox(height: 16),
-                      Text(
-                        'This capture could not be opened.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
+            actions: [
+              IconButton(
+                tooltip: 'Delete',
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: LiquidColors.error,
+                ),
+                onPressed: () async {
+                  final deleted = await _confirmDelete(entry);
+                  if (deleted && ctx.mounted) Navigator.of(ctx).pop();
+                },
+              ),
+            ],
+          ),
+          body: Center(
+            child: Hero(
+              tag: 'intrusion_${entry.timestamp}',
+              child: InteractiveViewer(
+                minScale: 1,
+                maxScale: 5,
+                child: Image.file(
+                  File(path),
+                  errorBuilder: (_, _, _) => Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.broken_image_rounded,
+                          color: Colors.white38,
+                          size: 64,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'This capture could not be opened.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 14),
-                      ),
-                    ],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -229,32 +256,33 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
           ),
         ),
       ),
-    ));
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
-        iconTheme: IconThemeData(color: LiquidColors.textPrimary),
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
         title: Row(
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [LiquidColors.error, LiquidColors.accentOrange],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+            LiquidGlassSurface(
+              borderRadius: 10,
+              blur: 12,
+              child: SizedBox(
+                width: 34,
+                height: 34,
+                child: Icon(
+                  Icons.shield_moon_rounded,
+                  color: theme.colorScheme.onSurface,
+                  size: 19,
                 ),
-                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.shield_moon_rounded,
-                  color: Colors.white, size: 19),
             ),
             const SizedBox(width: 12),
             Text(
@@ -278,20 +306,20 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
           const SizedBox(width: 4),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(gradient: LiquidColors.backgroundGradient),
+      body: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
         child: _loading
             ? const Center(child: AppLoader(size: 64))
             : _entries.isEmpty
-                ? _emptyState()
-                : CustomScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(child: _summaryBanner()),
-                      ..._buildSections(),
-                      const SliverToBoxAdapter(child: SizedBox(height: 28)),
-                    ],
-                  ),
+            ? _emptyState()
+            : CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _summaryBanner()),
+                  ..._buildSections(),
+                  const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                ],
+              ),
       ),
     );
   }
@@ -299,25 +327,13 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
   Widget _summaryBanner() {
     final last = _entries.isEmpty
         ? null
-        : _entries
-            .map((e) => e.timestamp)
-            .reduce((a, b) => a > b ? a : b);
+        : _entries.map((e) => e.timestamp).reduce((a, b) => a > b ? a : b);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: Container(
+      child: LiquidGlassSurface(
+        borderRadius: 20,
+        blur: 18,
         padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              LiquidColors.error.withValues(alpha: 0.14),
-              LiquidColors.accentOrange.withValues(alpha: 0.08),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: LiquidColors.error.withValues(alpha: 0.25)),
-        ),
         child: Row(
           children: [
             Container(
@@ -326,11 +342,15 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: LiquidColors.error.withValues(alpha: 0.18),
-                border:
-                    Border.all(color: LiquidColors.error.withValues(alpha: 0.4)),
+                border: Border.all(
+                  color: LiquidColors.error.withValues(alpha: 0.4),
+                ),
               ),
-              child: Icon(Icons.gpp_maybe_rounded,
-                  color: LiquidColors.error, size: 26),
+              child: Icon(
+                Icons.gpp_maybe_rounded,
+                color: LiquidColors.error,
+                size: 26,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -367,7 +387,9 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                         ? ''
                         : 'Most recent: ${_relative(DateTime.fromMillisecondsSinceEpoch(last))}',
                     style: TextStyle(
-                        color: LiquidColors.textSecondary, fontSize: 12),
+                      color: LiquidColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -392,13 +414,20 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(on ? Icons.videocam_rounded : Icons.videocam_off_rounded,
-              size: 13, color: c),
+          Icon(
+            on ? Icons.videocam_rounded : Icons.videocam_off_rounded,
+            size: 13,
+            color: c,
+          ),
           const SizedBox(width: 5),
           Text(
             on ? 'ON' : 'OFF',
             style: TextStyle(
-                color: c, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+              color: c,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),
@@ -427,10 +456,7 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Container(
-                    height: 1,
-                    color: LiquidColors.divider,
-                  ),
+                  child: Container(height: 1, color: LiquidColors.divider),
                 ),
                 const SizedBox(width: 10),
                 Text(
@@ -448,13 +474,10 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
       );
       slivers.add(
         SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (_, i) {
-              final idx = globalIndex + i;
-              return _entryCard(bucket.entries[i], idx);
-            },
-            childCount: bucket.entries.length,
-          ),
+          delegate: SliverChildBuilderDelegate((_, i) {
+            final idx = globalIndex + i;
+            return _entryCard(bucket.entries[i], idx);
+          }, childCount: bucket.entries.length),
         ),
       );
       globalIndex += bucket.entries.length;
@@ -467,7 +490,11 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
     final start = (index * 0.06).clamp(0.0, 0.55);
     final anim = CurvedAnimation(
       parent: _enter,
-      curve: Interval(start, (start + 0.45).clamp(0.0, 1.0), curve: Curves.easeOutCubic),
+      curve: Interval(
+        start,
+        (start + 0.45).clamp(0.0, 1.0),
+        curve: Curves.easeOutCubic,
+      ),
     );
     return AnimatedBuilder(
       animation: anim,
@@ -486,21 +513,10 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
             onTap: path == null ? null : () => _viewFull(entry, path),
             onLongPress: () => _confirmDelete(entry),
             borderRadius: BorderRadius.circular(18),
-            child: Container(
+            child: LiquidGlassSurface(
+              borderRadius: 18,
+              blur: 16,
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: LiquidColors.surface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: LiquidColors.cardBorder),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.shadow,
-                    blurRadius: 14,
-                    spreadRadius: -4,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
               child: Row(
                 children: [
                   _thumbnail(entry, path),
@@ -511,8 +527,11 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.lock_open_rounded,
-                                size: 14, color: LiquidColors.error),
+                            Icon(
+                              Icons.lock_open_rounded,
+                              size: 14,
+                              color: LiquidColors.error,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               'Wrong PIN entered',
@@ -527,14 +546,18 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            Icon(Icons.schedule_rounded,
-                                size: 12, color: LiquidColors.textTertiary),
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 12,
+                              color: LiquidColors.textTertiary,
+                            ),
                             const SizedBox(width: 5),
                             Text(
                               _time(entry.when),
                               style: TextStyle(
-                                  color: LiquidColors.textSecondary,
-                                  fontSize: 12),
+                                color: LiquidColors.textSecondary,
+                                fontSize: 12,
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Container(
@@ -552,8 +575,9 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                    color: LiquidColors.textTertiary,
-                                    fontSize: 12),
+                                  color: LiquidColors.textTertiary,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
                           ],
@@ -563,8 +587,10 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
-                    icon: Icon(Icons.more_horiz_rounded,
-                        color: LiquidColors.textTertiary),
+                    icon: Icon(
+                      Icons.more_horiz_rounded,
+                      color: LiquidColors.textTertiary,
+                    ),
                     onPressed: () => _confirmDelete(entry),
                   ),
                 ],
@@ -578,11 +604,14 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
 
   Widget _thumbnail(IntrusionEntry entry, String? path) {
     Widget fallback() => Container(
-          color: LiquidColors.backgroundDeep,
-          alignment: Alignment.center,
-          child: Icon(Icons.broken_image_rounded,
-              color: LiquidColors.textTertiary, size: 28),
-        );
+      color: LiquidColors.backgroundDeep,
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.broken_image_rounded,
+        color: LiquidColors.textTertiary,
+        size: 28,
+      ),
+    );
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: path == null ? null : () => _viewFull(entry, path),
@@ -614,7 +643,8 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
               bottom: 0,
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                    bottom: Radius.circular(13)),
+                  bottom: Radius.circular(13),
+                ),
                 child: Container(
                   height: 22,
                   decoration: BoxDecoration(
@@ -629,8 +659,11 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                   ),
                   alignment: Alignment.bottomRight,
                   padding: const EdgeInsets.only(right: 4, bottom: 3),
-                  child: const Icon(Icons.fullscreen_rounded,
-                      color: Colors.white, size: 14),
+                  child: const Icon(
+                    Icons.fullscreen_rounded,
+                    color: Colors.white,
+                    size: 14,
+                  ),
                 ),
               ),
             ),
@@ -641,80 +674,86 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
 
   Widget _emptyState() {
     return ListView(
-      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       children: [
         SizedBox(height: MediaQuery.of(context).size.height * 0.12),
         Center(
-          child: Column(
-            children: [
-              Container(
-                width: 112,
-                height: 112,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      LiquidColors.success.withValues(alpha: 0.22),
-                      LiquidColors.success.withValues(alpha: 0.0),
-                    ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: LiquidGlassSurface(
+              borderRadius: 24,
+              blur: 20,
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LiquidGlassSurface(
+                    borderRadius: 56,
+                    blur: 14,
+                    padding: const EdgeInsets.all(26),
+                    child: Icon(
+                      Icons.verified_user_rounded,
+                      size: 54,
+                      color: LiquidColors.success,
+                    ),
                   ),
-                ),
-                child: Icon(Icons.verified_user_rounded,
-                    size: 54, color: LiquidColors.success),
-              ),
-              const SizedBox(height: 22),
-              Text(
-                'All clear',
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 44),
-                child: Text(
-                  'No failed unlock attempts have been recorded. If someone enters a wrong PIN, a silent front-camera photo will be captured and stored here — encrypted, never in your gallery.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    fontSize: 13,
-                    height: 1.55,
+                  const SizedBox(height: 22),
+                  Text(
+                    'All clear',
+                    style: TextStyle(
+                      color: LiquidColors.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-              ),
-              if (!_detectionOn) ...[
-                const SizedBox(height: 22),
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 32),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: LiquidColors.warning.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: LiquidColors.warning.withValues(alpha: 0.35)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline_rounded,
-                          size: 18, color: LiquidColors.warning),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Break-in detection is off. Turn it on in Security Settings to start capturing intruders.',
-                          style: TextStyle(
-                            color: LiquidColors.textSecondary,
-                            fontSize: 12,
-                            height: 1.4,
-                          ),
-                        ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      'No failed unlock attempts have been recorded. If someone enters a wrong PIN, a silent front-camera photo will be captured and stored here — encrypted, never in your gallery.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: LiquidColors.textSecondary,
+                        fontSize: 13,
+                        height: 1.55,
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
-            ],
+                  if (!_detectionOn) ...[
+                    const SizedBox(height: 22),
+                    LiquidGlassSurface(
+                      borderRadius: 14,
+                      blur: 14,
+                      tintColor: LiquidColors.warning,
+                      tintOpacity: 0.08,
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: 18,
+                            color: LiquidColors.warning,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Break-in detection is off. Turn it on in Security Settings to start capturing intruders.',
+                              style: TextStyle(
+                                color: LiquidColors.textSecondary,
+                                fontSize: 12,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
       ],
@@ -753,20 +792,10 @@ class _ConfirmSheet extends StatelessWidget {
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Container(
+      child: LiquidGlassSurface(
+        borderRadius: 24,
+        blur: 22,
         padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          color: LiquidColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: accent.withValues(alpha: 0.3)),
-          boxShadow: [
-            BoxShadow(
-              color: accent.withValues(alpha: 0.18),
-              blurRadius: 26,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -804,33 +833,19 @@ class _ConfirmSheet extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: LiquidGlassButton(
+                    label: 'Cancel',
                     onPressed: onCancel,
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      side: BorderSide(color: LiquidColors.cardBorder),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(13)),
-                      foregroundColor: LiquidColors.textSecondary,
-                    ),
-                    child: const Text('Cancel',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                    height: 46,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
+                  child: LiquidGlassButton(
+                    label: confirmLabel,
                     onPressed: onConfirm,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accent,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(13)),
-                    ),
-                    child: Text(confirmLabel,
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    foregroundColor: accent,
+                    height: 46,
                   ),
                 ),
               ],

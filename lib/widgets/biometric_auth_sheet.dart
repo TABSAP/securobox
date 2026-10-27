@@ -9,6 +9,7 @@ import 'package:local_auth/local_auth.dart';
 
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/session_manager.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 enum BiometricAuthResult { authenticated, usePin, cancelled }
 
@@ -405,7 +406,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         return LiquidColors.error;
       case _AuthPhase.idle:
       case _AuthPhase.scanning:
-        return LiquidColors.accentBlue;
+        return LiquidColors.textPrimary;
     }
   }
 
@@ -419,7 +420,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
         return [const Color(0xFFFF6B6B), LiquidColors.error];
       case _AuthPhase.idle:
       case _AuthPhase.scanning:
-        return [LiquidColors.accentBlue, LiquidColors.accentPurple];
+        return [LiquidColors.textSecondary, LiquidColors.textPrimary];
     }
   }
 
@@ -495,25 +496,35 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                                             curve: Curves.easeOutCubic,
                                           ),
                                         ),
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        const SizedBox(height: 12),
-                                        _securityBadge(),
-                                        const SizedBox(height: 40),
-                                        _orb(disc),
-                                        const SizedBox(height: 36),
-                                        _titleText(),
-                                        const SizedBox(height: 12),
-                                        _subtitleText(),
-                                        const SizedBox(height: 20),
-                                        SizedBox(
-                                          height: 34,
-                                          child: Center(child: _statusChip()),
-                                        ),
-                                        const SizedBox(height: 12),
-                                      ],
+                                    child: LiquidGlassSurface(
+                                      borderRadius: 28,
+                                      blur: 20,
+                                      padding: const EdgeInsets.fromLTRB(
+                                        18,
+                                        20,
+                                        18,
+                                        16,
+                                      ),
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const SizedBox(height: 12),
+                                          _securityBadge(),
+                                          const SizedBox(height: 40),
+                                          _orb(disc),
+                                          const SizedBox(height: 36),
+                                          _titleText(),
+                                          const SizedBox(height: 12),
+                                          _subtitleText(),
+                                          const SizedBox(height: 20),
+                                          SizedBox(
+                                            height: 34,
+                                            child: Center(child: _statusChip()),
+                                          ),
+                                          const SizedBox(height: 12),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -570,18 +581,14 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
                   height: 24,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        LiquidColors.accentBlue,
-                        LiquidColors.accentPurple,
-                      ],
+                    color: LiquidColors.textPrimary.withValues(alpha: 0.10),
+                    border: Border.all(
+                      color: LiquidColors.textPrimary.withValues(alpha: 0.16),
                     ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.lock_rounded,
-                    color: Colors.white,
+                    color: LiquidColors.textPrimary,
                     size: 13,
                   ),
                 ),
@@ -609,22 +616,23 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: LiquidColors.accentBlue.withValues(alpha: 0.10),
+        color: LiquidColors.textPrimary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.25),
-          width: 1,
-        ),
+        border: Border.all(color: LiquidColors.cardBorder, width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.shield_rounded, size: 13, color: LiquidColors.accentBlue),
+          Icon(
+            Icons.shield_rounded,
+            size: 13,
+            color: LiquidColors.textSecondary,
+          ),
           const SizedBox(width: 7),
           Text(
             'SECURE VERIFICATION',
             style: TextStyle(
-              color: LiquidColors.accentBlue,
+              color: LiquidColors.textSecondary,
               fontSize: 10.5,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.0,
@@ -891,31 +899,27 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
   Widget _statusChip() {
     switch (_phase) {
       case _AuthPhase.scanning:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: LiquidColors.accentBlue.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: LiquidColors.accentBlue.withValues(alpha: 0.25),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AppLoader(size: 20),
-              const SizedBox(width: 9),
-              Text(
-                'SCANNING…',
-                style: TextStyle(
-                  color: LiquidColors.accentBlue,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.8,
+        return LiquidGlassSurface(
+          borderRadius: 999,
+          blur: 14,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppLoader(size: 20),
+                const SizedBox(width: 9),
+                Text(
+                  'SCANNING…',
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       case _AuthPhase.idle:
@@ -1112,41 +1116,29 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     return _Pressable(
       onTap: onTap,
       borderRadius: 16,
-      child: Container(
-        width: double.infinity,
-        height: 56,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: LiquidColors.accentBlue.withValues(alpha: 0.35),
-              blurRadius: 16,
-              spreadRadius: -2,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 19),
-            const SizedBox(width: 9),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
+      child: LiquidGlassSurface(
+        borderRadius: 16,
+        blur: 16,
+        child: Container(
+          width: double.infinity,
+          height: 56,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: LiquidColors.textPrimary, size: 19),
+              const SizedBox(width: 9),
+              Text(
+                label,
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.3,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1160,29 +1152,28 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
     return _Pressable(
       onTap: onTap,
       borderRadius: 16,
-      child: Container(
-        width: double.infinity,
-        height: 52,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: LiquidColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: LiquidColors.cardBorder, width: 1.2),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: LiquidColors.textPrimary, size: 18),
-            const SizedBox(width: 9),
-            Text(
-              label,
-              style: TextStyle(
-                color: LiquidColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+      child: LiquidGlassSurface(
+        borderRadius: 16,
+        blur: 14,
+        child: Container(
+          width: double.infinity,
+          height: 52,
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: LiquidColors.textPrimary, size: 18),
+              const SizedBox(width: 9),
+              Text(
+                label,
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -107,6 +107,7 @@ class VaultCrypto {
 
   Future<String> importEncrypted(
     File source, {
+    String? fileName,
     String? subdir,
     bool forceReal = false,
   }) async {
@@ -116,7 +117,10 @@ class VaultCrypto {
     final outDir = subdir == null
         ? baseDir
         : await Directory(p.join(baseDir.path, subdir)).create(recursive: true);
-    final ext = p.extension(source.path);
+    final requestedExtension = p.extension(fileName ?? '');
+    final ext = requestedExtension.isNotEmpty
+        ? requestedExtension
+        : p.extension(source.path);
     final outName = '${const Uuid().v4()}$ext.enc';
     final outPath = p.join(outDir.path, outName);
 
@@ -153,6 +157,7 @@ class VaultCrypto {
   /// open it directly.
   Future<String> importPlain(
     File source, {
+    String? fileName,
     String? subdir,
     bool forceReal = false,
   }) async {
@@ -160,11 +165,41 @@ class VaultCrypto {
     final outDir = subdir == null
         ? baseDir
         : await Directory(p.join(baseDir.path, subdir)).create(recursive: true);
-    final ext = p.extension(source.path);
+    final requestedExtension = p.extension(fileName ?? '');
+    final ext = requestedExtension.isNotEmpty
+        ? requestedExtension
+        : p.extension(source.path);
     final outName = '${const Uuid().v4()}$ext';
     final outPath = p.join(outDir.path, outName);
     await source.copy(outPath);
     return outPath;
+  }
+
+  /// Recovers a vault file when a saved library path has an obsolete sandbox
+  /// prefix. Only an exact basename match inside the active vault is accepted.
+  Future<String?> resolveStoredFilePath(String storedPath) async {
+    if (storedPath.isEmpty) return null;
+    final storedFile = File(storedPath);
+    if (await storedFile.exists()) return storedFile.path;
+
+    final basename = p.basename(storedPath);
+    if (basename.isEmpty || basename == '.' || basename == '..') return null;
+
+    try {
+      final vault = await _vaultDir();
+      final direct = File(p.join(vault.path, basename));
+      if (await direct.exists()) return direct.path;
+
+      await for (final entity in vault.list(
+        recursive: true,
+        followLinks: false,
+      )) {
+        if (entity is File && p.basename(entity.path) == basename) {
+          return entity.path;
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   Future<String> decryptToTemp(

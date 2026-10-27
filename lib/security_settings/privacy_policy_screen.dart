@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   const PrivacyPolicyScreen({super.key});
@@ -13,22 +14,26 @@ class PrivacyPolicyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: LiquidColors.systemOverlayStyle,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: theme.colorScheme.onSurface,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           'Privacy Policy',
           style: TextStyle(
-            color: LiquidColors.textPrimary,
+            color: theme.colorScheme.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.w800,
           ),
@@ -57,13 +62,21 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 ),
               ),
               AppSpace.h8,
-              Text(
-                'Last updated: $_lastUpdated',
-                style: TextStyle(
-                  color: LiquidColors.textTertiary,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.3,
+              LiquidGlassSurface(
+                borderRadius: 22,
+                blur: 12,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                child: Text(
+                  'Last updated: $_lastUpdated',
+                  style: TextStyle(
+                    color: LiquidColors.textTertiary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
               AppSpace.h32,
@@ -139,28 +152,33 @@ class PrivacyPolicyScreen extends StatelessWidget {
   }) {
     return Padding(
       padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpace.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: LiquidColors.textPrimary,
-              fontSize: 15.5,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.1,
+      child: LiquidGlassSurface(
+        borderRadius: AppRadius.lg,
+        blur: 16,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 15.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.1,
+              ),
             ),
-          ),
-          AppSpace.h8,
-          Text(
-            body,
-            style: TextStyle(
-              color: LiquidColors.textSecondary,
-              fontSize: 13.5,
-              height: 1.55,
+            AppSpace.h8,
+            Text(
+              body,
+              style: TextStyle(
+                color: LiquidColors.textSecondary,
+                fontSize: 13.5,
+                height: 1.55,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -178,13 +196,10 @@ class PrivacyPolicyScreen extends StatelessWidget {
               await launchUrl(url);
             }
           },
-          child: Container(
+          child: LiquidGlassSurface(
+            borderRadius: AppRadius.lg,
+            blur: 18,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-              borderRadius: AppRadius.rLg,
-              border: Border.all(color: LiquidColors.cardBorder),
-            ),
             child: Row(
               children: [
                 Container(

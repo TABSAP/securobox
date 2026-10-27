@@ -4,6 +4,7 @@ import 'package:video_player_app/notifications_screen/notifications_screen.dart'
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/notification_service.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 /// A compact modal bottom-sheet preview of the latest notifications, opened
 /// from the bell icon. Shows up to 5 newest notifications and a "View All"
@@ -46,101 +47,107 @@ class _NotificationPreviewSheetState extends State<NotificationPreviewSheet> {
   @override
   Widget build(BuildContext context) {
     final maxHeight = MediaQuery.of(context).size.height * 0.70;
-    return Container(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border.all(color: LiquidColors.cardBorder),
-      ),
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: 24,
+      blur: 28,
+      tintColor: theme.colorScheme.primary,
+      tintOpacity: theme.brightness == Brightness.dark ? 0.035 : 0.025,
       child: SafeArea(
         top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Grab handle.
-            Padding(
-              padding: const EdgeInsets.only(top: 10, bottom: 6),
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: LiquidColors.textTertiary.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(999),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Grab handle.
+              Padding(
+                padding: const EdgeInsets.only(top: 10, bottom: 6),
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: LiquidColors.textTertiary.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
               ),
-            ),
-            // Header.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-              child: Row(
-                children: [
-                  Text(
-                    'Notifications',
-                    style: TextStyle(
-                      color: LiquidColors.textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Flexible(
-              child: ValueListenableBuilder<List<AppNotification>>(
-                valueListenable: NotificationService.instance.notifications,
-                builder: (context, list, _) {
-                  if (list.isEmpty) {
-                    return _buildEmpty();
-                  }
-                  final items = list.take(5).toList();
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: ListView.separated(
-                          shrinkWrap: true,
-                          physics: const BouncingScrollPhysics(),
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                          itemCount: items.length,
-                          separatorBuilder: (_, _) =>
-                              const SizedBox(height: 8),
-                          itemBuilder: (_, i) =>
-                              _CompactNotificationCard(item: items[i]),
-                        ),
+              // Header.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
+                child: Row(
+                  children: [
+                    Text(
+                      'Notifications',
+                      style: TextStyle(
+                        color: LiquidColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _openAll,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: LiquidColors.indigo,
-                              foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: AppRadius.rMd,
-                              ),
-                            ),
-                            child: const Text(
-                              'View All',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: ValueListenableBuilder<List<AppNotification>>(
+                  valueListenable: NotificationService.instance.notifications,
+                  builder: (context, list, _) {
+                    if (list.isEmpty) {
+                      return _buildEmpty();
+                    }
+                    final items = list.take(5).toList();
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: ListView.separated(
+                            shrinkWrap: true,
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                            itemCount: items.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (_, i) =>
+                                _CompactNotificationCard(item: items[i]),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 52,
+                            child: LiquidGlassSurface(
+                              borderRadius: AppRadius.md,
+                              blur: 16,
+                              tintColor: theme.colorScheme.primary,
+                              tintOpacity: 0.2,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _openAll,
+                                  borderRadius: AppRadius.rMd,
+                                  child: Center(
+                                    child: Text(
+                                      'View all',
+                                      style: TextStyle(
+                                        color: theme.colorScheme.primary,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -152,18 +159,19 @@ class _NotificationPreviewSheetState extends State<NotificationPreviewSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 64,
-            height: 64,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.notifications_none_rounded,
-              color: LiquidColors.textSecondary,
-              size: 30,
+          LiquidGlassSurface(
+            borderRadius: 32,
+            blur: 14,
+            tintColor: Theme.of(context).colorScheme.primary,
+            tintOpacity: 0.08,
+            child: SizedBox(
+              width: 64,
+              height: 64,
+              child: Icon(
+                Icons.notifications_none_rounded,
+                color: LiquidColors.textSecondary,
+                size: 30,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -225,25 +233,23 @@ class _CompactNotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (icon, color) = _visual;
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.md,
+      blur: 16,
       padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-        borderRadius: AppRadius.rMd,
-        border: Border.all(color: LiquidColors.cardBorder),
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
+          LiquidGlassSurface(
+            borderRadius: 10,
+            blur: 10,
+            tintColor: color,
+            tintOpacity: 0.12,
+            child: SizedBox(
+              width: 34,
+              height: 34,
+              child: Icon(icon, color: color, size: 18),
             ),
-            child: Icon(icon, color: color, size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(

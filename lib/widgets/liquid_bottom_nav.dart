@@ -53,14 +53,13 @@ class LiquidBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = selectedIndex ?? 0;
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return _buildAndroidNav(context, current);
-    }
     if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final tint = Theme.of(context).colorScheme.onSurface;
       return NativeGlassNavBar(
+        key: const ValueKey('securobox-native-glass-nav'),
         currentIndex: current,
         onTap: _onTap,
-        tintColor: LiquidColors.indigo,
+        tintColor: tint,
         tabs: const [
           NativeGlassNavBarItem(
             label: 'Library',
@@ -73,103 +72,108 @@ class LiquidBottomNav extends StatelessWidget {
             selectedSymbol: 'gearshape.fill',
           ),
         ],
-        // Native liquid glass is available on supported iOS versions only.
-        // Preserve the app's glass-style Flutter bar for older iOS releases.
         fallback: _buildPremiumFallback(context, current),
       );
     }
-
-    return _buildPremiumFallback(context, current);
-  }
-
-  Widget _buildAndroidNav(BuildContext context, int current) {
-    // WhatsApp's current Android redesign uses a separated floating bar with
-    // rounded ends and an animated selected-tab indicator.
     return _buildPremiumFallback(context, current);
   }
 
   Widget _buildPremiumFallback(BuildContext context, int current) {
+    final theme = Theme.of(context);
+    final neutral = theme.colorScheme.onSurface;
     return SafeArea(
       top: false,
       minimum: const EdgeInsets.only(bottom: 4),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 5, 12, 4),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              height: 66,
-              decoration: BoxDecoration(
-                color: LiquidColors.surface.withValues(
-                  alpha: LiquidColors.isDark ? 0.74 : 0.88,
-                ),
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(
-                  color: Colors.white.withValues(
-                    alpha: LiquidColors.isDark ? 0.16 : 0.78,
-                  ),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: LiquidColors.isDark ? 0.18 : 0.07,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 5, 12, 4),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(30),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(
+                  height: 66,
+                  decoration: BoxDecoration(
+                    color: LiquidColors.surface.withValues(
+                      alpha: LiquidColors.isDark ? 0.74 : 0.88,
                     ),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(5),
-                child: LayoutBuilder(
-                  builder: (context, constraints) => Stack(
-                    children: [
-                      AnimatedAlign(
-                        alignment: current == 0
-                            ? Alignment.centerLeft
-                            : Alignment.centerRight,
-                        duration: const Duration(milliseconds: 360),
-                        curve: Curves.easeOutCubic,
-                        child: SizedBox(
-                          width: constraints.maxWidth / _navItems.length,
-                          height: constraints.maxHeight,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              color: LiquidColors.indigo.withValues(
-                                alpha: LiquidColors.isDark ? 0.2 : 0.1,
-                              ),
-                              border: Border.all(
-                                color: LiquidColors.indigo.withValues(
-                                  alpha: LiquidColors.isDark ? 0.3 : 0.16,
-                                ),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: LiquidColors.indigo.withValues(
-                                    alpha: LiquidColors.isDark ? 0.12 : 0.06,
-                                  ),
-                                  blurRadius: 12,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(
+                      color: Colors.white.withValues(
+                        alpha: LiquidColors.isDark ? 0.16 : 0.78,
                       ),
-                      Row(
-                        children: List.generate(_navItems.length, (i) {
-                          return Expanded(
-                            child: _NavButton(
-                              item: _navItems[i],
-                              selected: i == current,
-                              showLabel: false,
-                              onTap: () => _onTap(i),
-                            ),
-                          );
-                        }),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: LiquidColors.isDark ? 0.18 : 0.07,
+                        ),
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
                       ),
                     ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => Stack(
+                        children: [
+                          AnimatedAlign(
+                            alignment: current == 0
+                                ? Alignment.centerLeft
+                                : Alignment.centerRight,
+                            duration: const Duration(milliseconds: 360),
+                            curve: Curves.easeOutCubic,
+                            child: SizedBox(
+                              width: constraints.maxWidth / _navItems.length,
+                              height: constraints.maxHeight,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  color: neutral.withValues(
+                                    alpha: theme.brightness == Brightness.dark
+                                        ? 0.16
+                                        : 0.10,
+                                  ),
+                                  border: Border.all(
+                                    color: neutral.withValues(
+                                      alpha: theme.brightness == Brightness.dark
+                                          ? 0.24
+                                          : 0.18,
+                                    ),
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: neutral.withValues(
+                                        alpha:
+                                            theme.brightness == Brightness.dark
+                                            ? 0.08
+                                            : 0.04,
+                                      ),
+                                      blurRadius: 12,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: List.generate(_navItems.length, (i) {
+                              return Expanded(
+                                child: _NavButton(
+                                  item: _navItems[i],
+                                  selected: i == current,
+                                  showLabel: false,
+                                  onTap: () => _onTap(i),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -196,18 +200,16 @@ class _NavButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Selected uses the single brand indigo; unselected uses an adaptive
-    // secondary colour (dark in light theme, light in dark theme).
-    final color = selected ? LiquidColors.indigo : LiquidColors.textSecondary;
+    final color = selected
+        ? Theme.of(context).colorScheme.onSurface
+        : LiquidColors.textSecondary;
 
     Widget icon = AnimatedSwitcher(
       duration: const Duration(milliseconds: 200),
       switchInCurve: Curves.easeOutBack,
       switchOutCurve: Curves.easeIn,
-      transitionBuilder: (child, animation) => ScaleTransition(
-        scale: animation,
-        child: child,
-      ),
+      transitionBuilder: (child, animation) =>
+          ScaleTransition(scale: animation, child: child),
       child: Icon(
         selected ? item.activeIcon : item.icon,
         key: ValueKey(selected),

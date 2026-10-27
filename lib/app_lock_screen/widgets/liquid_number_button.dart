@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 import '../../utils/liquid_colors.dart';
 
 class LiquidNumberButton extends StatefulWidget {
   final String number;
   final VoidCallback onPressed;
+  final bool neutralGlass;
+  final bool brandGlass;
 
   const LiquidNumberButton({
     super.key,
     required this.number,
     required this.onPressed,
+    this.neutralGlass = false,
+    this.brandGlass = false,
   });
 
   @override
@@ -27,9 +32,10 @@ class _LiquidNumberButtonState extends State<LiquidNumberButton>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     )..forward();
-    _scaleAnimation = Tween<double>(begin: 0.9, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.9,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
   }
 
   @override
@@ -40,6 +46,7 @@ class _LiquidNumberButtonState extends State<LiquidNumberButton>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ScaleTransition(
       scale: _scaleAnimation,
       child: GestureDetector(
@@ -47,40 +54,59 @@ class _LiquidNumberButtonState extends State<LiquidNumberButton>
           _controller.reverse().then((_) => _controller.forward());
           widget.onPressed();
         },
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              colors: [
-                LiquidColors.backgroundLight.withValues(alpha: 0.5),
-                LiquidColors.backgroundMid.withValues(alpha: 0.5),
-              ],
-              center: Alignment.center,
-              radius: 0.8,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: LiquidColors.accentBlue.withValues(alpha: 0.3),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.2),
-                blurRadius: 10,
-                spreadRadius: 0,
-                offset: const Offset(0, 5),
+        child: widget.neutralGlass || widget.brandGlass
+            ? LiquidGlassSurface(
+                borderRadius: 20,
+                blur: 16,
+                tintColor: widget.brandGlass ? LiquidColors.accentBlue : null,
+                tintOpacity: widget.brandGlass ? 0.15 : 0,
+                child: SizedBox.expand(
+                  child: Center(
+                    child: Text(
+                      widget.number,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w500,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+              )
+            : Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    colors: [
+                      LiquidColors.backgroundLight.withValues(alpha: 0.5),
+                      LiquidColors.backgroundMid.withValues(alpha: 0.5),
+                    ],
+                    center: Alignment.center,
+                    radius: 0.8,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: LiquidColors.accentBlue.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: LiquidColors.accentBlue.withValues(alpha: 0.2),
+                      blurRadius: 10,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Text(
+                  widget.number,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w500,
+                    color: LiquidColors.textPrimary,
+                  ),
+                ),
               ),
-            ],
-          ),
-          child: Text(
-            widget.number,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w500,
-              color: LiquidColors.textPrimary,
-            ),
-          ),
-        ),
       ),
     );
   }

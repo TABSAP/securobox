@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
@@ -21,6 +22,7 @@ import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 import 'package:video_player_app/widgets/biometric_auth_sheet.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 import '../main_screen.dart';
 import '../utils/liquid_colors.dart';
@@ -116,7 +118,8 @@ class _AppLockScreenState extends State<AppLockScreen>
     final biometricEnabled = prefs.getBool('biometric') ?? false;
     final faceUnlockPref = prefs.getBool('biometric_face');
     final faceUnlockEnabled = faceUnlockPref ?? faceEnrolled;
-    final isIosFaceId = defaultTargetPlatform == TargetPlatform.iOS && faceUnlockEnabled;
+    final isIosFaceId =
+        defaultTargetPlatform == TargetPlatform.iOS && faceUnlockEnabled;
     final effectiveBioEnabled = biometricEnabled || isIosFaceId;
     final effectiveFaceEnabled = faceEnrolled && faceUnlockEnabled;
 
@@ -176,37 +179,43 @@ class _AppLockScreenState extends State<AppLockScreen>
           : Padding(
               key: const ValueKey('error'),
               padding: const EdgeInsets.only(top: 14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: LiquidColors.error.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: LiquidColors.error.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.error_outline_rounded,
-                      size: 15,
-                      color: LiquidColors.error,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Incorrect PIN — try again',
-                      style: TextStyle(
-                        color: LiquidColors.error,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.1,
+                    decoration: BoxDecoration(
+                      color: LiquidColors.error.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: LiquidColors.error.withValues(alpha: 0.35),
                       ),
                     ),
-                  ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 15,
+                          color: LiquidColors.error,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Incorrect PIN — try again',
+                          style: TextStyle(
+                            color: LiquidColors.error,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -497,7 +506,8 @@ class _AppLockScreenState extends State<AppLockScreen>
       accent: LiquidColors.accentPurple,
       busy: _isAuthenticating,
       onTap: (showFace && !_isAuthenticating) ? _useFaceUnlock : null,
-      disabledHint: bioLockHint ??
+      disabledHint:
+          bioLockHint ??
           (_padDisabled
               ? 'Locked during cooldown'
               : (_faceRecogEnrolled ? null : 'Set up in Settings')),
@@ -606,9 +616,7 @@ class _AppLockScreenState extends State<AppLockScreen>
         : _androidPlatform
         ? Icons.verified_user_rounded
         : Icons.fingerprint_rounded;
-    final accent = isFace
-        ? LiquidColors.accentPurple
-        : LiquidColors.accentBlue;
+    final accent = LiquidColors.textPrimary;
 
     void primary() {
       if (_isAuthenticating) return;
@@ -646,22 +654,25 @@ class _AppLockScreenState extends State<AppLockScreen>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [accent, accent.withValues(alpha: 0.65)],
+                      colors: [
+                        accent.withValues(alpha: 0.13),
+                        accent.withValues(alpha: 0.05),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: accent.withValues(alpha: 0.28 + 0.18 * t),
-                        blurRadius: 30 + 16 * t,
-                        spreadRadius: 3 + 5 * t,
+                        color: accent.withValues(alpha: 0.08 + 0.04 * t),
+                        blurRadius: 24 + 8 * t,
+                        spreadRadius: 1 + 2 * t,
                       ),
                     ],
                   ),
                   alignment: Alignment.center,
                   child: _isAuthenticating
-                      ? const AppLoader(size: 30, color: Colors.white)
-                      : Icon(icon, color: Colors.white, size: 48),
+                      ? AppLoader(size: 30, color: accent)
+                      : Icon(icon, color: accent, size: 48),
                 ),
               );
             },
@@ -744,22 +755,25 @@ class _AppLockScreenState extends State<AppLockScreen>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [accent, accent.withValues(alpha: 0.65)],
+                      colors: [
+                        accent.withValues(alpha: 0.13),
+                        accent.withValues(alpha: 0.05),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: accent.withValues(alpha: 0.28 + 0.18 * t),
-                        blurRadius: 26 + 14 * t,
-                        spreadRadius: 2 + 4 * t,
+                        color: accent.withValues(alpha: 0.08 + 0.04 * t),
+                        blurRadius: 22 + 8 * t,
+                        spreadRadius: 1 + 2 * t,
                       ),
                     ],
                   ),
                   alignment: Alignment.center,
                   child: _isAuthenticating
-                      ? const AppLoader(size: 26, color: Colors.white)
-                      : Icon(icon, color: Colors.white, size: size * 0.46),
+                      ? AppLoader(size: 26, color: accent)
+                      : Icon(icon, color: accent, size: size * 0.46),
                 ),
               );
             },
@@ -787,7 +801,7 @@ class _AppLockScreenState extends State<AppLockScreen>
           children: [
             _circularBiometricButton(
               icon: Icons.face_retouching_natural,
-              accent: LiquidColors.accentPurple,
+              accent: LiquidColors.textPrimary,
               label: 'Face Scan',
               onTap: _isAuthenticating ? null : _useFaceUnlock,
             ),
@@ -796,7 +810,7 @@ class _AppLockScreenState extends State<AppLockScreen>
               icon: _androidPlatform
                   ? Icons.verified_user_rounded
                   : Icons.fingerprint_rounded,
-              accent: LiquidColors.accentBlue,
+              accent: LiquidColors.textPrimary,
               label: _androidPlatform ? 'Fingerprint' : 'Touch ID',
               onTap: _isAuthenticating ? null : _useBiometric,
             ),
@@ -887,280 +901,289 @@ class _AppLockScreenState extends State<AppLockScreen>
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(24),
-              child: Container(
-                width: size.width >= 600
-                    ? 500
-                    : (size.width > 420 ? 420 : double.infinity),
+              child: LiquidGlassSurface(
+                borderRadius: 32,
+                blur: 24,
                 padding: EdgeInsets.all(size.width >= 600 ? 36 : 28),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      LiquidColors.backgroundLight.withValues(alpha: .28),
-                      LiquidColors.backgroundMid.withValues(alpha: .36),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(32),
-                  border: Border.all(
-                    color: LiquidColors.accentBlue.withValues(alpha: .16),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: LiquidColors.accentBlue.withValues(alpha: .12),
-                      blurRadius: 28,
-                      spreadRadius: -4,
-                      offset: const Offset(0, 14),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    LiquidLockHeader(
-                      title: 'SecuroBox',
-                      subtitle: _showPin
-                          ? 'Type your PIN to unlock the vault'
-                          : (_faceRecogEnrolled && _biometricEnabled)
-                              ? 'Tap to unlock with face or fingerprint'
-                              : _faceRecogEnrolled
-                                  ? 'Scan your face to unlock the vault'
-                                  : 'Tap to unlock with your fingerprint',
-                    ),
+                child: SizedBox(
+                  width: math.min(size.width - 48, 500),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      LiquidLockHeader(
+                        title: 'SecuroBox',
+                        neutralGlass: true,
+                        iconColor: LiquidColors.accentBlue,
+                        subtitle: _showPin
+                            ? 'Type your PIN to unlock the vault'
+                            : (_faceRecogEnrolled && _biometricEnabled)
+                            ? 'Tap to unlock with face or fingerprint'
+                            : _faceRecogEnrolled
+                            ? 'Scan your face to unlock the vault'
+                            : 'Tap to unlock with your fingerprint',
+                      ),
 
-                    _networkSealBanner(),
+                      _networkSealBanner(),
 
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 340),
-                      curve: Curves.easeInOutCubic,
-                      alignment: Alignment.topCenter,
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 300),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeIn,
-                        transitionBuilder: (child, anim) => FadeTransition(
-                          opacity: anim,
-                          child: SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(0, 0.04),
-                              end: Offset.zero,
-                            ).animate(anim),
-                            child: child,
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 340),
+                        curve: Curves.easeInOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeIn,
+                          transitionBuilder: (child, anim) => FadeTransition(
+                            opacity: anim,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 0.04),
+                                end: Offset.zero,
+                              ).animate(anim),
+                              child: child,
+                            ),
                           ),
-                        ),
-                        child: _showPin
-                            ? Column(
-                                key: const ValueKey('pinStage'),
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(height: 28),
+                          child: _showPin
+                              ? Column(
+                                  key: const ValueKey('pinStage'),
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(height: 28),
 
-                                  AnimatedBuilder(
-                                    animation: _errorController,
-                                    builder: (context, child) {
-                                      final v = _errorController.value;
-                                      final dx =
-                                          math.sin(v * math.pi * 6) *
-                                          8 *
-                                          (1 - v);
-                                      return Transform.translate(
-                                        offset: Offset(dx, 0),
-                                        child: LiquidPinDots(
-                                          enteredLength: _enteredPin.length,
-                                          totalLength: _pinLength,
-                                          hasError: _hasError,
-                                        ),
-                                      );
-                                    },
-                                  ),
-
-                                  _wrongPinBanner(),
-
-                                  const SizedBox(height: 18),
-
-                                  if (!_padDisabled)
-                                    GridView.builder(
-                                      shrinkWrap: true,
-                                      itemCount: 12,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      gridDelegate:
-                                          const SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: 3,
-                                            mainAxisSpacing: 16,
-                                            crossAxisSpacing: 16,
-                                            childAspectRatio: 1.2,
+                                    AnimatedBuilder(
+                                      animation: _errorController,
+                                      builder: (context, child) {
+                                        final v = _errorController.value;
+                                        final dx =
+                                            math.sin(v * math.pi * 6) *
+                                            8 *
+                                            (1 - v);
+                                        return Transform.translate(
+                                          offset: Offset(dx, 0),
+                                          child: LiquidPinDots(
+                                            enteredLength: _enteredPin.length,
+                                            totalLength: _pinLength,
+                                            hasError: _hasError,
                                           ),
-                                      itemBuilder: (context, index) {
-                                        if (index == 9) {
-                                          final hasFace = _faceRecogEnrolled && !_bioLocked;
-                                          final hasBio = _biometricUnlockEnabled && !_bioLocked;
-                                          final isEnabled = (hasFace || hasBio) && !_isAuthenticating;
-                                          final faceOnly = !hasBio && hasFace;
-
-                                          return LiquidActionButton(
-                                            icon: faceOnly
-                                                ? Icons.face_retouching_natural
-                                                : _androidPlatform
-                                                ? Icons.verified_user_rounded
-                                                : Icons.fingerprint,
-                                            color: faceOnly
-                                                ? LiquidColors.accentPurple
-                                                : LiquidColors.success,
-                                            onPressed: () {
-                                              if (faceOnly) {
-                                                _useFaceUnlock();
-                                              } else if (hasBio) {
-                                                _useBiometric();
-                                              }
-                                            },
-                                            isEnabled: isEnabled,
-                                          );
-                                        }
-
-                                        if (index == 10) {
-                                          return LiquidNumberButton(
-                                            number: '0',
-                                            onPressed: () =>
-                                                _onNumberPressed('0'),
-                                          );
-                                        }
-                                        if (index == 11) {
-                                          return LiquidActionButton(
-                                            icon: Icons.backspace,
-                                            color: LiquidColors.error,
-                                            onPressed: _onDeletePressed,
-                                          );
-                                        }
-                                        return LiquidNumberButton(
-                                          number: '${index + 1}',
-                                          onPressed: () =>
-                                              _onNumberPressed('${index + 1}'),
                                         );
                                       },
                                     ),
 
-                                  if (_padDisabled)
-                                    Container(
-                                      padding: const EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        gradient: RadialGradient(
-                                          colors: [
-                                            LiquidColors.error.withValues(
-                                              alpha: .2,
+                                    _wrongPinBanner(),
+
+                                    const SizedBox(height: 18),
+
+                                    if (!_padDisabled)
+                                      GridView.builder(
+                                        shrinkWrap: true,
+                                        itemCount: 12,
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        gridDelegate:
+                                            const SliverGridDelegateWithFixedCrossAxisCount(
+                                              crossAxisCount: 3,
+                                              mainAxisSpacing: 16,
+                                              crossAxisSpacing: 16,
+                                              childAspectRatio: 1.2,
                                             ),
-                                            LiquidColors.error.withValues(
-                                              alpha: .1,
+                                        itemBuilder: (context, index) {
+                                          if (index == 9) {
+                                            final hasFace =
+                                                _faceRecogEnrolled &&
+                                                !_bioLocked;
+                                            final hasBio =
+                                                _biometricUnlockEnabled &&
+                                                !_bioLocked;
+                                            final isEnabled =
+                                                (hasFace || hasBio) &&
+                                                !_isAuthenticating;
+                                            final faceOnly = !hasBio && hasFace;
+
+                                            return LiquidActionButton(
+                                              icon: faceOnly
+                                                  ? Icons
+                                                        .face_retouching_natural
+                                                  : _androidPlatform
+                                                  ? Icons.verified_user_rounded
+                                                  : Icons.fingerprint,
+                                              color: faceOnly
+                                                  ? LiquidColors.accentPurple
+                                                  : LiquidColors.success,
+                                              onPressed: () {
+                                                if (faceOnly) {
+                                                  _useFaceUnlock();
+                                                } else if (hasBio) {
+                                                  _useBiometric();
+                                                }
+                                              },
+                                              isEnabled: isEnabled,
+                                              neutralGlass: true,
+                                              iconColor: LiquidColors.accentBlue
+                                                  .withValues(
+                                                    alpha: isEnabled
+                                                        ? 0.96
+                                                        : 0.42,
+                                                  ),
+                                            );
+                                          }
+
+                                          if (index == 10) {
+                                            return LiquidNumberButton(
+                                              number: '0',
+                                              onPressed: () =>
+                                                  _onNumberPressed('0'),
+                                              neutralGlass: true,
+                                            );
+                                          }
+                                          if (index == 11) {
+                                            return LiquidActionButton(
+                                              icon: Icons.backspace,
+                                              color: LiquidColors.error,
+                                              onPressed: _onDeletePressed,
+                                              neutralGlass: true,
+                                            );
+                                          }
+                                          return LiquidNumberButton(
+                                            number: '${index + 1}',
+                                            onPressed: () => _onNumberPressed(
+                                              '${index + 1}',
+                                            ),
+                                            neutralGlass: true,
+                                          );
+                                        },
+                                      ),
+
+                                    if (_padDisabled)
+                                      Container(
+                                        padding: const EdgeInsets.all(20),
+                                        decoration: BoxDecoration(
+                                          gradient: RadialGradient(
+                                            colors: [
+                                              LiquidColors.error.withValues(
+                                                alpha: .2,
+                                              ),
+                                              LiquidColors.error.withValues(
+                                                alpha: .1,
+                                              ),
+                                            ],
+                                            center: Alignment.center,
+                                            radius: 0.8,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          border: Border.all(
+                                            color: LiquidColors.error
+                                                .withValues(alpha: .3),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.lock_clock_rounded,
+                                              color: LiquidColors.error,
+                                              size: 40,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'PIN locked for now',
+                                              style: TextStyle(
+                                                color: LiquidColors.error,
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Text(
+                                              'Too many wrong tries. Try again in ${_formatCooldown(_cooldownRemaining!)}.',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color:
+                                                    LiquidColors.textSecondary,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'You can still unlock with biometrics.',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color:
+                                                    LiquidColors.textTertiary,
+                                                fontSize: 11.5,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                             ),
                                           ],
-                                          center: Alignment.center,
-                                          radius: 0.8,
-                                        ),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(
-                                          color: LiquidColors.error.withValues(
-                                            alpha: .3,
-                                          ),
                                         ),
                                       ),
-                                      child: Column(
-                                        children: [
-                                          Icon(
-                                            Icons.lock_clock_rounded,
-                                            color: LiquidColors.error,
-                                            size: 40,
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Text(
-                                            'PIN locked for now',
-                                            style: TextStyle(
-                                              color: LiquidColors.error,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Text(
-                                            'Too many wrong tries. Try again in ${_formatCooldown(_cooldownRemaining!)}.',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: LiquidColors.textSecondary,
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w500,
-                                              height: 1.4,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'You can still unlock with biometrics.',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: LiquidColors.textTertiary,
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
 
-                                  const SizedBox(height: 16),
+                                    const SizedBox(height: 16),
 
-                                  if (_padDisabled) _buildBiometricOptions(),
+                                    if (_padDisabled) _buildBiometricOptions(),
 
-                                  _bioAttemptsBanner(),
-                                ],
-                              )
-                            : Column(
-                                key: const ValueKey('bioStage'),
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const SizedBox(height: 26),
-                                  _buildBiometricStage(),
-                                ],
-                              ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    TextButton.icon(
-                      onPressed: _isAuthenticating
-                          ? null
-                          : () {
-                              HapticFeedback.lightImpact();
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const ForgotPinScreen(),
+                                    _bioAttemptsBanner(),
+                                  ],
+                                )
+                              : Column(
+                                  key: const ValueKey('bioStage'),
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(height: 26),
+                                    _buildBiometricStage(),
+                                  ],
                                 ),
-                              );
-                            },
-                      icon: Icon(
-                        Icons.help_outline_rounded,
-                        size: 16,
-                        color: LiquidColors.textSecondary,
-                      ),
-                      label: Text(
-                        'Forgot your PIN?',
-                        style: TextStyle(
-                          color: LiquidColors.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
                         ),
                       ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
+
+                      const SizedBox(height: 8),
+
+                      LiquidGlassSurface(
+                        borderRadius: 22,
+                        blur: 14,
+                        child: TextButton.icon(
+                          onPressed: _isAuthenticating
+                              ? null
+                              : () {
+                                  HapticFeedback.lightImpact();
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const ForgotPinScreen(),
+                                    ),
+                                  );
+                                },
+                          icon: Icon(
+                            Icons.help_outline_rounded,
+                            size: 16,
+                            color: LiquidColors.accentBlue,
+                          ),
+                          label: Text(
+                            'Forgot your PIN?',
+                            style: TextStyle(
+                              color: LiquidColors.accentBlue,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onSurface,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

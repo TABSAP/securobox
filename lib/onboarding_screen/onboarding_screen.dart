@@ -12,6 +12,7 @@ import 'package:video_player_app/app_lock_screen/widgets/liquid_lock_header.dart
 import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_number_button.dart';
 import 'package:video_player_app/app_lock_screen/widgets/liquid_action_button.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -347,21 +348,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 child: Column(
                   children: [
                     const SizedBox(height: 24),
-                    Container(
+                    SizedBox(
                       width: 104,
                       height: 104,
-                      decoration: BoxDecoration(
-                        gradient: LiquidColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(26),
-                        boxShadow: [
-                          BoxShadow(
-                            color: LiquidColors.primaryStart.withValues(alpha: 0.35),
-                            blurRadius: 28,
-                            spreadRadius: 3,
-                          ),
-                        ],
+                      child: LiquidGlassSurface(
+                        borderRadius: 26,
+                        blur: 22,
+                        tintColor: LiquidColors.accentBlue,
+                        tintOpacity: 0.12,
+                        child: Icon(
+                          Icons.shield_rounded,
+                          color: LiquidColors.accentBlue,
+                          size: 54,
+                        ),
                       ),
-                      child: const Icon(Icons.shield_rounded, color: Colors.white, size: 56),
                     ),
                     const SizedBox(height: 28),
                     Text(
@@ -385,33 +385,40 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       ),
                     ),
                     const SizedBox(height: 28),
-                    _featureRow(
-                      Icons.lock_outline_rounded,
-                      'AES-256 encryption for every file',
-                    ),
-                    const SizedBox(height: 14),
-                    _featureRow(Icons.fingerprint_rounded, 'PIN + biometric unlock'),
-                    const SizedBox(height: 14),
-                    _featureRow(
-                      Icons.cloud_off_rounded,
-                      '100% offline — no cloud, no tracking',
+                    LiquidGlassSurface(
+                      borderRadius: 20,
+                      blur: 18,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          _featureRow(
+                            Icons.lock_outline_rounded,
+                            'AES-256 encryption for every file',
+                          ),
+                          const SizedBox(height: 14),
+                          _featureRow(
+                            Icons.fingerprint_rounded,
+                            'PIN + biometric unlock',
+                          ),
+                          const SizedBox(height: 14),
+                          _featureRow(
+                            Icons.cloud_off_rounded,
+                            '100% offline — no cloud, no tracking',
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
-                    Container(
+                    LiquidGlassSurface(
+                      borderRadius: 16,
+                      blur: 16,
                       padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: LiquidColors.warning.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: LiquidColors.warning.withValues(alpha: 0.3),
-                        ),
-                      ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.warning_amber_rounded,
-                            color: LiquidColors.warning,
+                            color: LiquidColors.accentBlue,
                             size: 18,
                           ),
                           const SizedBox(width: 10),
@@ -432,28 +439,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
+                      child: _brandButton(
+                        label: 'Get Started',
                         onPressed: () {
                           HapticFeedback.lightImpact();
                           setState(() => _step = _Step.pickLength);
                           _animateForward();
                         },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          backgroundColor: LiquidColors.accentBlue,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Get Started',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
+                        height: 58,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -468,22 +461,28 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Widget _featureRow(IconData icon, String text) {
+    final theme = Theme.of(context);
     return Row(
       children: [
-        Container(
+        SizedBox(
           width: 40,
           height: 40,
-          decoration: BoxDecoration(
-            color: LiquidColors.accentBlue.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(10),
+          child: LiquidGlassSurface(
+            borderRadius: 12,
+            blur: 12,
+            tintColor: LiquidColors.accentBlue,
+            tintOpacity: 0.12,
+            child: Icon(icon, color: LiquidColors.accentBlue, size: 20),
           ),
-          child: Icon(icon, color: LiquidColors.accentBlue, size: 20),
         ),
         const SizedBox(width: 14),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(fontSize: 14, color: LiquidColors.textSecondary),
+            style: TextStyle(
+              fontSize: 14,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+            ),
           ),
         ),
       ],
@@ -496,18 +495,20 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       child: Column(
         children: [
           const Spacer(flex: 2),
-          Container(
+          SizedBox(
             width: 90,
             height: 90,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            child: LiquidGlassSurface(
+              borderRadius: 24,
+              blur: 20,
+              tintColor: LiquidColors.accentBlue,
+              tintOpacity: 0.12,
+              child: Icon(
+                Icons.pin_outlined,
+                color: LiquidColors.accentBlue,
+                size: 46,
               ),
-              borderRadius: BorderRadius.circular(24),
             ),
-            child: Icon(Icons.pin_outlined, color: Colors.white, size: 50),
           ),
           const SizedBox(height: 28),
           Text(
@@ -541,32 +542,59 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           const Spacer(flex: 3),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
+            child: _brandButton(
+              label: 'Continue',
+              height: 58,
               onPressed: () {
                 HapticFeedback.lightImpact();
                 setState(() => _step = _Step.setPin);
                 _animateForward();
               },
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                backgroundColor: LiquidColors.accentBlue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Continue',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
             ),
           ),
           const SizedBox(height: 16),
         ],
+      ),
+    );
+  }
+
+  Widget _brandButton({
+    required String label,
+    required VoidCallback onPressed,
+    double height = 58,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LiquidColors.primaryGradient,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+        boxShadow: [
+          BoxShadow(
+            color: LiquidColors.accentBlue.withValues(alpha: 0.24),
+            blurRadius: 20,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onPressed,
+          child: SizedBox(
+            height: height,
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -578,6 +606,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     bool recommended = false,
   }) {
     final selected = _pinLength == digits;
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -585,88 +614,97 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: selected
-              ? LiquidColors.accentBlue.withValues(alpha: 0.18)
-              : LiquidColors.backgroundLight.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected
-                ? LiquidColors.accentBlue
-                : LiquidColors.textPrimary.withValues(alpha: 0.08),
-            width: selected ? 2 : 1,
+                ? LiquidColors.accentBlue.withValues(alpha: 0.82)
+                : theme.colorScheme.onSurface.withValues(alpha: 0.10),
+            width: selected ? 1.8 : 1,
           ),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
+        child: LiquidGlassSurface(
+          borderRadius: 16,
+          blur: 18,
+          tintColor: selected ? LiquidColors.accentBlue : null,
+          tintOpacity: selected ? 0.12 : 0,
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: selected
+                        ? LiquidColors.accentBlue
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.42),
+                    width: 2,
+                  ),
                   color: selected
                       ? LiquidColors.accentBlue
-                      : LiquidColors.textTertiary,
-                  width: 2,
+                      : Colors.transparent,
                 ),
-                color: selected ? LiquidColors.accentBlue : Colors.transparent,
+                child: selected
+                    ? Icon(Icons.check, color: Colors.white, size: 16)
+                    : null,
               ),
-              child: selected
-                  ? Icon(Icons.check, color: Colors.white, size: 16)
-                  : null,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          color: LiquidColors.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      if (recommended) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: LiquidColors.success.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'BEST',
-                            style: TextStyle(
-                              color: LiquidColors.success,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
+                        if (recommended) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: LiquidColors.accentBlue.withValues(
+                                alpha: 0.16,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'BEST',
+                              style: TextStyle(
+                                color: LiquidColors.accentBlue,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    sub,
-                    style: TextStyle(
-                      color: LiquidColors.textSecondary,
-                      fontSize: 12,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      sub,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.65,
+                        ),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -681,121 +719,98 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.all(24),
-        child: Container(
-          width: size.width >= 600
-              ? 500
-              : (size.width > 420 ? 420 : double.infinity),
-          padding: EdgeInsets.all(size.width >= 600 ? 36 : 28),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                LiquidColors.backgroundLight.withValues(alpha: .3),
-                LiquidColors.backgroundMid.withValues(alpha: .4),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: LiquidColors.accentBlue.withValues(alpha: .2),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .3),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
-              BoxShadow(
-                color: LiquidColors.accentBlue.withValues(alpha: .1),
-                blurRadius: 20,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LiquidLockHeader(
-                title: isConfirm ? 'Confirm PIN' : 'Create PIN',
-                subtitle: isConfirm
-                    ? 'Re-enter your $_pinLength-digit PIN'
-                    : 'Choose a $_pinLength-digit secure PIN',
-              ),
-
-              const SizedBox(height: 32),
-
-              AnimatedBuilder(
-                animation: _errorController,
-                builder: (context, child) {
-                  return Transform.translate(
-                    offset: Offset(_shakeAnimation.value, 0),
-                    child: LiquidPinDots(
-                      enteredLength: entered.length,
-                      totalLength: _pinLength,
-                      hasError: _error != null,
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 32),
-
-              if (_error != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          LiquidColors.error.withValues(alpha: 0.15),
-                          LiquidColors.error.withValues(alpha: 0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: LiquidColors.error.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: LiquidColors.error.withValues(alpha: 0.2),
-                          ),
-                          child: Icon(
-                            Icons.error_outline_rounded,
-                            color: LiquidColors.error,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: LiquidColors.error,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: size.width >= 600 ? 500 : 420),
+          child: LiquidGlassSurface(
+            borderRadius: 32,
+            blur: 24,
+            tintColor: LiquidColors.accentBlue,
+            tintOpacity: 0.035,
+            padding: EdgeInsets.all(size.width >= 600 ? 36 : 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LiquidLockHeader(
+                  title: isConfirm ? 'Confirm PIN' : 'Create PIN',
+                  subtitle: isConfirm
+                      ? 'Re-enter your $_pinLength-digit PIN'
+                      : 'Choose a $_pinLength-digit secure PIN',
                 ),
 
-              _buildNumberPad(),
-            ],
+                const SizedBox(height: 32),
+
+                AnimatedBuilder(
+                  animation: _errorController,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(_shakeAnimation.value, 0),
+                      child: LiquidPinDots(
+                        enteredLength: entered.length,
+                        totalLength: _pinLength,
+                        hasError: _error != null,
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 32),
+
+                if (_error != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            LiquidColors.error.withValues(alpha: 0.15),
+                            LiquidColors.error.withValues(alpha: 0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: LiquidColors.error.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: LiquidColors.error.withValues(alpha: 0.2),
+                            ),
+                            child: Icon(
+                              Icons.error_outline_rounded,
+                              color: LiquidColors.error,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              _error!,
+                              style: TextStyle(
+                                color: LiquidColors.error,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                _buildNumberPad(),
+              ],
+            ),
           ),
         ),
       ),
@@ -819,12 +834,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             icon: Icons.arrow_back_rounded,
             color: LiquidColors.accentBlue,
             onPressed: _onBackStep,
+            brandGlass: true,
           );
         }
         if (index == 10) {
           return LiquidNumberButton(
             number: '0',
             onPressed: () => _onDigit('0'),
+            brandGlass: true,
           );
         }
         if (index == 11) {
@@ -832,11 +849,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             icon: Icons.backspace,
             color: LiquidColors.error,
             onPressed: _onDelete,
+            brandGlass: true,
           );
         }
         return LiquidNumberButton(
           number: '${index + 1}',
           onPressed: () => _onDigit('${index + 1}'),
+          brandGlass: true,
         );
       },
     );

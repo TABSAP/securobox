@@ -24,9 +24,9 @@ import 'package:video_player_app/utils/recovery_questions_service.dart';
 import 'package:video_player_app/utils/screen_security.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
-import 'package:video_player_app/widgets/app_card.dart';
 import 'package:video_player_app/widgets/app_section_header.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class SecuritySettingsScreen extends StatefulWidget {
   const SecuritySettingsScreen({super.key});
@@ -356,8 +356,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   Future<void> _disableFaceRecognition() async {
     HapticFeedback.lightImpact();
-    final bool verifyWithBiometric =
-        _biometricAvailable && _biometricEnabled;
+    final bool verifyWithBiometric = _biometricAvailable && _biometricEnabled;
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
@@ -416,7 +415,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
           sensitiveTransaction: false,
           persistAcrossBackgrounding: true,
         );
-      } catch (_) {} finally {
+      } catch (_) {
+      } finally {
         SessionManager.instance.endTrustedInteraction();
       }
     }
@@ -424,7 +424,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     if (!verified && mounted) {
       final pinLen = await PinCrypto.instance.getPinLength();
       if (!mounted) return;
-      verified = await showDialog<bool>(
+      verified =
+          await showDialog<bool>(
             context: context,
             barrierDismissible: false,
             builder: (dialogCtx) => PinUnlockDialog(
@@ -471,9 +472,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         : [LiquidColors.accentPurple, LiquidColors.accentPink];
 
     final bool verifyWithBiometric =
-        _biometricAvailable &&
-        _biometricEnabled &&
-        setting != 'biometric';
+        _biometricAvailable && _biometricEnabled && setting != 'biometric';
 
     final confirm = await showDialog<bool>(
       context: context,
@@ -1939,23 +1938,27 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: LiquidColors.systemOverlayStyle,
         titleSpacing: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: theme.colorScheme.onSurface,
+          ),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
           'Security',
           style: TextStyle(
-            color: LiquidColors.textPrimary,
+            color: theme.colorScheme.onSurface,
             fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
@@ -1969,19 +1972,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundMid,
-              LiquidColors.backgroundLight,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+      body: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: SlideTransition(
@@ -2049,7 +2041,8 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 ),
                 const SizedBox(height: AppSpace.sm),
                 _group([
-                  if (defaultTargetPlatform != TargetPlatform.android && _faceAvailable)
+                  if (defaultTargetPlatform != TargetPlatform.android &&
+                      _faceAvailable)
                     _tile(
                       icon: Icons.face_retouching_natural,
                       color: LiquidColors.accentPurple,
@@ -2068,16 +2061,13 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                       subtitle: _faceRecogEnrolled
                           ? 'In-app face unlock is enrolled'
                           : 'Set up in-app face unlock',
-                      trailing: _switch(
-                        _faceRecogEnrolled,
-                        (v) {
-                          if (v) {
-                            _openFaceEnroll();
-                          } else {
-                            _disableFaceRecognition();
-                          }
-                        },
-                      ),
+                      trailing: _switch(_faceRecogEnrolled, (v) {
+                        if (v) {
+                          _openFaceEnroll();
+                        } else {
+                          _disableFaceRecognition();
+                        }
+                      }),
                       onTap: () {
                         _openFaceEnroll();
                       },
@@ -2260,12 +2250,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   Widget _group(List<Widget> children) {
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: AppRadius.rLg,
-        child: Column(children: children),
-      ),
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.lg,
+      blur: 18,
+      child: Column(children: children),
     );
   }
 
@@ -2409,40 +2397,100 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     HapticFeedback.selectionClick();
     final selected = await showModalBottomSheet<int>(
       context: context,
-      backgroundColor: LiquidColors.backgroundMid,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      isScrollControlled: true,
       builder: (sheetCtx) {
+        final theme = Theme.of(sheetCtx);
+        final currentSelection = SessionManager.instance.autoLockSeconds;
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: AppSpace.md),
-              Text(
-                'Auto-lock',
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
+              LiquidGlassSurface(
+                borderRadius: AppRadius.xl,
+                blur: 24,
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.md,
+                  AppSpace.sm,
+                  AppSpace.md,
+                  AppSpace.md,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: theme.brightness == Brightness.dark
+                              ? 0.24
+                              : 0.18,
+                        ),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    Text(
+                      'Auto-lock',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.sm),
+                    for (final entry in SessionManager.autoLockOptions.entries)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Material(
+                          color: entry.key == currentSelection
+                              ? theme.colorScheme.onSurface.withValues(
+                                  alpha: theme.brightness == Brightness.dark
+                                      ? 0.10
+                                      : 0.08,
+                                )
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          child: InkWell(
+                            onTap: () => Navigator.of(sheetCtx).pop(entry.key),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpace.md,
+                                vertical: AppSpace.sm + 2,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      entry.value,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.onSurface,
+                                        fontSize: 15,
+                                        fontWeight:
+                                            entry.key == currentSelection
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  if (entry.key == currentSelection)
+                                    Icon(
+                                      Icons.check_rounded,
+                                      color: theme.colorScheme.onSurface,
+                                      size: 21,
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpace.sm),
-              for (final entry in SessionManager.autoLockOptions.entries)
-                ListTile(
-                  onTap: () => Navigator.of(sheetCtx).pop(entry.key),
-                  title: Text(
-                    entry.value,
-                    style: TextStyle(color: LiquidColors.textPrimary),
-                  ),
-                  trailing: entry.key == SessionManager.instance.autoLockSeconds
-                      ? Icon(
-                          Icons.check_rounded,
-                          color: LiquidColors.accentBlue,
-                        )
-                      : null,
-                ),
-              const SizedBox(height: AppSpace.sm),
             ],
           ),
         );
@@ -2785,30 +2833,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
   }
 
   Widget _buildPinLengthSelector() {
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: 24,
+      blur: 20,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: 0.9),
-            LiquidColors.backgroundMid.withValues(alpha: 0.95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: LiquidColors.accentBlue.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
       child: Column(
         children: [
           Text(
@@ -2856,22 +2884,10 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     final isCurrent = digits == _pinLength;
     return GestureDetector(
       onTap: () => _selectNewPinLength(digits),
-      child: Container(
+      child: LiquidGlassSurface(
+        borderRadius: 16,
+        blur: 14,
         padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              LiquidColors.accentBlue.withValues(alpha: 0.14),
-              LiquidColors.accentPurple.withValues(alpha: 0.06),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: LiquidColors.accentBlue.withValues(alpha: 0.4),
-          ),
-        ),
         child: Column(
           children: [
             Row(
@@ -2884,7 +2900,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: LiquidColors.accentBlue,
+                    color: LiquidColors.textPrimary.withValues(alpha: .72),
                   ),
                 ),
               ),

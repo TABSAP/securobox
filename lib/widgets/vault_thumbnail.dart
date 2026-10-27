@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:video_player_app/models/app_models.dart';
-import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_helper.dart';
 import 'package:video_player_app/utils/thumbnail_cache.dart';
 
@@ -88,7 +87,8 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
   @override
   Widget build(BuildContext context) {
     final type = widget.item.type;
-    final accent = LiquidColors.getMediaColor(type);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final radius = BorderRadius.circular(widget.radius);
     final dpr = MediaQuery.of(context).devicePixelRatio;
 
@@ -101,17 +101,7 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
         return Container(
           width: widget.width,
           height: widget.height,
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            boxShadow: [
-              BoxShadow(
-                color: accent.withValues(alpha: 0.28),
-                blurRadius: 10,
-                spreadRadius: -3,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+          decoration: BoxDecoration(borderRadius: radius),
           child: ClipRRect(
             borderRadius: radius,
             child: Stack(
@@ -119,7 +109,18 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
               children: [
                 DecoratedBox(
                   decoration: BoxDecoration(
-                    gradient: LiquidColors.getMediaGradient(type),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        theme.colorScheme.surfaceContainerHighest.withValues(
+                          alpha: isDark ? 0.92 : 0.96,
+                        ),
+                        theme.colorScheme.surface.withValues(
+                          alpha: isDark ? 0.88 : 0.92,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 if (_image != null)
@@ -157,12 +158,13 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
   }
 
   Widget _iconLayer(String type) {
+    final theme = Theme.of(context);
     return Center(
       child: Icon(
         widget.item.isLocked
             ? Icons.lock_rounded
             : MediaHelper.getMediaIcon(type),
-        color: Colors.white,
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
         size: widget.iconSize,
       ),
     );

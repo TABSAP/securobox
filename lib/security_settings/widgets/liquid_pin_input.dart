@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 import '../../utils/liquid_colors.dart';
 
 class LiquidPinInput extends StatefulWidget {
@@ -52,31 +53,12 @@ class _LiquidPinInputState extends State<LiquidPinInput>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: 24,
+      blur: 20,
+      tintColor: LiquidColors.accentBlue,
+      tintOpacity: 0.06,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.backgroundLight.withValues(alpha: 0.9),
-            LiquidColors.backgroundMid.withValues(alpha: 0.95),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: LiquidColors.accentBlue.withValues(alpha: 0.2),
-            blurRadius: 20,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
       child: Column(
         children: [
           _buildHeader(),
@@ -98,7 +80,8 @@ class _LiquidPinInputState extends State<LiquidPinInput>
     final String subtitle;
     if (widget.verifyOldMode) {
       title = 'ENTER CURRENT PIN';
-      subtitle = 'Verify your existing ${widget.totalLength}-digit PIN to continue';
+      subtitle =
+          'Verify your existing ${widget.totalLength}-digit PIN to continue';
     } else if (widget.confirmMode) {
       title = 'CONFIRM NEW PIN';
       subtitle = 'Enter the same ${widget.totalLength}-digit PIN again';
@@ -128,32 +111,26 @@ class _LiquidPinInputState extends State<LiquidPinInput>
 
   Widget _buildPinIndicators() {
     if (widget.verifyOldMode) {
-      return _buildPinIndicator(
-        pin: widget.oldPin,
-        label: 'Current PIN',
-        color: LiquidColors.warning,
-      );
+      return _buildPinIndicator(pin: widget.oldPin, label: 'Current PIN');
     }
     return Column(
       children: [
         _buildPinIndicator(
           pin: widget.newPin,
           label: widget.confirmMode ? 'First PIN' : 'Entering PIN',
-          color: LiquidColors.accentBlue,
         ),
         if (widget.confirmMode) ...[
           const SizedBox(height: 16),
-          _buildPinIndicator(
-            pin: widget.confirmPin,
-            label: 'Confirm PIN',
-            color: LiquidColors.success,
-          ),
+          _buildPinIndicator(pin: widget.confirmPin, label: 'Confirm PIN'),
         ],
       ],
     );
   }
 
-  Widget _buildPinIndicator({required List<String> pin, required String label, required Color color}) {
+  Widget _buildPinIndicator({
+    required List<String> pin,
+    required String label,
+  }) {
     final spacing = widget.totalLength == 6 ? 6.0 : 12.0;
     final size = widget.totalLength == 6 ? 18.0 : 24.0;
     return Column(
@@ -185,20 +162,22 @@ class _LiquidPinInputState extends State<LiquidPinInput>
                       shape: BoxShape.circle,
                       gradient: RadialGradient(
                         colors: index < pin.length
-                            ? [color, color.withValues(alpha:0.5)]
-                            : [LiquidColors.textTertiary, LiquidColors.textTertiary],
+                            ? [
+                                LiquidColors.accentBlue,
+                                LiquidColors.accentBlue.withValues(alpha: .56),
+                              ]
+                            : [
+                                LiquidColors.textTertiary.withValues(
+                                  alpha: .42,
+                                ),
+                                LiquidColors.textTertiary.withValues(
+                                  alpha: .28,
+                                ),
+                              ],
                         center: Alignment.center,
                         radius: 0.8,
                       ),
-                      boxShadow: index < pin.length
-                          ? [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.5),
-                          blurRadius: 10,
-                          spreadRadius: 2,
-                        ),
-                      ]
-                          : null,
+                      boxShadow: null,
                     ),
                   ),
                 );
@@ -223,21 +202,20 @@ class _LiquidPinInputState extends State<LiquidPinInput>
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: LiquidColors.error.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: LiquidColors.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.error_outline_rounded, color: LiquidColors.error, size: 16),
+          Icon(
+            Icons.error_outline_rounded,
+            color: LiquidColors.error,
+            size: 16,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               widget.error!,
-              style: TextStyle(
-                color: LiquidColors.error,
-                fontSize: 12,
-              ),
+              style: TextStyle(color: LiquidColors.error, fontSize: 12),
             ),
           ),
         ],
@@ -260,7 +238,6 @@ class _LiquidPinInputState extends State<LiquidPinInput>
         if (index == 9) {
           return _buildActionButton(
             icon: Icons.close_rounded,
-            color: LiquidColors.error,
             onTap: widget.onCancel,
           );
         } else if (index == 10) {
@@ -268,7 +245,6 @@ class _LiquidPinInputState extends State<LiquidPinInput>
         } else if (index == 11) {
           return _buildActionButton(
             icon: Icons.backspace_outlined,
-            color: LiquidColors.warning,
             onTap: widget.onDelete,
           );
         } else {
@@ -288,30 +264,11 @@ class _LiquidPinInputState extends State<LiquidPinInput>
           scale: value,
           child: GestureDetector(
             onTap: () => widget.onNumberPressed(number),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [
-                    LiquidColors.backgroundLight.withValues(alpha: 0.5),
-                    LiquidColors.backgroundMid.withValues(alpha: 0.5),
-                  ],
-                  center: Alignment.center,
-                  radius: 0.8,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: LiquidColors.textPrimary.withValues(alpha: 0.1),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.accentBlue.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+            child: LiquidGlassSurface(
+              borderRadius: 16,
+              blur: 14,
+              tintColor: LiquidColors.accentBlue,
+              tintOpacity: 0.12,
               child: Center(
                 child: Text(
                   number,
@@ -331,7 +288,6 @@ class _LiquidPinInputState extends State<LiquidPinInput>
 
   Widget _buildActionButton({
     required IconData icon,
-    required Color color,
     required VoidCallback onTap,
   }) {
     return TweenAnimationBuilder(
@@ -343,36 +299,13 @@ class _LiquidPinInputState extends State<LiquidPinInput>
           scale: value,
           child: GestureDetector(
             onTap: onTap,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [
-                    color.withValues(alpha: 0.2),
-                    color.withValues(alpha: 0.1),
-                  ],
-                  center: Alignment.center,
-                  radius: 0.8,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: color.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
+            child: LiquidGlassSurface(
+              borderRadius: 16,
+              blur: 14,
+              tintColor: LiquidColors.accentBlue,
+              tintOpacity: 0.12,
               child: Center(
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 26,
-                ),
+                child: Icon(icon, color: LiquidColors.accentBlue, size: 26),
               ),
             ),
           ),

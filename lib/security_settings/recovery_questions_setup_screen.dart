@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/recovery_questions_service.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
+import 'package:video_player_app/widgets/liquid_glass_button.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
 
 class RecoveryQuestionsSetupScreen extends StatefulWidget {
   const RecoveryQuestionsSetupScreen({super.key, this.requiredSetup = false});
@@ -73,26 +76,28 @@ class _RecoveryQuestionsSetupScreenState
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return PopScope(
       canPop: !widget.requiredSetup && !_saving,
       child: Scaffold(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         appBar: AppBar(
-          backgroundColor: LiquidColors.backgroundDeep,
+          backgroundColor: theme.scaffoldBackgroundColor,
           surfaceTintColor: Colors.transparent,
+          iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
           leading: widget.requiredSetup
               ? const SizedBox.shrink()
               : IconButton(
                   onPressed: _saving ? null : () => Navigator.pop(context),
                   icon: Icon(
                     Icons.arrow_back_rounded,
-                    color: LiquidColors.textPrimary,
+                    color: theme.colorScheme.onSurface,
                   ),
                 ),
           title: Text(
             widget.requiredSetup ? 'Set up recovery' : 'Recovery questions',
             style: TextStyle(
-              color: LiquidColors.textPrimary,
+              color: theme.colorScheme.onSurface,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
@@ -115,25 +120,23 @@ class _RecoveryQuestionsSetupScreenState
                     _errorBanner(_error!),
                   ],
                   const SizedBox(height: 18),
-                  SizedBox(
+                  LiquidGlassButton(
+                    onPressed: _saving ? null : _save,
+                    icon: Icons.verified_user_rounded,
+                    label: _saving
+                        ? 'Securing answers…'
+                        : 'Save recovery questions',
                     height: 54,
-                    child: FilledButton.icon(
-                      onPressed: _saving ? null : _save,
-                      icon: const Icon(Icons.verified_user_rounded),
-                      label: Text(
-                        _saving
-                            ? 'Securing answers…'
-                            : 'Save recovery questions',
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
                   ),
                   if (!widget.requiredSetup)
-                    TextButton(
-                      onPressed: _saving ? null : () => Navigator.pop(context),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(color: LiquidColors.textSecondary),
+                    Padding(
+                      padding: const EdgeInsets.only(top: AppSpace.sm),
+                      child: LiquidGlassButton(
+                        onPressed: _saving
+                            ? null
+                            : () => Navigator.pop(context),
+                        label: 'Cancel',
+                        height: 44,
                       ),
                     ),
                 ],
@@ -154,22 +157,14 @@ class _RecoveryQuestionsSetupScreenState
     );
   }
 
-  Widget _introCard() => Container(
+  Widget _introCard() => LiquidGlassSurface(
+    borderRadius: AppRadius.lg,
+    blur: 20,
     padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          LiquidColors.accentBlue.withValues(alpha: .15),
-          LiquidColors.accentPurple.withValues(alpha: .08),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: LiquidColors.accentBlue.withValues(alpha: .28)),
-    ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.shield_outlined, color: LiquidColors.accentBlue),
+        Icon(Icons.shield_outlined, color: LiquidColors.textPrimary),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -187,109 +182,106 @@ class _RecoveryQuestionsSetupScreenState
 
   Widget _questionCard(int index) {
     final selectedId = _selected[index];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: LiquidColors.textPrimary.withValues(alpha: .035),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: LiquidColors.textPrimary.withValues(alpha: .08),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: LiquidGlassSurface(
+        borderRadius: AppRadius.lg,
+        blur: 18,
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'QUESTION ${index + 1}',
+              style: TextStyle(
+                color: LiquidColors.textSecondary,
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+                letterSpacing: .8,
+              ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedId,
+              isExpanded: true,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: LiquidColors.textPrimary.withValues(alpha: .04),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+              ),
+              hint: const Text('Select a question'),
+              items: RecoveryQuestionsService.questions.map((question) {
+                final usedElsewhere = _selected.asMap().entries.any(
+                  (entry) => entry.key != index && entry.value == question.id,
+                );
+                return DropdownMenuItem<String>(
+                  value: question.id,
+                  enabled: !usedElsewhere,
+                  child: Text(
+                    question.prompt,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: _saving
+                  ? null
+                  : (value) => setState(() {
+                      _selected[index] = value;
+                      _error = null;
+                    }),
+              validator: (value) => value == null ? 'Select a question' : null,
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _answers[index],
+              enabled: !_saving,
+              obscureText: _obscured[index],
+              autocorrect: false,
+              enableSuggestions: false,
+              textCapitalization: TextCapitalization.sentences,
+              maxLength: 80,
+              decoration: InputDecoration(
+                labelText: 'Your answer',
+                counterText: '',
+                suffixIcon: IconButton(
+                  tooltip: _obscured[index] ? 'Show answer' : 'Hide answer',
+                  onPressed: () =>
+                      setState(() => _obscured[index] = !_obscured[index]),
+                  icon: Icon(
+                    _obscured[index] ? Icons.visibility : Icons.visibility_off,
+                  ),
+                ),
+                filled: true,
+                fillColor: LiquidColors.textPrimary.withValues(alpha: .04),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              validator: (value) =>
+                  RecoveryQuestionsService.normalizeAnswer(value ?? '').length <
+                      3
+                  ? 'Enter at least 3 characters'
+                  : null,
+            ),
+          ],
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'QUESTION ${index + 1}',
-            style: TextStyle(
-              color: LiquidColors.textSecondary,
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-              letterSpacing: .8,
-            ),
-          ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            initialValue: selectedId,
-            isExpanded: true,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: LiquidColors.textPrimary.withValues(alpha: .04),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-            ),
-            hint: const Text('Select a question'),
-            items: RecoveryQuestionsService.questions.map((question) {
-              final usedElsewhere = _selected.asMap().entries.any(
-                (entry) => entry.key != index && entry.value == question.id,
-              );
-              return DropdownMenuItem<String>(
-                value: question.id,
-                enabled: !usedElsewhere,
-                child: Text(
-                  question.prompt,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              );
-            }).toList(),
-            onChanged: _saving
-                ? null
-                : (value) => setState(() {
-                    _selected[index] = value;
-                    _error = null;
-                  }),
-            validator: (value) => value == null ? 'Select a question' : null,
-          ),
-          const SizedBox(height: 10),
-          TextFormField(
-            controller: _answers[index],
-            enabled: !_saving,
-            obscureText: _obscured[index],
-            autocorrect: false,
-            enableSuggestions: false,
-            textCapitalization: TextCapitalization.sentences,
-            maxLength: 80,
-            decoration: InputDecoration(
-              labelText: 'Your answer',
-              counterText: '',
-              suffixIcon: IconButton(
-                tooltip: _obscured[index] ? 'Show answer' : 'Hide answer',
-                onPressed: () =>
-                    setState(() => _obscured[index] = !_obscured[index]),
-                icon: Icon(
-                  _obscured[index] ? Icons.visibility : Icons.visibility_off,
-                ),
-              ),
-              filled: true,
-              fillColor: LiquidColors.textPrimary.withValues(alpha: .04),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            validator: (value) =>
-                RecoveryQuestionsService.normalizeAnswer(value ?? '').length < 3
-                ? 'Enter at least 3 characters'
-                : null,
-          ),
-        ],
       ),
     );
   }
 
-  Widget _errorBanner(String message) => Container(
+  Widget _errorBanner(String message) => LiquidGlassSurface(
+    borderRadius: 12,
+    blur: 14,
+    tintColor: LiquidColors.error,
+    tintOpacity: 0.08,
     padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: LiquidColors.error.withValues(alpha: .1),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: LiquidColors.error.withValues(alpha: .35)),
-    ),
     child: Row(
       children: [
         Icon(Icons.error_outline, color: LiquidColors.error, size: 18),

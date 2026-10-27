@@ -8,6 +8,9 @@ import 'package:video_player_app/app_lock_screen/widgets/liquid_pin_dots.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
+import 'package:video_player_app/widgets/liquid_glass_button.dart';
+import 'package:video_player_app/widgets/app_spacing.dart';
 
 class DecoySetupScreen extends StatefulWidget {
   const DecoySetupScreen({super.key});
@@ -223,21 +226,11 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundMid,
-              LiquidColors.backgroundLight,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
         child: SafeArea(
           child: Column(
             children: [
@@ -264,7 +257,7 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
           IconButton(
             icon: Icon(
               Icons.arrow_back_rounded,
-              color: LiquidColors.textPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             onPressed: () => Navigator.of(context).pop(),
           ),
@@ -286,12 +279,7 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
   Widget _body() {
     switch (_stage) {
       case _Stage.loading:
-        return SizedBox(
-          height: 200,
-          child: Center(
-            child: AppLoader(),
-          ),
-        );
+        return SizedBox(height: 200, child: Center(child: AppLoader()));
       case _Stage.manage:
         return _manageBody();
       case _Stage.pickLength:
@@ -306,28 +294,16 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
   }
 
   Widget _explainerCard() {
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.lg,
+      blur: 20,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.accentPurple.withValues(alpha: 0.14),
-            LiquidColors.accentBlue.withValues(alpha: 0.06),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: LiquidColors.accentPurple.withValues(alpha: 0.3),
-        ),
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             Icons.shield_outlined,
-            color: LiquidColors.accentPurple,
+            color: LiquidColors.textPrimary,
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -371,15 +347,10 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
         const SizedBox(height: 16),
         _explainerCard(),
         const SizedBox(height: 20),
-        Container(
+        LiquidGlassSurface(
+          borderRadius: AppRadius.md,
+          blur: 16,
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: LiquidColors.success.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: LiquidColors.success.withValues(alpha: 0.4),
-            ),
-          ),
           child: Row(
             children: [
               Icon(
@@ -402,52 +373,17 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
           ),
         ),
         const SizedBox(height: 22),
-        SizedBox(
-          height: 52,
-          child: ElevatedButton.icon(
-            onPressed: _startChange,
-            icon: const Icon(
-              Icons.password_rounded,
-              size: 18,
-              color: Colors.white,
-            ),
-            label: const Text(
-              'Change decoy PIN',
-              style: TextStyle(color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: LiquidColors.accentBlue,
-              foregroundColor: LiquidColors.textPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
+        LiquidGlassButton(
+          onPressed: _startChange,
+          icon: Icons.password_rounded,
+          label: 'Change decoy PIN',
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          height: 52,
-          child: OutlinedButton.icon(
-            onPressed: _startDisable,
-            icon: Icon(
-              Icons.lock_open_rounded,
-              size: 18,
-              color: LiquidColors.error,
-            ),
-            label: Text(
-              'Disable decoy mode',
-              style: TextStyle(color: LiquidColors.error),
-            ),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(
-                color: LiquidColors.error.withValues(alpha: 0.5),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-          ),
+        LiquidGlassButton(
+          onPressed: _startDisable,
+          icon: Icons.lock_open_rounded,
+          label: 'Disable decoy mode',
+          foregroundColor: LiquidColors.error,
         ),
         const SizedBox(height: 10),
         Text(
@@ -480,31 +416,14 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
         const SizedBox(height: 10),
         _lengthOption(6, '6-digit (recommended)'),
         const SizedBox(height: 24),
-        SizedBox(
+        LiquidGlassButton(
+          onPressed: () => setState(() {
+            _newPin = '';
+            _confirmPin = '';
+            _stage = _Stage.enter;
+          }),
+          label: 'Continue',
           height: 52,
-          child: ElevatedButton(
-            onPressed: () => setState(() {
-              _newPin = '';
-              _confirmPin = '';
-              _stage = _Stage.enter;
-            }),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: LiquidColors.accentBlue,
-              foregroundColor: LiquidColors.textPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text(
-              'Continue',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
         ),
       ],
     );
@@ -517,30 +436,19 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
         HapticFeedback.selectionClick();
         setState(() => _pinLength = digits);
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
+      child: LiquidGlassSurface(
+        borderRadius: 14,
+        blur: 14,
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: selected
-              ? LiquidColors.accentBlue.withValues(alpha: 0.16)
-              : LiquidColors.textPrimary.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected
-                ? LiquidColors.accentBlue
-                : LiquidColors.textPrimary.withValues(alpha: 0.08),
-            width: selected ? 1.6 : 1,
-          ),
-        ),
         child: Row(
           children: [
             Icon(
               selected
                   ? Icons.radio_button_checked_rounded
                   : Icons.radio_button_unchecked_rounded,
-              color: selected
-                  ? LiquidColors.accentBlue
-                  : LiquidColors.textTertiary,
+              color: LiquidColors.textPrimary.withValues(
+                alpha: selected ? .86 : .48,
+              ),
               size: 18,
             ),
             const SizedBox(width: 12),
@@ -578,33 +486,20 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Container(
+        child: LiquidGlassSurface(
+          borderRadius: 32,
+          blur: 22,
+          tintColor: LiquidColors.accentBlue,
+          tintOpacity: 0.06,
           padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                LiquidColors.backgroundLight.withValues(alpha: .3),
-                LiquidColors.backgroundMid.withValues(alpha: .4),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(32),
-            border: Border.all(
-              color: LiquidColors.accentPurple.withValues(alpha: .2),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .3),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              LiquidLockHeader(title: title, subtitle: subtitle),
+              LiquidLockHeader(
+                title: title,
+                subtitle: subtitle,
+                brandGlass: true,
+              ),
               const SizedBox(height: 28),
               AnimatedBuilder(
                 animation: _shakeCtrl,
@@ -619,17 +514,14 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
               ),
               const SizedBox(height: 28),
               if (_error != null) ...[
-                Container(
+                LiquidGlassSurface(
+                  borderRadius: 12,
+                  blur: 12,
+                  tintColor: LiquidColors.error,
+                  tintOpacity: 0.04,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
                     vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: LiquidColors.error.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: LiquidColors.error.withValues(alpha: 0.35),
-                    ),
                   ),
                   child: Text(
                     _error!,
@@ -669,12 +561,14 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
                           _stage = _Stage.pickLength;
                         }
                       }),
+                      brandGlass: true,
                     );
                   }
                   if (index == 10) {
                     return LiquidNumberButton(
                       number: '0',
                       onPressed: () => _onDigit('0'),
+                      brandGlass: true,
                     );
                   }
                   if (index == 11) {
@@ -682,11 +576,13 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
                       icon: Icons.backspace,
                       color: LiquidColors.error,
                       onPressed: _onDelete,
+                      brandGlass: true,
                     );
                   }
                   return LiquidNumberButton(
                     number: '${index + 1}',
                     onPressed: () => _onDigit('${index + 1}'),
+                    brandGlass: true,
                   );
                 },
               ),
@@ -702,31 +598,17 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
     return Column(
       children: [
         const SizedBox(height: 36),
-        Container(
-          width: 90,
-          height: 90,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: ok
-                  ? [LiquidColors.success, LiquidColors.accentBlue]
-                  : [LiquidColors.warning, LiquidColors.accentOrange],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        LiquidGlassSurface(
+          borderRadius: 45,
+          blur: 22,
+          child: SizedBox(
+            width: 90,
+            height: 90,
+            child: Icon(
+              ok ? Icons.shield_rounded : Icons.lock_open_rounded,
+              color: ok ? LiquidColors.success : LiquidColors.warning,
+              size: 44,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: (ok ? LiquidColors.success : LiquidColors.warning)
-                    .withValues(alpha: 0.4),
-                blurRadius: 28,
-                spreadRadius: 3,
-              ),
-            ],
-          ),
-          child: Icon(
-            ok ? Icons.shield_rounded : Icons.lock_open_rounded,
-            color: Colors.white,
-            size: 44,
           ),
         ),
         const SizedBox(height: 24),
@@ -752,30 +634,10 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
           ),
         ),
         const SizedBox(height: 28),
-        SizedBox(
-          width: double.infinity,
+        LiquidGlassButton(
+          onPressed: () => Navigator.of(context).pop(),
+          label: 'Done',
           height: 52,
-          child: ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: ok
-                  ? LiquidColors.success
-                  : LiquidColors.accentBlue,
-              foregroundColor: LiquidColors.textPrimary,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: const Text(
-              'Done',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-          ),
         ),
       ],
     );

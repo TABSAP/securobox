@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 import 'package:video_player_app/widgets/vault_thumbnail.dart';
 import '../../../../../models/app_models.dart';
 import '../../../../../utils/media_helper.dart';
@@ -105,35 +106,37 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
     final selected = widget.selectionMode && widget.selected;
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpace.sm + 2),
-      padding: const EdgeInsets.all(AppSpace.sm + 2),
-      decoration: BoxDecoration(
-        color: selected
-            ? LiquidColors.indigo.withValues(alpha: 0.10)
-            : LiquidColors.backgroundLight.withValues(
-                alpha: _pressed ? 0.78 : 0.55,
-              ),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(
-          color: selected
-              ? LiquidColors.indigo.withValues(alpha: 0.5)
-              : LiquidColors.cardBorder,
-          width: selected ? 1.4 : 1,
+      child: LiquidGlassSurface(
+        borderRadius: AppRadius.lg,
+        padding: const EdgeInsets.all(AppSpace.sm + 2),
+        tintColor: selected ? LiquidColors.indigo : null,
+        tintOpacity: selected ? 0.16 : 0,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          decoration: BoxDecoration(
+            color: _pressed
+                ? Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.035)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+          ),
+          child: Row(
+            children: [
+              if (widget.selectionMode) ...[
+                _buildSelectionIndicator(),
+                const SizedBox(width: 10),
+              ],
+              _buildThumbnail(),
+              const SizedBox(width: 12),
+              Expanded(child: _buildInfo()),
+              if (!widget.selectionMode) ...[
+                const SizedBox(width: 4),
+                _buildActions(context),
+              ],
+            ],
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          if (widget.selectionMode) ...[
-            _buildSelectionIndicator(),
-            const SizedBox(width: 10),
-          ],
-          _buildThumbnail(),
-          const SizedBox(width: 12),
-          Expanded(child: _buildInfo()),
-          if (!widget.selectionMode) ...[
-            const SizedBox(width: 4),
-            _buildActions(context),
-          ],
-        ],
       ),
     );
   }
@@ -142,9 +145,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
     return Icon(
       widget.selected ? Icons.check_circle_rounded : Icons.circle_outlined,
       size: 24,
-      color: widget.selected
-          ? LiquidColors.indigo
-          : LiquidColors.textTertiary,
+      color: widget.selected ? LiquidColors.indigo : LiquidColors.textTertiary,
     );
   }
 
@@ -169,7 +170,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  color: LiquidColors.backgroundLight,
+                  color: Theme.of(context).colorScheme.surface,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -194,7 +195,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: LiquidColors.textPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 15.5,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.1,
@@ -227,7 +228,9 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 11.5,
-                  color: LiquidColors.textTertiary,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.55),
                 ),
               ),
             ),
@@ -240,7 +243,7 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
   Widget _buildActions(BuildContext context) {
     return _iconButton(
       icon: Icons.more_vert_rounded,
-      color: LiquidColors.textSecondary,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.70),
       onTap: () => _showActionMenu(context),
       tooltip: 'More',
     );
@@ -253,26 +256,21 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
     String? tooltip,
   }) {
     final enabled = onTap != null;
-    final btn = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(11),
-        child: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: enabled
-                ? color.withValues(alpha: 0.10)
-                : LiquidColors.textPrimary.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(11),
-            border: Border.all(
-              color: enabled
-                  ? color.withValues(alpha: 0.22)
-                  : LiquidColors.textPrimary.withValues(alpha: 0.05),
-            ),
+    final btn = LiquidGlassSurface(
+      borderRadius: 11,
+      blur: 12,
+      tintColor: enabled ? color : null,
+      tintOpacity: enabled ? 0.06 : 0,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(11),
+          child: SizedBox(
+            width: 38,
+            height: 38,
+            child: Icon(icon, color: color, size: 18),
           ),
-          child: Icon(icon, color: color, size: 18),
         ),
       ),
     );
@@ -286,48 +284,66 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
     final choice = await showMenu<String>(
       context: context,
       position: position,
-      color: LiquidColors.backgroundLight,
-      elevation: 10,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-        ),
-      ),
+      color: Colors.transparent,
+      elevation: 0,
+      constraints: const BoxConstraints(minWidth: 224, maxWidth: 224),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       items: [
-        _menuItem(
-          'favorite',
-          _m.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          _m.isFavorite ? 'Remove favorite' : 'Add to favorites',
-          LiquidColors.accentPink,
-        ),
-        _menuItem(
-          'rename',
-          Icons.drive_file_rename_outline_rounded,
-          'Rename',
-          LiquidColors.accentBlue,
-        ),
-        _menuItem(
-          'category',
-          Icons.label_outline_rounded,
-          'Change category',
-          LiquidColors.success,
-        ),
-        // "Unlock" restores the file to where it came from on the device and
-        // then removes SecuroBox's copy. For a legacy item that is already on
-        // the device, it just removes the vault copy.
-        _menuItem(
-          'gallery',
-          Icons.lock_open_rounded,
-          _m.inGallery ? 'Remove from SecuroBox' : 'Unlock & Restore',
-          LiquidColors.indigo,
-        ),
-        const PopupMenuDivider(height: 6),
-        _menuItem(
-          'delete',
-          Icons.delete_outline_rounded,
-          'Move to trash',
-          LiquidColors.error,
+        _GlassPopupMenuEntry<String>(
+          values: const ['favorite', 'rename', 'category', 'gallery', 'delete'],
+          height: 5 * 44 + 14,
+          child: LiquidGlassSurface(
+            borderRadius: 18,
+            blur: 24,
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _glassMenuItem(
+                  'favorite',
+                  _m.isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  _m.isFavorite ? 'Remove favorite' : 'Add to favorites',
+                  LiquidColors.accentPink,
+                ),
+                _glassMenuItem(
+                  'rename',
+                  Icons.drive_file_rename_outline_rounded,
+                  'Rename',
+                  LiquidColors.accentBlue,
+                ),
+                _glassMenuItem(
+                  'category',
+                  Icons.label_outline_rounded,
+                  'Change category',
+                  LiquidColors.success,
+                ),
+                // Restores the source file and removes SecuroBox's copy.
+                _glassMenuItem(
+                  'gallery',
+                  Icons.lock_open_rounded,
+                  _m.inGallery ? 'Remove from SecuroBox' : 'Unlock & Restore',
+                  LiquidColors.indigo,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Divider(
+                    height: 1,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.10),
+                  ),
+                ),
+                _glassMenuItem(
+                  'delete',
+                  Icons.delete_outline_rounded,
+                  'Move to trash',
+                  LiquidColors.error,
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -355,36 +371,49 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
     }
   }
 
-  PopupMenuItem<String> _menuItem(
+  Widget _glassMenuItem(
     String value,
     IconData icon,
     String label,
     Color color,
   ) {
-    return PopupMenuItem<String>(
-      value: value,
-      height: 44,
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(8),
+    final theme = Theme.of(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Navigator.of(context).pop(value),
+        child: SizedBox(
+          height: 44,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(icon, size: 16, color: color),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            child: Icon(icon, size: 16, color: color),
           ),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              color: LiquidColors.textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -453,4 +482,29 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
       Offset.zero & overlay.size,
     );
   }
+}
+
+class _GlassPopupMenuEntry<T> extends PopupMenuEntry<T> {
+  const _GlassPopupMenuEntry({
+    required this.values,
+    required this.height,
+    required this.child,
+  });
+
+  final List<T> values;
+  @override
+  final double height;
+  final Widget child;
+
+  @override
+  bool represents(T? value) => value != null && values.contains(value);
+
+  @override
+  State<_GlassPopupMenuEntry<T>> createState() =>
+      _GlassPopupMenuEntryState<T>();
+}
+
+class _GlassPopupMenuEntryState<T> extends State<_GlassPopupMenuEntry<T>> {
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

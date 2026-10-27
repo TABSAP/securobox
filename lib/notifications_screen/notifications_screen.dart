@@ -6,6 +6,7 @@ import 'package:video_player_app/utils/notification_service.dart';
 import 'package:video_player_app/views/screens/home_screen/widgets/liquid_animations/liquid_background.dart';
 import 'package:video_player_app/widgets/app_empty_state.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -30,25 +31,56 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     HapticFeedback.lightImpact();
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Clear all notifications?'),
-        content: const Text(
-          'This removes every notification. You can\'t undo this.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: TextStyle(color: LiquidColors.textSecondary)),
+      builder: (ctx) {
+        final theme = Theme.of(ctx);
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: LiquidGlassSurface(
+            borderRadius: AppRadius.lg,
+            blur: 24,
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Clear all notifications?',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'This removes every notification. You can\'t undo this.',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    _GlassTextButton(
+                      label: 'Cancel',
+                      onPressed: () => Navigator.pop(ctx, false),
+                    ),
+                    const SizedBox(width: 10),
+                    _GlassTextButton(
+                      label: 'Clear all',
+                      tint: theme.colorScheme.error,
+                      onPressed: () => Navigator.pop(ctx, true),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Clear all',
-                style: TextStyle(
-                    color: LiquidColors.error, fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+        );
+      },
     );
     if (ok == true) {
       await NotificationService.instance.clearAll();
@@ -57,10 +89,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.78),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -78,15 +111,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             valueListenable: NotificationService.instance.notifications,
             builder: (context, list, _) {
               if (list.isEmpty) return const SizedBox.shrink();
-              return TextButton(
-                onPressed: _confirmClearAll,
-                child: Text(
-                  'Clear all',
-                  style: TextStyle(
-                    color: LiquidColors.error,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5,
-                  ),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: _GlassTextButton(
+                  label: 'Clear all',
+                  tint: theme.colorScheme.error,
+                  onPressed: _confirmClearAll,
+                  compact: true,
                 ),
               );
             },
@@ -95,16 +126,27 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: LiquidBackground(
+        neutral: true,
         child: ValueListenableBuilder<List<AppNotification>>(
           valueListenable: NotificationService.instance.notifications,
           builder: (context, list, _) {
             if (list.isEmpty) {
-              return const AppEmptyState(
-                icon: Icons.notifications_none_rounded,
-                title: 'You\'re all caught up',
-                message:
-                    'Update and new-feature alerts will appear here. Nothing '
-                    'new right now.',
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: LiquidGlassSurface(
+                    borderRadius: AppRadius.lg,
+                    blur: 20,
+                    padding: const EdgeInsets.all(24),
+                    child: const AppEmptyState(
+                      icon: Icons.notifications_none_rounded,
+                      title: 'You\'re all caught up',
+                      message:
+                          'Update and new-feature alerts will appear here. Nothing '
+                          'new right now.',
+                    ),
+                  ),
+                ),
               );
             }
             return ListView.separated(
@@ -178,25 +220,23 @@ class _NotificationTile extends StatelessWidget {
         ),
         child: Icon(Icons.delete_outline_rounded, color: LiquidColors.error),
       ),
-      child: Container(
+      child: LiquidGlassSurface(
+        borderRadius: AppRadius.lg,
+        blur: 18,
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-          borderRadius: AppRadius.rLg,
-          border: Border.all(color: LiquidColors.cardBorder),
-        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(10),
+            LiquidGlassSurface(
+              borderRadius: 10,
+              blur: 10,
+              tintColor: color,
+              tintOpacity: 0.12,
+              child: SizedBox(
+                width: 34,
+                height: 34,
+                child: Icon(icon, color: color, size: 18),
               ),
-              child: Icon(icon, color: color, size: 18),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -250,6 +290,53 @@ class _NotificationTile extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassTextButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onPressed;
+  final Color? tint;
+  final bool compact;
+
+  const _GlassTextButton({
+    required this.label,
+    required this.onPressed,
+    this.tint,
+    this.compact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: 12,
+      blur: 12,
+      tintColor: tint,
+      tintOpacity: tint == null ? 0 : 0.12,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 12 : 16,
+              vertical: compact ? 7 : 11,
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color:
+                    tint ?? theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                fontWeight: FontWeight.w700,
+                fontSize: compact ? 12 : 13,
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
 import 'package:video_player_app/widgets/vault_thumbnail.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/history_screen/widgets/view.dart';
 import 'package:video_player_app/utils/vault_context.dart';
@@ -118,7 +119,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           );
         }
       }
-    } on Object catch (_) { /* ignored */ }
+    } on Object catch (_) {
+      /* ignored */
+    }
   }
 
   Future<void> _loadDeletedVideos() async {
@@ -139,7 +142,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             if (video.isDeleted && !video.isHidden) {
               _deletedVideos.add(video);
             }
-          } on Object catch (_) { /* ignored */ }
+          } on Object catch (_) {
+            /* ignored */
+          }
         }
 
         _deletedVideos.sort((a, b) {
@@ -348,21 +353,51 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     }
   }
 
+  Widget _dialogAction({
+    required String label,
+    required VoidCallback onPressed,
+    bool destructive = false,
+  }) {
+    final theme = Theme.of(context);
+    final color = destructive
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurface.withValues(alpha: 0.72);
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.md,
+      blur: 14,
+      tintColor: destructive ? theme.colorScheme.error : null,
+      tintOpacity: destructive ? 0.12 : 0,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: AppRadius.rMd,
+          child: SizedBox(
+            height: 46,
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(color: color, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<bool?> _confirmDeleteForever(String title, String body) {
     return showDialog<bool>(
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        child: Container(
+        elevation: 0,
+        child: LiquidGlassSurface(
+          borderRadius: AppRadius.xl,
+          blur: 24,
+          tintColor: LiquidColors.error,
+          tintOpacity: 0.04,
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: LiquidColors.backgroundLight,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(
-              color: LiquidColors.error.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -405,36 +440,17 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: _dialogAction(
+                      label: 'Cancel',
                       onPressed: () => Navigator.pop(context, false),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        side: BorderSide(color: LiquidColors.cardBorder),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(color: LiquidColors.textSecondary),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: _dialogAction(
+                      label: 'Delete',
+                      destructive: true,
                       onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: LiquidColors.error,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                      ),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.white),
-                      ),
                     ),
                   ),
                 ],
@@ -539,16 +555,13 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        child: Container(
+        elevation: 0,
+        child: LiquidGlassSurface(
+          borderRadius: AppRadius.xl,
+          blur: 24,
+          tintColor: LiquidColors.error,
+          tintOpacity: 0.04,
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: LiquidColors.backgroundLight,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(
-              color: LiquidColors.error.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -586,22 +599,9 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
                 ),
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
+              _dialogAction(
+                label: 'OK',
                 onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: LiquidColors.indigo,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
-                  ),
-                ),
-                child: const Text(
-                  'OK',
-                  style: TextStyle(color: Colors.white),
-                ),
               ),
             ],
           ),
@@ -616,16 +616,13 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       context: context,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
-        child: Container(
+        elevation: 0,
+        child: LiquidGlassSurface(
+          borderRadius: AppRadius.xl,
+          blur: 24,
+          tintColor: LiquidColors.error,
+          tintOpacity: 0.04,
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: LiquidColors.backgroundLight,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(
-              color: LiquidColors.error.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -668,36 +665,17 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: _dialogAction(
+                      label: 'Cancel',
                       onPressed: () => Navigator.pop(context, false),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        side: BorderSide(color: LiquidColors.cardBorder),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(color: LiquidColors.textSecondary),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    child: _dialogAction(
+                      label: 'Empty Bin',
+                      destructive: true,
                       onPressed: () => Navigator.pop(context, true),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: LiquidColors.error,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                      ),
-                      child: const Text(
-                        'Empty Bin',
-                        style: TextStyle(color: Colors.white),
-                      ),
                     ),
                   ),
                 ],
@@ -743,14 +721,17 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   @override
   Widget build(BuildContext context) {
     final inset = context.contentInset(phone: AppSpace.md);
+    final theme = Theme.of(context);
     return PopScope(
       canPop: !_selectionMode,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _exitSelection();
       },
       child: Scaffold(
-        backgroundColor: LiquidColors.backgroundDeep,
-        appBar: _selectionMode ? _buildSelectionAppBar() : _buildDefaultAppBar(),
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: _selectionMode
+            ? _buildSelectionAppBar()
+            : _buildDefaultAppBar(),
         body: SafeArea(
           top: false,
           child: FadeTransition(
@@ -785,16 +766,18 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   }
 
   PreferredSizeWidget _buildDefaultAppBar() {
+    final theme = Theme.of(context);
     return AppBar(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.76),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       systemOverlayStyle: LiquidColors.systemOverlayStyle,
       titleSpacing: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
-        onPressed: () => Navigator.pop(context),
+      leading: _appBarAction(
+        Icons.arrow_back_rounded,
+        'Back',
+        () => Navigator.pop(context),
       ),
       title: Text(
         'Recycle Bin',
@@ -807,32 +790,16 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       ),
       actions: [
         if (_deletedVideos.isNotEmpty) ...[
-          Tooltip(
-            message: 'Select',
-            child: IconButton(
-              icon: Icon(
-                Icons.checklist_rounded,
-                color: LiquidColors.textPrimary,
-              ),
-              onPressed: () {
-                if (_filteredVideos.isNotEmpty) {
-                  _enterSelection(_filteredVideos.first);
-                }
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 4),
-            child: Tooltip(
-              message: 'Empty bin',
-              child: IconButton(
-                icon: Icon(
-                  Icons.delete_sweep_rounded,
-                  color: LiquidColors.error,
-                ),
-                onPressed: _showClearAllDialog,
-              ),
-            ),
+          _appBarAction(Icons.checklist_rounded, 'Select', () {
+            if (_filteredVideos.isNotEmpty) {
+              _enterSelection(_filteredVideos.first);
+            }
+          }),
+          _appBarAction(
+            Icons.delete_sweep_rounded,
+            'Empty bin',
+            _showClearAllDialog,
+            color: LiquidColors.error,
           ),
         ],
       ],
@@ -840,16 +807,18 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   }
 
   PreferredSizeWidget _buildSelectionAppBar() {
+    final theme = Theme.of(context);
     return AppBar(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.76),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       systemOverlayStyle: LiquidColors.systemOverlayStyle,
       titleSpacing: 0,
-      leading: IconButton(
-        icon: Icon(Icons.close_rounded, color: LiquidColors.textPrimary),
-        onPressed: _exitSelection,
+      leading: _appBarAction(
+        Icons.close_rounded,
+        'Exit selection',
+        _exitSelection,
       ),
       title: Text(
         '${_selectedIds.length} selected',
@@ -861,33 +830,85 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
         ),
       ),
       actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 4),
-          child: TextButton(
-            onPressed: _toggleSelectAll,
-            child: Text(
-              _allSelected ? 'Clear' : 'All',
-              style: TextStyle(
-                color: LiquidColors.indigo,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+        _appBarAction(
+          _allSelected ? Icons.deselect_rounded : Icons.select_all_rounded,
+          _allSelected ? 'Clear selection' : 'Select all',
+          _toggleSelectAll,
+          color: theme.colorScheme.primary,
+          label: _allSelected ? 'Clear' : 'All',
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _appBarAction(
+    IconData icon,
+    String tooltip,
+    VoidCallback onPressed, {
+    Color? color,
+    String? label,
+  }) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      child: Tooltip(
+        message: tooltip,
+        child: LiquidGlassSurface(
+          borderRadius: 12,
+          blur: 14,
+          tintColor: color,
+          tintOpacity: color == null ? 0 : 0.08,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                height: 40,
+                width: label == null ? 40 : null,
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: label == null ? 0 : 10,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        icon,
+                        color: color ?? theme.colorScheme.onSurface,
+                        size: 20,
+                      ),
+                      if (label != null) ...[
+                        const SizedBox(width: 5),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: color ?? theme.colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildSelectionActionBar(double inset) {
     final count = _selectedIds.length;
     final enabled = count > 0;
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: 20,
+      blur: 24,
       padding: EdgeInsets.fromLTRB(inset, AppSpace.sm, inset, AppSpace.sm),
-      decoration: BoxDecoration(
-        color: LiquidColors.backgroundDeep,
-        border: Border(top: BorderSide(color: LiquidColors.divider)),
-      ),
       child: SafeArea(
         top: false,
         child: Row(
@@ -924,35 +945,37 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     required bool enabled,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: enabled
-          ? color.withValues(alpha: 0.12)
-          : LiquidColors.surfaceMuted,
-      borderRadius: BorderRadius.circular(AppRadius.sm),
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-        child: Container(
-          height: 48,
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                size: 20,
-                color: enabled ? color : LiquidColors.textTertiary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.md,
+      blur: 14,
+      tintColor: enabled ? color : null,
+      tintOpacity: enabled ? 0.13 : 0,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
                   color: enabled ? color : LiquidColors.textTertiary,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: enabled ? color : LiquidColors.textTertiary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -960,48 +983,51 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   }
 
   Widget _buildSearchBar() {
-    return TextField(
-      controller: _searchController,
-      style: TextStyle(color: LiquidColors.textPrimary, fontSize: 15),
-      cursorColor: LiquidColors.indigo,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        isDense: true,
-        filled: true,
-        fillColor: LiquidColors.surfaceMuted,
-        hintText: 'Search deleted files',
-        hintStyle: TextStyle(color: LiquidColors.textTertiary, fontSize: 15),
-        prefixIcon: Icon(
-          Icons.search_rounded,
-          color: LiquidColors.textTertiary,
-          size: 20,
-        ),
-        suffixIcon: _searchController.text.isEmpty
-            ? null
-            : IconButton(
-                icon: Icon(
-                  Icons.close_rounded,
-                  color: LiquidColors.textTertiary,
-                  size: 20,
-                ),
-                onPressed: () {
-                  HapticFeedback.selectionClick();
-                  _searchController.clear();
-                  FocusScope.of(context).unfocus();
-                },
-              ),
-        contentPadding: const EdgeInsets.symmetric(vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          borderSide: BorderSide(color: LiquidColors.indigo, width: 1.4),
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: 16,
+      blur: 18,
+      child: SizedBox(
+        height: 50,
+        child: TextField(
+          controller: _searchController,
+          style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 15),
+          cursorColor: theme.colorScheme.primary,
+          textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: false,
+            hintText: 'Search deleted files',
+            hintStyle: TextStyle(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.48),
+              fontSize: 15,
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              size: 20,
+            ),
+            suffixIcon: _searchController.text.isEmpty
+                ? null
+                : IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      _searchController.clear();
+                      FocusScope.of(context).unfocus();
+                    },
+                  ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+          ),
         ),
       ),
     );
@@ -1058,61 +1084,66 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpace.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.10),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                hasSearch
-                    ? Icons.search_off_rounded
-                    : Icons.delete_outline_rounded,
-                color: accent,
-                size: 42,
-              ),
-            ),
-            const SizedBox(height: AppSpace.lg),
-            Text(
-              hasSearch ? 'No matching files' : 'Recycle Bin is empty',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: LiquidColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: AppSpace.sm),
-            Text(
-              hasSearch
-                  ? 'Try a different search term.'
-                  : 'Deleted files appear here and are kept for 30 days before they are removed for good.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: LiquidColors.textSecondary,
-                fontSize: 13.5,
-                height: 1.5,
-              ),
-            ),
-            if (!hasSearch) ...[
-              const SizedBox(height: AppSpace.lg),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(
-                  'Back to Library',
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
+          child: LiquidGlassSurface(
+            borderRadius: AppRadius.xl,
+            blur: 20,
+            padding: const EdgeInsets.all(AppSpace.xl),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                LiquidGlassSurface(
+                  borderRadius: 48,
+                  blur: 16,
+                  tintColor: accent,
+                  tintOpacity: 0.12,
+                  child: SizedBox(
+                    width: 88,
+                    height: 88,
+                    child: Icon(
+                      hasSearch
+                          ? Icons.search_off_rounded
+                          : Icons.delete_outline_rounded,
+                      color: accent,
+                      size: 38,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpace.lg),
+                Text(
+                  hasSearch ? 'No matching files' : 'Recycle Bin is empty',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: LiquidColors.indigo,
-                    fontSize: 14,
+                    color: LiquidColors.textPrimary,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-            ],
-          ],
+                const SizedBox(height: AppSpace.sm),
+                Text(
+                  hasSearch
+                      ? 'Try a different search term.'
+                      : 'Deleted files appear here and are kept for 30 days before they are removed for good.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: LiquidColors.textSecondary,
+                    fontSize: 13.5,
+                    height: 1.5,
+                  ),
+                ),
+                if (!hasSearch) ...[
+                  const SizedBox(height: AppSpace.lg),
+                  _glassTextAction(
+                    context,
+                    label: 'Back to Library',
+                    onTap: () => Navigator.pop(context),
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -1122,12 +1153,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     final videos = _filteredVideos;
     return ListView.separated(
       physics: const BouncingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(
-        inset,
-        AppSpace.xs,
-        inset,
-        AppSpace.xl + 40,
-      ),
+      padding: EdgeInsets.fromLTRB(inset, AppSpace.xs, inset, AppSpace.xl + 40),
       itemCount: videos.length,
       separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm + 2),
       itemBuilder: (context, index) => _buildCard(videos[index]),
@@ -1143,19 +1169,12 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     final isLocked = video.isLocked;
     final selected = _selectedIds.contains(video.id);
 
-    final card = AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
+    final card = LiquidGlassSurface(
+      borderRadius: AppRadius.lg,
+      blur: 18,
       padding: const EdgeInsets.all(AppSpace.sm + 2),
-      decoration: BoxDecoration(
-        color: selected
-            ? LiquidColors.indigo.withValues(alpha: 0.10)
-            : LiquidColors.backgroundLight.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(
-          color: selected ? LiquidColors.indigo : LiquidColors.cardBorder,
-          width: selected ? 1.4 : 1,
-        ),
-      ),
+      tintColor: selected ? Theme.of(context).colorScheme.primary : null,
+      tintOpacity: selected ? 0.14 : 0,
       child: Row(
         children: [
           VaultThumbnail(
@@ -1294,12 +1313,12 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     required String label,
     required Color color,
   }) {
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.sm,
+      blur: 10,
+      tintColor: color,
+      tintOpacity: 0.10,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppRadius.sm),
-      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1326,21 +1345,52 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   }) {
     return Tooltip(
       message: tooltip,
+      child: LiquidGlassSurface(
+        borderRadius: AppRadius.sm,
+        blur: 12,
+        tintColor: color,
+        tintOpacity: 0.10,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              //alignment: Alignment.center,
+              child: Icon(icon, color: color, size: 20),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _glassTextAction(
+    BuildContext context, {
+    required String label,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.md,
+      blur: 14,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.sm),
-          child: Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-              border: Border.all(color: color.withValues(alpha: 0.22)),
+          borderRadius: AppRadius.rMd,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+              ),
             ),
-            child: Icon(icon, color: color, size: 20),
           ),
         ),
       ),

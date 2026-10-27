@@ -7,6 +7,7 @@ import 'package:just_audio/just_audio.dart' as ja;
 
 import 'package:video_player_app/utils/liquid_circular_progress.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class AudioPlayerScreen extends StatefulWidget {
   final String filePath;
@@ -97,7 +98,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
         if (!mounted) return;
         setState(() {
           _isPlaying = state.playing;
-          _isLoading = state.processingState == ja.ProcessingState.loading ||
+          _isLoading =
+              state.processingState == ja.ProcessingState.loading ||
               state.processingState == ja.ProcessingState.buffering;
         });
         _syncAnimations();
@@ -191,7 +193,13 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
       backgroundColor: LiquidColors.backgroundDeep,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        flexibleSpace: const LiquidGlassSurface(
+          borderRadius: 0,
+          blur: 18,
+          child: SizedBox.expand(),
+        ),
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
           icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
@@ -228,7 +236,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     if (_isLoading && _duration == Duration.zero) return _loadingState();
 
     final total = _duration.inMilliseconds.toDouble();
-    final pos = _dragValue ??
+    final pos =
+        _dragValue ??
         (total <= 0
             ? 0.0
             : _position.inMilliseconds.toDouble().clamp(0.0, total));
@@ -241,44 +250,74 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
           child: Center(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _disc1(),
-                  const SizedBox(height: 30),
-                  _nowPlayingLabel(),
-                  const SizedBox(height: 10),
-                  Text(
-                    widget.fileName,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: LiquidColors.textPrimary,
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  _progress(pos, total),
-                  const SizedBox(height: 22),
-                  _mainTransport(),
-                  const SizedBox(height: 20),
-                  _pillRow(),
-                  const SizedBox(height: 20),
-                  _volumeRow(),
-                  const SizedBox(height: 14),
-                  TextButton.icon(
-                    onPressed: _stop,
-                    icon: Icon(Icons.stop_rounded,
-                        size: 18, color: LiquidColors.error),
-                    label: Text('Stop',
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: LiquidGlassSurface(
+                  borderRadius: 32,
+                  blur: 22,
+                  tintColor: LiquidColors.accentBlue,
+                  tintOpacity: 0.035,
+                  padding: const EdgeInsets.all(22),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _disc1(),
+                      const SizedBox(height: 30),
+                      _nowPlayingLabel(),
+                      const SizedBox(height: 10),
+                      Text(
+                        widget.fileName,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
+                          color: LiquidColors.textPrimary,
+                          fontSize: 19,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      LiquidGlassSurface(
+                        borderRadius: 18,
+                        blur: 14,
+                        padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                        child: _progress(pos, total),
+                      ),
+                      const SizedBox(height: 22),
+                      _mainTransport(),
+                      const SizedBox(height: 20),
+                      _pillRow(),
+                      const SizedBox(height: 20),
+                      LiquidGlassSurface(
+                        borderRadius: 18,
+                        blur: 14,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: _volumeRow(),
+                      ),
+                      const SizedBox(height: 14),
+                      LiquidGlassSurface(
+                        borderRadius: 999,
+                        blur: 12,
+                        child: TextButton.icon(
+                          onPressed: _stop,
+                          icon: Icon(
+                            Icons.stop_rounded,
+                            size: 18,
                             color: LiquidColors.error,
-                            fontWeight: FontWeight.w600)),
+                          ),
+                          label: Text(
+                            'Stop',
+                            style: TextStyle(
+                              color: LiquidColors.error,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -297,8 +336,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color:
-                    LiquidColors.accentBlue.withValues(alpha: 0.22 + 0.16 * p),
+                color: LiquidColors.accentBlue.withValues(
+                  alpha: 0.22 + 0.16 * p,
+                ),
                 blurRadius: 26 + 20 * p,
                 spreadRadius: 2 + 6 * p,
               ),
@@ -315,10 +355,7 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
-              colors: [
-                LiquidColors.accentBlue,
-                LiquidColors.accentPurple,
-              ],
+              colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
               center: const Alignment(-0.3, -0.4),
               radius: 1.1,
             ),
@@ -402,8 +439,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
           data: SliderTheme.of(context).copyWith(
             trackHeight: 4,
             activeTrackColor: LiquidColors.accentBlue,
-            inactiveTrackColor:
-                LiquidColors.textTertiary.withValues(alpha: 0.22),
+            inactiveTrackColor: LiquidColors.textTertiary.withValues(
+              alpha: 0.22,
+            ),
             thumbColor: LiquidColors.accentBlue,
             thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
             overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
@@ -414,8 +452,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
             min: 0,
             max: total <= 0 ? 1 : total,
             value: total <= 0 ? 0 : pos.clamp(0.0, total),
-            onChanged:
-                total <= 0 ? null : (v) => setState(() => _dragValue = v),
+            onChanged: total <= 0
+                ? null
+                : (v) => setState(() => _dragValue = v),
             onChangeEnd: total <= 0
                 ? null
                 : (v) {
@@ -432,18 +471,20 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
               Text(
                 _fmt(Duration(milliseconds: pos.toInt())),
                 style: TextStyle(
-                    color: LiquidColors.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const [FontFeature.tabularFigures()]),
+                  color: LiquidColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
               Text(
                 _fmt(_duration),
                 style: TextStyle(
-                    color: LiquidColors.textTertiary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const [FontFeature.tabularFigures()]),
+                  color: LiquidColors.textTertiary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ],
           ),
@@ -476,21 +517,19 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
   }
 
   Widget _ghostBtn({required IconData icon, required VoidCallback onTap}) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: LiquidColors.surfaceMuted,
-            border: Border.all(color: LiquidColors.cardBorder),
+    return LiquidGlassSurface(
+      borderRadius: 99,
+      blur: 16,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: 52,
+            height: 52,
+            child: Icon(icon, color: LiquidColors.textPrimary, size: 26),
           ),
-          child: Icon(icon, color: LiquidColors.textPrimary, size: 26),
         ),
       ),
     );
@@ -511,31 +550,39 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
           onSelected: _changeSpeed,
           tooltip: 'Playback speed',
           position: PopupMenuPosition.under,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           itemBuilder: (context) => _speedOptions.map((s) {
             final sel = s == _currentSpeed;
             return PopupMenuItem<double>(
               value: s,
               child: Row(
                 children: [
-                  Icon(Icons.speed_rounded,
-                      size: 18,
+                  Icon(
+                    Icons.speed_rounded,
+                    size: 18,
+                    color: sel
+                        ? LiquidColors.accentBlue
+                        : LiquidColors.textSecondary,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${s}x',
+                    style: TextStyle(
                       color: sel
                           ? LiquidColors.accentBlue
-                          : LiquidColors.textSecondary),
-                  const SizedBox(width: 12),
-                  Text('${s}x',
-                      style: TextStyle(
-                          color: sel
-                              ? LiquidColors.accentBlue
-                              : LiquidColors.textPrimary,
-                          fontWeight:
-                              sel ? FontWeight.w700 : FontWeight.w500)),
+                          : LiquidColors.textPrimary,
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
                   if (sel) ...[
                     const Spacer(),
-                    Icon(Icons.check_rounded,
-                        size: 18, color: LiquidColors.accentBlue),
+                    Icon(
+                      Icons.check_rounded,
+                      size: 18,
+                      color: LiquidColors.accentBlue,
+                    ),
                   ],
                 ],
               ),
@@ -558,28 +605,25 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
     VoidCallback? onTap,
   }) {
     final c = active ? LiquidColors.accentBlue : LiquidColors.textSecondary;
-    final body = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    final body = LiquidGlassSurface(
+      borderRadius: 999,
+      blur: 14,
+      tintColor: active ? LiquidColors.accentBlue : null,
+      tintOpacity: active ? 0.14 : 0,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: active
-            ? LiquidColors.accentBlue.withValues(alpha: 0.14)
-            : LiquidColors.surfaceMuted,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: active
-              ? LiquidColors.accentBlue.withValues(alpha: 0.45)
-              : LiquidColors.cardBorder,
-        ),
-      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: c),
           const SizedBox(width: 6),
-          Text(label,
-              style: TextStyle(
-                  color: c, fontSize: 12.5, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: TextStyle(
+              color: c,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -602,8 +646,8 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
           _volume <= 0.001
               ? Icons.volume_off_rounded
               : _volume < 0.5
-                  ? Icons.volume_down_rounded
-                  : Icons.volume_up_rounded,
+              ? Icons.volume_down_rounded
+              : Icons.volume_up_rounded,
           color: LiquidColors.textTertiary,
           size: 20,
         ),
@@ -612,8 +656,9 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
             data: SliderTheme.of(context).copyWith(
               trackHeight: 3,
               activeTrackColor: LiquidColors.accentBlue.withValues(alpha: 0.8),
-              inactiveTrackColor:
-                  LiquidColors.textTertiary.withValues(alpha: 0.22),
+              inactiveTrackColor: LiquidColors.textTertiary.withValues(
+                alpha: 0.22,
+              ),
               thumbColor: LiquidColors.accentBlue,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
@@ -628,8 +673,11 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
             ),
           ),
         ),
-        Icon(Icons.volume_up_rounded,
-            color: LiquidColors.textTertiary, size: 20),
+        Icon(
+          Icons.volume_up_rounded,
+          color: LiquidColors.textTertiary,
+          size: 20,
+        ),
       ],
     );
   }
@@ -641,9 +689,10 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
         children: [
           const LiquidCircularProgress(size: 80),
           const SizedBox(height: 20),
-          Text('Loading audio…',
-              style:
-                  TextStyle(color: LiquidColors.textSecondary, fontSize: 14)),
+          Text(
+            'Loading audio…',
+            style: TextStyle(color: LiquidColors.textSecondary, fontSize: 14),
+          ),
         ],
       ),
     );
@@ -663,25 +712,33 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
                 shape: BoxShape.circle,
                 color: LiquidColors.error.withValues(alpha: 0.14),
                 border: Border.all(
-                    color: LiquidColors.error.withValues(alpha: 0.4)),
+                  color: LiquidColors.error.withValues(alpha: 0.4),
+                ),
               ),
-              child: Icon(Icons.error_outline_rounded,
-                  color: LiquidColors.error, size: 44),
+              child: Icon(
+                Icons.error_outline_rounded,
+                color: LiquidColors.error,
+                size: 44,
+              ),
             ),
             const SizedBox(height: 20),
-            Text('Couldn\'t play this audio',
-                style: TextStyle(
-                    color: LiquidColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800)),
+            Text(
+              'Couldn\'t play this audio',
+              style: TextStyle(
+                color: LiquidColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 8),
             Text(
               'The file may be missing, corrupted, or in an unsupported format.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: LiquidColors.textSecondary,
-                  fontSize: 13,
-                  height: 1.5),
+                color: LiquidColors.textSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -697,10 +754,13 @@ class _AudioPlayerScreenState extends State<AudioPlayerScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: LiquidColors.accentBlue,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 22,
+                  vertical: 13,
+                ),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
             ),
           ],
@@ -763,7 +823,9 @@ class _PlayButtonState extends State<_PlayButton> {
                   width: 26,
                   height: 26,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2.6, color: Colors.white),
+                    strokeWidth: 2.6,
+                    color: Colors.white,
+                  ),
                 )
               : Icon(
                   widget.isPlaying

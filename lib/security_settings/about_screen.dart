@@ -10,28 +10,34 @@ import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/widgets/app_brand_icon.dart';
 import 'package:video_player_app/widgets/app_section_header.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
+import 'package:video_player_app/widgets/liquid_glass_button.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: LiquidColors.systemOverlayStyle,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: theme.colorScheme.onSurface,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
           'About',
           style: TextStyle(
-            color: LiquidColors.textPrimary,
+            color: theme.colorScheme.onSurface,
             fontSize: 20,
             fontWeight: FontWeight.w800,
           ),
@@ -109,20 +115,15 @@ class AboutScreen extends StatelessWidget {
               onLongPress: () {
                 HapticFeedback.heavyImpact();
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const DecoySetupScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const DecoySetupScreen()),
                 );
               },
-              child: Container(
+              child: LiquidGlassSurface(
+                borderRadius: 24,
+                blur: 12,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: LiquidColors.textPrimary.withValues(alpha: 0.05),
-                  borderRadius: AppRadius.rPill,
-                  border: Border.all(color: LiquidColors.cardBorder),
                 ),
                 child: Text(
                   'Version $v',
@@ -228,50 +229,26 @@ class AboutScreen extends StatelessWidget {
   }
 
   Widget _rateButton() {
-    return Material(
-      color: LiquidColors.indigo,
-      borderRadius: AppRadius.rMd,
-      child: InkWell(
-        onTap: () async {
-          HapticFeedback.lightImpact();
-          final url = Uri.parse(
-            'https://play.google.com/store/apps/details?id=app.securobox.vault',
-          );
-          if (await canLaunchUrl(url)) {
-            await launchUrl(url, mode: LaunchMode.externalApplication);
-          }
-        },
-        borderRadius: AppRadius.rMd,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(vertical: 15),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.star_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'Rate SecuroBox',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return LiquidGlassButton(
+      label: 'Rate SecuroBox',
+      icon: Icons.star_rounded,
+      onPressed: () async {
+        HapticFeedback.lightImpact();
+        final url = Uri.parse(
+          'https://play.google.com/store/apps/details?id=app.securobox.vault',
+        );
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+        }
+      },
     );
   }
 
   Widget _card({required Widget child}) {
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.lg,
+      blur: 18,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-        borderRadius: AppRadius.rLg,
-        border: Border.all(color: LiquidColors.cardBorder),
-      ),
       child: child,
     );
   }

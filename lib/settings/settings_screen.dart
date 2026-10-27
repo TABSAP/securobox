@@ -12,9 +12,9 @@ import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
-import 'package:video_player_app/widgets/app_card.dart';
 import 'package:video_player_app/widgets/app_section_header.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -58,38 +58,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: LiquidColors.systemOverlayStyle,
+        systemOverlayStyle: theme.brightness == Brightness.dark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         titleSpacing: 20,
         title: Text(
           'Settings',
           style: TextStyle(
-            color: LiquidColors.textPrimary,
+            color: theme.colorScheme.onSurface,
             fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
           ),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundMid,
-              LiquidColors.backgroundLight,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+      body: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
         child: ListView(
           physics: const BouncingScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
@@ -180,6 +172,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: _chevron(),
                 onTap: _openThemeDialog,
               ),
+              _divider(),
+              _glassIntensityControl(),
             ]),
             const SizedBox(height: AppSpace.lg),
 
@@ -211,7 +205,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _statusHeader() {
-    return AppCard(
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.lg,
+      blur: 20,
       padding: const EdgeInsets.all(AppSpace.md),
       child: Row(
         children: [
@@ -220,16 +217,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             height: 52,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [LiquidColors.accentBlue, LiquidColors.primaryMid],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.shield_rounded,
-              color: Colors.white,
+              color: theme.colorScheme.onSurface,
               size: 26,
             ),
           ),
@@ -241,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(
                   'SecuroBox Vault',
                   style: TextStyle(
-                    color: LiquidColors.textPrimary,
+                    color: theme.colorScheme.onSurface,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                   ),
@@ -250,7 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(
                   'Encrypted · on this device',
                   style: TextStyle(
-                    color: LiquidColors.textSecondary,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.62),
                     fontSize: 12.5,
                   ),
                 ),
@@ -296,12 +289,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _group(List<Widget> children) {
-    return AppCard(
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.lg,
+      blur: 18,
       padding: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: AppRadius.rLg,
-        child: Column(children: children),
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -320,6 +312,143 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ? 'System default'
       : '${ThemeController.label(m)} mode';
 
+  Widget _glassIntensityControl() {
+    final theme = Theme.of(context);
+    final controller = ThemeController.instance;
+    return ValueListenableBuilder<double>(
+      valueListenable: controller.glassIntensityListenable,
+      builder: (context, intensity, _) {
+        final level = intensity < 0.34
+            ? 'Subtle'
+            : intensity < 0.67
+            ? 'Balanced'
+            : 'Strong';
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.md - 2,
+            14,
+            AppSpace.md - 2,
+            12,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.06,
+                      ),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(
+                      Icons.blur_on_rounded,
+                      color: theme.colorScheme.onSurface,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Glass intensity',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Adjust frosted surfaces across the app',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.56,
+                            ),
+                            fontSize: 12,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    level,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.66,
+                      ),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: theme.colorScheme.onSurface.withValues(
+                    alpha: 0.72,
+                  ),
+                  inactiveTrackColor: theme.colorScheme.onSurface.withValues(
+                    alpha: 0.14,
+                  ),
+                  thumbColor: theme.colorScheme.onSurface,
+                  overlayColor: theme.colorScheme.onSurface.withValues(
+                    alpha: 0.08,
+                  ),
+                  trackHeight: 3,
+                ),
+                child: Semantics(
+                  label: 'Glass intensity',
+                  value: '$level, ${(intensity * 100).round()} percent',
+                  child: Slider(
+                    value: intensity,
+                    min: 0,
+                    max: 1,
+                    divisions: 10,
+                    onChanged: controller.setGlassIntensity,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Low',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.52,
+                        ),
+                        fontSize: 11,
+                      ),
+                    ),
+                    Text(
+                      'High',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.52,
+                        ),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // Opens a clean popup dialog to choose Light / Dark / System.
   Future<void> _openThemeDialog() async {
     HapticFeedback.selectionClick();
@@ -332,15 +461,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) {
         final current = ThemeController.instance.mode;
-        return AlertDialog(
-          title: const Text('Theme'),
-          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final o in options)
-                _themeDialogRow(ctx, o.$1, o.$2, o.$3, current),
-            ],
+        final theme = Theme.of(ctx);
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          child: LiquidGlassSurface(
+            borderRadius: AppRadius.lg,
+            blur: 22,
+            padding: const EdgeInsets.fromLTRB(8, 18, 8, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Theme',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+                for (final o in options)
+                  _themeDialogRow(ctx, o.$1, o.$2, o.$3, current),
+              ],
+            ),
           ),
         );
       },
@@ -359,6 +509,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ThemeMode current,
   ) {
     final selected = mode == current;
+    final theme = Theme.of(ctx);
     return InkWell(
       onTap: () => Navigator.of(ctx).pop(mode),
       child: Padding(
@@ -369,8 +520,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _themeIcon(mode),
               size: 22,
               color: selected
-                  ? LiquidColors.indigo
-                  : LiquidColors.textSecondary,
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.62),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -380,7 +531,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     title,
                     style: TextStyle(
-                      color: LiquidColors.textPrimary,
+                      color: theme.colorScheme.onSurface,
                       fontSize: 15,
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -388,7 +539,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: LiquidColors.textTertiary,
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.56,
+                      ),
                       fontSize: 12,
                     ),
                   ),
@@ -396,7 +549,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             if (selected)
-              Icon(Icons.check_rounded, size: 20, color: LiquidColors.indigo),
+              Icon(
+                Icons.check_rounded,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
           ],
         ),
       ),
@@ -404,12 +561,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _divider() {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 66),
       child: Divider(
         height: 1,
         thickness: 1,
-        color: LiquidColors.textPrimary.withValues(alpha: 0.05),
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.08),
       ),
     );
   }
@@ -423,6 +581,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     VoidCallback? onTap,
     Color? titleColor,
   }) {
+    final theme = Theme.of(context);
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -438,10 +597,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 decoration: BoxDecoration(
                   // Neutral, theme-adaptive icon: dark in Light mode, light in
                   // Dark mode.
-                  color: LiquidColors.textPrimary.withValues(alpha: 0.06),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, color: LiquidColors.textPrimary, size: 20),
+                child: Icon(icon, color: theme.colorScheme.onSurface, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -451,7 +610,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       title,
                       style: TextStyle(
-                        color: titleColor ?? LiquidColors.textPrimary,
+                        color: titleColor ?? theme.colorScheme.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -463,7 +622,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: LiquidColors.textTertiary,
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.56,
+                          ),
                           fontSize: 12,
                           height: 1.3,
                         ),
@@ -481,18 +642,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _chevron({Color? color}) {
+    final theme = Theme.of(context);
     return Icon(
       Icons.chevron_right_rounded,
-      color: color ?? LiquidColors.textTertiary,
+      color: color ?? theme.colorScheme.onSurface.withValues(alpha: 0.5),
       size: 22,
     );
   }
 
   Widget _valueOnly(String value) {
+    final theme = Theme.of(context);
     return Text(
       value,
       style: TextStyle(
-        color: LiquidColors.textSecondary,
+        color: theme.colorScheme.onSurface.withValues(alpha: 0.68),
         fontSize: 13,
         fontWeight: FontWeight.w600,
       ),

@@ -6,10 +6,13 @@ import 'package:photo_manager/photo_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/models/app_models.dart';
 import 'package:video_player_app/utils/vault_context.dart';
+import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/services/vault_backup_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
-import 'package:video_player_app/widgets/app_card.dart';
+import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
+import 'package:video_player_app/widgets/liquid_glass_button.dart';
 
 class SafetyCenterScreen extends StatefulWidget {
   const SafetyCenterScreen({super.key});
@@ -117,13 +120,21 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
     try {
       final bytes = await VaultBackupService.instance.createBackup(password);
       if (!mounted) return;
-      final path = await FilePicker.platform.saveFile(
-        dialogTitle: 'Save encrypted SecuroBox backup',
-        fileName: 'securobox_backup.sbbackup',
-        type: FileType.custom,
-        allowedExtensions: const ['sbbackup'],
-        bytes: bytes,
-      );
+      SessionManager.instance.beginTrustedInteraction();
+      String? path;
+      try {
+        FocusManager.instance.primaryFocus?.unfocus();
+        path = await FilePicker.platform.saveFile(
+          dialogTitle: 'Save encrypted SecuroBox backup',
+          fileName: 'securobox_backup.sbbackup',
+          type: FileType.custom,
+          allowedExtensions: const ['sbbackup'],
+          bytes: bytes,
+        );
+        if (path == null) await SessionManager.instance.markActive();
+      } finally {
+        SessionManager.instance.endTrustedInteraction();
+      }
       if (path == null) return;
       // Android/iOS document providers persist the bytes passed to saveFile.
       // Desktop providers return a path and require a direct write.
@@ -148,11 +159,21 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
   Future<void> _restoreBackup() async {
     setState(() => _busy = true);
     try {
-      final picked = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: const ['sbbackup'],
-        withData: false,
-      );
+      SessionManager.instance.beginTrustedInteraction();
+      FilePickerResult? picked;
+      try {
+        FocusManager.instance.primaryFocus?.unfocus();
+        picked = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: const ['sbbackup'],
+          withData: false,
+        );
+        if (picked == null || picked.files.isEmpty) {
+          await SessionManager.instance.markActive();
+        }
+      } finally {
+        SessionManager.instance.endTrustedInteraction();
+      }
       if (picked == null || picked.files.isEmpty || !mounted) return;
       final selected = picked.files.single;
       if (selected.size > 130 * 1024 * 1024) {
@@ -207,22 +228,27 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
 
   void _message(String text, {bool error = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(text),
-        backgroundColor: error ? LiquidColors.error : LiquidColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (error) {
+      FlushBarHelper.flushBarErrorMessage(text, context);
+    } else {
+      FlushBarHelper.flushBarSuccessMessage(text, context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
+        titleTextStyle: TextStyle(
+          color: theme.colorScheme.onSurface,
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+        ),
         title: const Text('Safety Center'),
         actions: [
           IconButton(
@@ -272,8 +298,10 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
               child: ColoredBox(
                 color: Colors.black45,
                 child: Center(
-                  child: AppCard(
-                    elevated: true,
+                  child: LiquidGlassSurface(
+                    borderRadius: AppRadius.lg,
+                    blur: 20,
+                    padding: const EdgeInsets.all(AppSpace.md),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -310,9 +338,10 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
     ],
   );
 
-  Widget _healthCard() => AppCard(
+  Widget _healthCard() => LiquidGlassSurface(
+    borderRadius: AppRadius.lg,
+    blur: 20,
     padding: const EdgeInsets.all(AppSpace.md),
-    elevated: true,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -505,20 +534,10 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
     ),
   );
 
-  Widget _securityNote() => Container(
+  Widget _securityNote() => LiquidGlassSurface(
+    borderRadius: AppRadius.md,
+    blur: 16,
     padding: const EdgeInsets.all(AppSpace.md),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          LiquidColors.indigo.withValues(alpha: .11),
-          LiquidColors.indigo.withValues(alpha: .045),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(AppRadius.md),
-      border: Border.all(color: LiquidColors.indigo.withValues(alpha: .2)),
-    ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -546,7 +565,9 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
   }) => AnimatedOpacity(
     duration: const Duration(milliseconds: 180),
     opacity: onTap == null ? .55 : 1,
-    child: AppCard(
+    child: LiquidGlassSurface(
+      borderRadius: AppRadius.lg,
+      blur: 18,
       padding: EdgeInsets.zero,
       child: Material(
         color: Colors.transparent,
@@ -562,10 +583,10 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: LiquidColors.indigo.withValues(alpha: .13),
+                    color: LiquidColors.textPrimary.withValues(alpha: .06),
                     borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Icon(icon, color: LiquidColors.indigo, size: 23),
+                  child: Icon(icon, color: LiquidColors.textPrimary, size: 23),
                 ),
                 const SizedBox(width: AppSpace.md),
                 Expanded(
@@ -630,38 +651,73 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.title),
-    content: Form(
-      key: _formKey,
-      child: TextFormField(
-        controller: _controller,
-        obscureText: true,
-        autofocus: true,
-        autocorrect: false,
-        enableSuggestions: false,
-        decoration: const InputDecoration(
-          labelText: 'Backup passphrase',
-          helperText: 'Use at least 10 characters and keep it safe.',
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      child: LiquidGlassSurface(
+        borderRadius: AppRadius.lg,
+        blur: 22,
+        padding: const EdgeInsets.all(AppSpace.lg),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.title,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              TextFormField(
+                controller: _controller,
+                obscureText: true,
+                autofocus: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(
+                  labelText: 'Backup passphrase',
+                  helperText: 'Use at least 10 characters and keep it safe.',
+                ),
+                validator: (value) => (value ?? '').trim().length < 10
+                    ? 'Enter at least 10 characters.'
+                    : null,
+              ),
+              const SizedBox(height: AppSpace.md),
+              Row(
+                children: [
+                  Expanded(
+                    child: LiquidGlassButton(
+                      label: 'Cancel',
+                      onPressed: () => Navigator.pop(context),
+                      height: 46,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: LiquidGlassButton(
+                      label: 'Continue',
+                      onPressed: () {
+                        if (_formKey.currentState!.validate()) {
+                          Navigator.pop(context, _controller.text);
+                        }
+                      },
+                      height: 46,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        validator: (value) => (value ?? '').trim().length < 10
-            ? 'Enter at least 10 characters.'
-            : null,
       ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Cancel'),
-      ),
-      FilledButton(
-        onPressed: () {
-          if (_formKey.currentState!.validate()) {
-            Navigator.pop(context, _controller.text);
-          }
-        },
-        child: const Text('Continue'),
-      ),
-    ],
-  );
+    );
+  }
 }

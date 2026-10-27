@@ -10,6 +10,8 @@ import 'package:video_player_app/utils/recovery_questions_service.dart';
 import 'package:video_player_app/utils/session_manager.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
+import 'package:video_player_app/widgets/liquid_glass_button.dart';
 
 class ForgotPinScreen extends StatefulWidget {
   const ForgotPinScreen({super.key});
@@ -177,18 +179,22 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         title: Text(
           'Forgot PIN',
-          style: TextStyle(color: LiquidColors.textPrimary),
+          style: TextStyle(color: theme.colorScheme.onSurface),
         ),
         leading: IconButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(),
-          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: theme.colorScheme.onSurface,
+          ),
         ),
       ),
       body: SafeArea(
@@ -209,34 +215,21 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
                       _errorCard(_error!),
                     ],
                     const SizedBox(height: 18),
-                    SizedBox(
-                      height: 54,
-                      child: FilledButton.icon(
-                        onPressed: _busy || _lockout > Duration.zero
-                            ? null
-                            : _verifyAndReset,
-                        icon: _busy
-                            ? const SizedBox.square(
-                                dimension: 19,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.lock_reset_rounded),
-                        label: Text(
-                          _busy ? 'Verifying answers…' : 'Verify and reset PIN',
-                        ),
-                      ),
+                    LiquidGlassButton(
+                      icon: Icons.lock_reset_rounded,
+                      label: _busy
+                          ? 'Verifying answers…'
+                          : 'Verify and reset PIN',
+                      onPressed: _busy || _lockout > Duration.zero
+                          ? null
+                          : _verifyAndReset,
                     ),
                   ] else
                     _unavailableCard(),
                   const SizedBox(height: 16),
-                  TextButton(
+                  LiquidGlassButton(
+                    label: 'Cancel',
                     onPressed: _busy ? null : () => Navigator.of(context).pop(),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(color: LiquidColors.textSecondary),
-                    ),
                   ),
                 ],
               ),
@@ -244,22 +237,14 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     );
   }
 
-  Widget _infoCard() => Container(
+  Widget _infoCard() => LiquidGlassSurface(
+    borderRadius: 18,
+    blur: 18,
     padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          LiquidColors.accentBlue.withValues(alpha: .15),
-          LiquidColors.accentPurple.withValues(alpha: .07),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: LiquidColors.accentBlue.withValues(alpha: .28)),
-    ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.shield_outlined, color: LiquidColors.accentBlue),
+        Icon(Icons.shield_outlined, color: LiquidColors.textPrimary),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -275,53 +260,52 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     ),
   );
 
-  Widget _answerField(int index) => Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: LiquidColors.textPrimary.withValues(alpha: .035),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: LiquidColors.textPrimary.withValues(alpha: .08),
+  Widget _answerField(int index) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: LiquidGlassSurface(
+      borderRadius: 16,
+      blur: 16,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'QUESTION ${index + 1}',
+            style: TextStyle(
+              color: LiquidColors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: .8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _prompts[index].prompt,
+            style: TextStyle(
+              color: LiquidColors.textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _answers[index],
+            enabled: !_busy && _lockout <= Duration.zero,
+            obscureText: true,
+            autocorrect: false,
+            enableSuggestions: false,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              hintText: 'Your answer',
+              filled: true,
+              fillColor: Colors.transparent,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
       ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'QUESTION ${index + 1}',
-          style: TextStyle(
-            color: LiquidColors.textSecondary,
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: .8,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _prompts[index].prompt,
-          style: TextStyle(
-            color: LiquidColors.textPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: _answers[index],
-          enabled: !_busy && _lockout <= Duration.zero,
-          obscureText: true,
-          autocorrect: false,
-          enableSuggestions: false,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            hintText: 'Your answer',
-            filled: true,
-            fillColor: LiquidColors.textPrimary.withValues(alpha: .04),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-      ],
     ),
   );
 
@@ -349,13 +333,12 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
     required IconData icon,
     required Color color,
     required String text,
-  }) => Container(
+  }) => LiquidGlassSurface(
+    borderRadius: 14,
+    blur: 14,
+    tintColor: color,
+    tintOpacity: 0.08,
     padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .1),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: color.withValues(alpha: .32)),
-    ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

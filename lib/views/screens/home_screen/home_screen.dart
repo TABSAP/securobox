@@ -16,6 +16,7 @@ import 'package:video_player_app/widgets/pin_unlock_dialog.dart';
 import 'package:video_player_app/widgets/app_empty_state.dart';
 import 'package:video_player_app/widgets/app_skeleton.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 import '../../../views/screens/home_screen/widgets/view.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -235,9 +236,24 @@ class HomeScreenState extends State<HomeScreen>
     if (mounted) setState(() {});
   }
 
+  void _clearFilters() {
+    HapticFeedback.lightImpact();
+    _searchDebounce?.cancel();
+    setState(() {
+      _selectedCategory = 'All';
+      _searchController.clear();
+    });
+    // Clearing the controller synchronously schedules its listener debounce;
+    // cancel it so only this fresh, complete filter pass runs.
+    _searchDebounce?.cancel();
+    _filterMedia();
+    _searchFocusNode.unfocus();
+  }
+
   void _filterMedia() {
     final query = _searchController.text.toLowerCase();
-    final favoritesOnly = _selectedCategory == _favoritesFilter;
+    final favoritesOnly =
+        _selectedCategory.toLowerCase() == _favoritesFilter.toLowerCase();
     final typeFilter = widget.typeFilter;
 
     setState(() {
@@ -347,6 +363,7 @@ class HomeScreenState extends State<HomeScreen>
           if (_selectedIds.isEmpty) _selectionMode = false;
         }
         if (_selectedCategory != 'All' &&
+            _selectedCategory.toLowerCase() != _favoritesFilter.toLowerCase() &&
             !_allCategoriesForFilter
                 .map((c) => c.toLowerCase())
                 .contains(_selectedCategory.toLowerCase())) {
@@ -1033,10 +1050,24 @@ class HomeScreenState extends State<HomeScreen>
       return;
     }
 
-    if (media.path.isEmpty || !await File(media.path).exists()) {
+    var sourcePath = media.path;
+    if (media.encrypted) {
+      final recovered = await VaultCrypto.instance.resolveStoredFilePath(
+        sourcePath,
+      );
+      if (recovered != null) sourcePath = recovered;
+    }
+    if (sourcePath.isEmpty || !await File(sourcePath).exists()) {
       if (!mounted) return;
-      FlushBarHelper.flushBarErrorMessage('File not found', context);
+      FlushBarHelper.flushBarErrorMessage(
+        'This file is missing from the vault and cannot be restored.',
+        context,
+      );
       return;
+    }
+    if (sourcePath != media.path) {
+      media.path = sourcePath;
+      await _mediaService.updateMediaPath(media.id, sourcePath);
     }
 
     if (!mounted) return;
@@ -1138,15 +1169,19 @@ class HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        iconTheme: IconThemeData(color: LiquidColors.textPrimary),
-        systemOverlayStyle: LiquidColors.systemOverlayStyle,
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         titleSpacing: _selectionMode
             ? 4
             : (widget.typeFilter != null || widget.screenTitle != null)
@@ -1156,7 +1191,7 @@ class HomeScreenState extends State<HomeScreen>
             ? IconButton(
                 icon: Icon(
                   Icons.close_rounded,
-                  color: LiquidColors.textPrimary,
+                  color: theme.colorScheme.onSurface,
                 ),
                 tooltip: 'Cancel',
                 onPressed: _exitSelection,
@@ -1165,12 +1200,16 @@ class HomeScreenState extends State<HomeScreen>
         title: Text(
           _selectionMode
               ? '${_selectedIds.length} selected'
+              : (widget.initialCategory?.toLowerCase() ==
+                        _favoritesFilter.toLowerCase() &&
+                    _selectedCategory == 'All')
+              ? 'All files'
               : widget.screenTitle ??
                     (widget.typeFilter != null
                         ? _categoryLabel(widget.typeFilter!)
                         : 'Library'),
           style: TextStyle(
-            color: LiquidColors.textPrimary,
+            color: theme.colorScheme.onSurface,
             fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.2,
@@ -1207,7 +1246,8 @@ class HomeScreenState extends State<HomeScreen>
               padding: const EdgeInsets.only(bottom: 88),
               child: _buildAddFab(),
             ),
-      body: LiquidBackground(
+      body: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
         child: Column(
           children: [
             _buildAnimatedHeader(),
@@ -1243,29 +1283,26 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildAddFab() {
-    return GestureDetector(
-      onTap: _openAddSheet,
-      child: Container(
-        width: 56,
-        height: 56,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: LiquidColors.accentBlue.withValues(alpha: 0.4),
-              blurRadius: 18,
-              spreadRadius: -2,
-              offset: const Offset(0, 8),
+    return LiquidGlassSurface(
+      borderRadius: 28,
+      blur: 22,
+      tintColor: LiquidColors.accentBlue,
+      tintOpacity: 0.25,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _openAddSheet,
+          borderRadius: BorderRadius.circular(28),
+          child: SizedBox(
+            width: 56,
+            height: 56,
+            child: Icon(
+              Icons.add_rounded,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 28,
             ),
-          ],
+          ),
         ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
     );
   }
@@ -1275,26 +1312,24 @@ class HomeScreenState extends State<HomeScreen>
     required String tooltip,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Tooltip(
         message: tooltip,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              width: 40,
-              decoration: BoxDecoration(
-                color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: LiquidColors.textPrimary.withValues(alpha: 0.08),
-                ),
+        child: LiquidGlassSurface(
+          borderRadius: 14,
+          blur: 16,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(icon, color: theme.colorScheme.onSurface, size: 20),
               ),
-              alignment: Alignment.center,
-              child: Icon(icon, color: LiquidColors.textPrimary, size: 20),
             ),
           ),
         ),
@@ -1339,79 +1374,88 @@ class HomeScreenState extends State<HomeScreen>
     final hasQuery = _searchController.text.isNotEmpty;
     final focused = _searchFocusNode.hasFocus;
     final active = hasQuery || focused;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: LiquidColors.textPrimary.withValues(alpha: active ? 0.07 : 0.05),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.search_rounded,
-            color: active ? LiquidColors.accentBlue : LiquidColors.textTertiary,
-            size: 20,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              textInputAction: TextInputAction.search,
-              style: TextStyle(
-                color: LiquidColors.textPrimary,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: 16,
+      blur: 18,
+      tintColor: active ? LiquidColors.accentBlue : null,
+      tintOpacity: 0.07,
+      child: SizedBox(
+        height: 48,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Row(
+            children: [
+              Icon(
+                Icons.search_rounded,
+                color: active
+                    ? LiquidColors.accentBlue
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.55),
+                size: 20,
               ),
-              cursorColor: LiquidColors.accentBlue,
-              decoration: InputDecoration(
-                hintText: 'Search your vault',
-                hintStyle: TextStyle(
-                  color: LiquidColors.textTertiary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
-                filled: false,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 160),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: ScaleTransition(scale: anim, child: child),
-            ),
-            child: hasQuery
-                ? GestureDetector(
-                    key: const ValueKey('clear'),
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _searchController.clear();
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 6),
-                      child: Icon(
-                        Icons.close_rounded,
-                        color: LiquidColors.textTertiary,
-                        size: 18,
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  textInputAction: TextInputAction.search,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  cursorColor: LiquidColors.accentBlue,
+                  decoration: InputDecoration(
+                    hintText: 'Search your vault',
+                    hintStyle: TextStyle(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.50,
                       ),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
                     ),
-                  )
-                : const SizedBox.shrink(key: ValueKey('empty')),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    filled: false,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 160),
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: ScaleTransition(scale: anim, child: child),
+                ),
+                child: hasQuery
+                    ? GestureDetector(
+                        key: const ValueKey('clear'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          _searchController.clear();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 6),
+                          child: Icon(
+                            Icons.close_rounded,
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.55,
+                            ),
+                            size: 18,
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(key: ValueKey('empty')),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1481,34 +1525,37 @@ class HomeScreenState extends State<HomeScreen>
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 200),
             child: hasFilters
-                ? GestureDetector(
-                    key: const ValueKey('clear-filters'),
-                    onTap: () {
-                      HapticFeedback.lightImpact();
-                      setState(() {
-                        _selectedCategory = "All";
-                        _searchController.clear();
-                      });
-                      _filterMedia();
-                    },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.refresh_rounded,
-                          color: LiquidColors.accentBlue,
-                          size: 13,
+                ? Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      key: const ValueKey('clear-filters'),
+                      onTap: _clearFilters,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Clear filters',
-                          style: TextStyle(
-                            color: LiquidColors.accentBlue,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.refresh_rounded,
+                              color: LiquidColors.accentBlue,
+                              size: 13,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Clear filters',
+                              style: TextStyle(
+                                color: LiquidColors.accentBlue,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   )
                 : const SizedBox(key: ValueKey('no-filters'), height: 18),
@@ -1533,6 +1580,8 @@ class HomeScreenState extends State<HomeScreen>
   Widget _buildEmptyState() {
     final hasFilters =
         _searchController.text.isNotEmpty || _selectedCategory != "All";
+    final favoritesOnly =
+        _selectedCategory.toLowerCase() == _favoritesFilter.toLowerCase();
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.zero,
@@ -1540,22 +1589,28 @@ class HomeScreenState extends State<HomeScreen>
         SizedBox(
           height: MediaQuery.of(context).size.height * 0.6,
           child: AppEmptyState(
-            icon: hasFilters
+            icon: favoritesOnly
+                ? Icons.favorite_border_rounded
+                : hasFilters
                 ? Icons.search_off_rounded
                 : Icons.lock_outline_rounded,
-            title: hasFilters ? 'No matches' : 'Your vault is empty',
-            message: hasFilters
+            title: favoritesOnly
+                ? 'No favorites yet'
+                : hasFilters
+                ? 'No matches'
+                : 'Your vault is empty',
+            message: favoritesOnly
+                ? 'Media you mark as a favorite will appear here.'
+                : hasFilters
                 ? 'Try a different search term or category to find what you\'re looking for.'
                 : 'Files you import are encrypted and stored only on this device — never in the cloud.',
-            actionLabel: hasFilters ? 'Clear filters' : 'Add your first file',
-            onAction: hasFilters
-                ? () {
-                    setState(() {
-                      _selectedCategory = "All";
-                      _searchController.clear();
-                    });
-                    _filterMedia();
-                  }
+            actionLabel: favoritesOnly
+                ? 'Browse all files'
+                : hasFilters
+                ? 'Clear filters'
+                : 'Add your first file',
+            onAction: favoritesOnly || hasFilters
+                ? _clearFilters
                 : _openAddSheet,
           ),
         ),
@@ -1626,54 +1681,49 @@ class _CategoryPill extends StatelessWidget {
     final accent = isCustom
         ? LiquidColors.accentPurple
         : LiquidColors.accentBlue;
+    final theme = Theme.of(context);
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color: selected
-                ? accent.withValues(alpha: 0.16)
-                : LiquidColors.textPrimary.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected
-                  ? accent
-                  : LiquidColors.textPrimary.withValues(alpha: 0.08),
-              width: selected ? 1.2 : 1,
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isCustom) ...[
-                Container(
-                  width: 5,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: selected ? 1 : 0.7),
-                    shape: BoxShape.circle,
+        child: LiquidGlassSurface(
+          borderRadius: 999,
+          blur: 12,
+          tintColor: selected ? accent : null,
+          tintOpacity: selected ? 0.12 : 0,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isCustom) ...[
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: selected ? 1 : 0.7),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: selected
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.68),
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(width: 6),
               ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: selected
-                      ? LiquidColors.textPrimary
-                      : LiquidColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

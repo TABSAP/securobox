@@ -9,8 +9,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/vault_context.dart';
-import 'package:video_player_app/widgets/app_card.dart';
+import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
+import 'package:video_player_app/widgets/liquid_glass_button.dart';
 
 /// Foreground album rules: selected albums are scanned while the owner opens
 /// this screen. New files remain in a review queue until explicitly imported.
@@ -142,10 +144,9 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
           ..clear()
           ..addAll(before);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Album rule could not be saved. Try again.'),
-        ),
+      FlushBarHelper.flushBarErrorMessage(
+        'Album rule could not be saved. Try again.',
+        context,
       );
     } finally {
       if (mounted) {
@@ -274,21 +275,16 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
         await prefs.setStringList(_seenKey, seen.toList());
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${result.added} imported · ${result.failed} failed'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        FlushBarHelper.flushBarInfoMessage(
+          '${result.added} imported · ${result.failed} failed',
+          context,
         );
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Import could not be completed. Gallery originals are kept; review the queue and retry.',
-            ),
-          ),
+        FlushBarHelper.flushBarErrorMessage(
+          'Import could not be completed. Gallery originals are kept; review the queue and retry.',
+          context,
         );
       }
     } finally {
@@ -305,189 +301,183 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: LiquidColors.backgroundDeep,
-    appBar: AppBar(
-      backgroundColor: LiquidColors.backgroundDeep,
-      surfaceTintColor: Colors.transparent,
-      title: const Text('Auto-import'),
-      actions: [
-        IconButton(
-          onPressed: _busy || _loading || _savingRule ? null : _loadAlbums,
-          tooltip: 'Refresh albums',
-          icon: AnimatedRotation(
-            turns: _loading || _scanning ? 1 : 0,
-            duration: const Duration(milliseconds: 650),
-            curve: Curves.easeInOutCubic,
-            child: const Icon(Icons.refresh_rounded),
-          ),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
+        titleTextStyle: TextStyle(
+          color: theme.colorScheme.onSurface,
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
         ),
-      ],
-    ),
-    body: _permissionDenied || _loadError != null
-        ? Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpace.lg),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _permissionDenied
-                        ? Icons.photo_library_outlined
-                        : Icons.error_outline,
-                    size: 42,
-                    color: LiquidColors.indigo,
-                  ),
-                  const SizedBox(height: AppSpace.md),
-                  Text(
-                    _permissionDenied
-                        ? 'Allow photo and video access to choose albums.'
-                        : _loadError!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: LiquidColors.textSecondary),
-                  ),
-                  const SizedBox(height: AppSpace.md),
-                  FilledButton.icon(
-                    onPressed: _permissionDenied
-                        ? PhotoManager.openSetting
-                        : _loadAlbums,
-                    icon: Icon(
-                      _permissionDenied ? Icons.settings : Icons.refresh,
-                    ),
-                    label: Text(
-                      _permissionDenied ? 'Open settings' : 'Try again',
-                    ),
-                  ),
-                ],
-              ),
+        title: const Text('Auto-import'),
+        actions: [
+          IconButton(
+            onPressed: _busy || _loading || _savingRule ? null : _loadAlbums,
+            tooltip: 'Refresh albums',
+            icon: AnimatedRotation(
+              turns: _loading || _scanning ? 1 : 0,
+              duration: const Duration(milliseconds: 650),
+              curve: Curves.easeInOutCubic,
+              child: const Icon(Icons.refresh_rounded),
             ),
-          )
-        : Stack(
-            children: [
-              ListView(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpace.md,
-                  AppSpace.sm,
-                  AppSpace.md,
-                  120,
-                ),
-                children: [
-                  _introCard(),
-                  const SizedBox(height: AppSpace.lg),
-                  _sectionHeader(
-                    'MONITORED ALBUMS',
-                    trailing: '${_rules.length} selected',
-                  ),
-                  const SizedBox(height: AppSpace.sm),
-                  if (_scanError != null) ...[
-                    _scanErrorCard(),
-                    const SizedBox(height: AppSpace.sm),
-                  ],
-                  for (var i = 0; i < _albums.length; i++) ...[
-                    _albumCard(_albums[i], i),
-                    const SizedBox(height: 9),
-                  ],
-                  const SizedBox(height: AppSpace.md),
-                  _sectionHeader(
-                    'REVIEW QUEUE',
-                    trailing: '${_queue.length} new',
-                  ),
-                  const SizedBox(height: AppSpace.sm),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 280),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    child: _queuePanel(
-                      key: ValueKey('${_queue.length}:${_rules.length}'),
+          ),
+        ],
+      ),
+      body: _permissionDenied || _loadError != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.lg),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _permissionDenied
+                          ? Icons.photo_library_outlined
+                          : Icons.error_outline,
+                      size: 42,
+                      color: LiquidColors.indigo,
                     ),
-                  ),
-                  const SizedBox(height: AppSpace.md),
-                  _originalsSetting(),
-                ],
+                    const SizedBox(height: AppSpace.md),
+                    Text(
+                      _permissionDenied
+                          ? 'Allow photo and video access to choose albums.'
+                          : _loadError!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: LiquidColors.textSecondary),
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    LiquidGlassButton(
+                      onPressed: _permissionDenied
+                          ? PhotoManager.openSetting
+                          : _loadAlbums,
+                      icon: _permissionDenied ? Icons.settings : Icons.refresh,
+                      label: _permissionDenied ? 'Open settings' : 'Try again',
+                    ),
+                  ],
+                ),
               ),
-              if (_busy)
-                Positioned.fill(
-                  child: ColoredBox(
-                    color: LiquidColors.backgroundDeep.withValues(alpha: .72),
-                    child: Center(
-                      child: AppCard(
-                        elevated: true,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            SizedBox(
-                              width: 30,
-                              height: 30,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                color: LiquidColors.indigo,
+            )
+          : Stack(
+              children: [
+                ListView(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpace.md,
+                    AppSpace.sm,
+                    AppSpace.md,
+                    120,
+                  ),
+                  children: [
+                    _introCard(),
+                    const SizedBox(height: AppSpace.lg),
+                    _sectionHeader(
+                      'MONITORED ALBUMS',
+                      trailing: '${_rules.length} selected',
+                    ),
+                    const SizedBox(height: AppSpace.sm),
+                    if (_scanError != null) ...[
+                      _scanErrorCard(),
+                      const SizedBox(height: AppSpace.sm),
+                    ],
+                    for (var i = 0; i < _albums.length; i++) ...[
+                      _albumCard(_albums[i], i),
+                      const SizedBox(height: 9),
+                    ],
+                    const SizedBox(height: AppSpace.md),
+                    _sectionHeader(
+                      'REVIEW QUEUE',
+                      trailing: '${_queue.length} new',
+                    ),
+                    const SizedBox(height: AppSpace.sm),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 280),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      child: _queuePanel(
+                        key: ValueKey('${_queue.length}:${_rules.length}'),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpace.md),
+                    _originalsSetting(),
+                  ],
+                ),
+                if (_busy)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: LiquidColors.backgroundDeep.withValues(alpha: .72),
+                      child: Center(
+                        child: LiquidGlassSurface(
+                          borderRadius: AppRadius.lg,
+                          blur: 20,
+                          padding: const EdgeInsets.all(AppSpace.md),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 30,
+                                height: 30,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: LiquidColors.indigo,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: AppSpace.md),
-                            Text(
-                              'Securing selected media…',
-                              style: TextStyle(
-                                color: LiquidColors.textPrimary,
-                                fontWeight: FontWeight.w700,
+                              const SizedBox(height: AppSpace.md),
+                              Text(
+                                'Securing selected media…',
+                                style: TextStyle(
+                                  color: LiquidColors.textPrimary,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: AppSpace.xs),
-                            Text(
-                              'Your Gallery originals are protected by your setting.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: LiquidColors.textSecondary,
-                                fontSize: 12,
+                              const SizedBox(height: AppSpace.xs),
+                              Text(
+                                'Your Gallery originals are protected by your setting.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: LiquidColors.textSecondary,
+                                  fontSize: 12,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              if (!_busy &&
-                  !_loading &&
-                  _rules.isNotEmpty &&
-                  _queue.isNotEmpty &&
-                  _selected.isNotEmpty)
-                Positioned(
-                  left: AppSpace.md,
-                  right: AppSpace.md,
-                  bottom: AppSpace.sm,
-                  child: SafeArea(
-                    top: false,
-                    child: FilledButton.icon(
-                      onPressed: _scanning || _savingRule
-                          ? null
-                          : _importSelected,
-                      icon: const Icon(Icons.lock_rounded),
-                      label: Text('Import ${_selected.length} selected'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(54),
+                if (!_busy &&
+                    !_loading &&
+                    _rules.isNotEmpty &&
+                    _queue.isNotEmpty &&
+                    _selected.isNotEmpty)
+                  Positioned(
+                    left: AppSpace.md,
+                    right: AppSpace.md,
+                    bottom: AppSpace.sm,
+                    child: SafeArea(
+                      top: false,
+                      child: LiquidGlassButton(
+                        onPressed: _scanning || _savingRule
+                            ? null
+                            : _importSelected,
+                        icon: Icons.lock_rounded,
+                        label: 'Import ${_selected.length} selected',
+                        height: 54,
                       ),
                     ),
                   ),
-                ),
-            ],
-          ),
-  );
+              ],
+            ),
+    );
+  }
 
-  Widget _introCard() => Container(
+  Widget _introCard() => LiquidGlassSurface(
+    borderRadius: AppRadius.lg,
+    blur: 20,
     padding: const EdgeInsets.all(AppSpace.lg),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          LiquidColors.indigo.withValues(alpha: .18),
-          LiquidColors.backgroundLight,
-          LiquidColors.backgroundLight.withValues(alpha: .72),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      border: Border.all(color: LiquidColors.indigo.withValues(alpha: .18)),
-    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -497,12 +487,12 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: LiquidColors.indigo.withValues(alpha: .15),
+                color: LiquidColors.textPrimary.withValues(alpha: .06),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 Icons.auto_awesome_rounded,
-                color: LiquidColors.indigo,
+                color: LiquidColors.textPrimary,
               ),
             ),
             const SizedBox(width: AppSpace.md),
@@ -601,24 +591,13 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
-          color: enabled
-              ? LiquidColors.indigo.withValues(alpha: .075)
-              : LiquidColors.backgroundLight.withValues(alpha: .72),
+          color: LiquidColors.backgroundLight.withValues(alpha: .58),
           borderRadius: BorderRadius.circular(AppRadius.md),
           border: Border.all(
             color: enabled
-                ? LiquidColors.indigo.withValues(alpha: .35)
+                ? LiquidColors.textPrimary.withValues(alpha: .18)
                 : LiquidColors.cardBorder,
           ),
-          boxShadow: enabled
-              ? [
-                  BoxShadow(
-                    color: LiquidColors.indigo.withValues(alpha: .07),
-                    blurRadius: 16,
-                    offset: const Offset(0, 5),
-                  ),
-                ]
-              : null,
         ),
         child: Material(
           color: Colors.transparent,
@@ -640,16 +619,14 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: enabled
-                          ? LiquidColors.indigo.withValues(alpha: .17)
-                          : LiquidColors.surfaceMuted,
+                      color: LiquidColors.textPrimary.withValues(alpha: .06),
                       borderRadius: BorderRadius.circular(13),
                     ),
                     child: Icon(
                       _albumIcon(album.name),
-                      color: enabled
-                          ? LiquidColors.indigo
-                          : LiquidColors.textTertiary,
+                      color: LiquidColors.textPrimary.withValues(
+                        alpha: enabled ? .86 : .54,
+                      ),
                       size: 21,
                     ),
                   ),
@@ -710,7 +687,9 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
     return Icons.photo_album_rounded;
   }
 
-  Widget _scanErrorCard() => AppCard(
+  Widget _scanErrorCard() => LiquidGlassSurface(
+    borderRadius: AppRadius.md,
+    blur: 16,
     padding: const EdgeInsets.symmetric(
       horizontal: AppSpace.md,
       vertical: AppSpace.sm,
@@ -744,39 +723,41 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
       final subtitle = _rules.isEmpty
           ? 'New media from selected albums will appear here.'
           : 'New photos and videos will appear here for review.';
-      return Container(
+      return LiquidGlassSurface(
         key: key,
-        width: double.infinity,
+        borderRadius: AppRadius.md,
+        blur: 16,
         padding: const EdgeInsets.all(AppSpace.lg),
-        decoration: BoxDecoration(
-          color: LiquidColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: LiquidColors.cardBorder),
-        ),
-        child: Column(
-          children: [
-            Icon(
-              _rules.isEmpty
-                  ? Icons.collections_bookmark_outlined
-                  : Icons.check_circle_outline_rounded,
-              size: 30,
-              color: LiquidColors.textTertiary,
-            ),
-            const SizedBox(height: AppSpace.sm),
-            Text(
-              title,
-              style: TextStyle(
-                color: LiquidColors.textPrimary,
-                fontWeight: FontWeight.w700,
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            children: [
+              Icon(
+                _rules.isEmpty
+                    ? Icons.collections_bookmark_outlined
+                    : Icons.check_circle_outline_rounded,
+                size: 30,
+                color: LiquidColors.textTertiary,
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: LiquidColors.textTertiary, fontSize: 12),
-            ),
-          ],
+              const SizedBox(height: AppSpace.sm),
+              Text(
+                title,
+                style: TextStyle(
+                  color: LiquidColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: LiquidColors.textTertiary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -786,7 +767,9 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
         for (final asset in _queue)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: AppCard(
+            child: LiquidGlassSurface(
+              borderRadius: AppRadius.md,
+              blur: 14,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpace.sm,
                 vertical: 4,
@@ -802,14 +785,14 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: LiquidColors.indigo.withValues(alpha: .12),
+                    color: LiquidColors.textPrimary.withValues(alpha: .06),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     asset.type == AssetType.video
                         ? Icons.videocam_rounded
                         : Icons.image_rounded,
-                    color: LiquidColors.indigo,
+                    color: LiquidColors.textPrimary,
                     size: 19,
                   ),
                 ),
@@ -842,7 +825,9 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
     );
   }
 
-  Widget _originalsSetting() => AppCard(
+  Widget _originalsSetting() => LiquidGlassSurface(
+    borderRadius: AppRadius.md,
+    blur: 16,
     padding: const EdgeInsets.symmetric(
       horizontal: AppSpace.md,
       vertical: AppSpace.sm,

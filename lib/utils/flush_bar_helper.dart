@@ -1,44 +1,71 @@
-import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class FlushBarHelper {
   static void _show(
     BuildContext context, {
     required String message,
-    required Color background,
+    required Color statusColor,
     required IconData icon,
     Duration duration = const Duration(seconds: 3),
   }) {
     if (message.trim().isEmpty) return;
-    Flushbar(
-      forwardAnimationCurve: Curves.decelerate,
-      reverseAnimationCurve: Curves.easeInOut,
-      message: message,
-      duration: duration,
-      messageColor: Colors.white,
-      backgroundColor: background,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.all(15),
-      flushbarPosition: FlushbarPosition.TOP,
-      positionOffset: 20,
-      icon: Icon(icon, color: Colors.white),
-      borderRadius: BorderRadius.circular(8),
-      boxShadows: [
-        BoxShadow(
-          color: background.withValues(alpha: 0.3),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
+
+    final theme = Theme.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+          behavior: SnackBarBehavior.floating,
+          duration: duration,
+          dismissDirection: DismissDirection.down,
+          content: LiquidGlassSurface(
+            borderRadius: 18,
+            blur: 22,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                LiquidGlassSurface(
+                  borderRadius: 13,
+                  blur: 12,
+                  tintColor: statusColor,
+                  tintOpacity: 0.12,
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Icon(icon, color: statusColor, size: 21),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ],
-    ).show(context);
+      );
   }
 
   static void flushBarErrorMessage(String message, BuildContext context) {
     _show(
       context,
       message: message,
-      background: Colors.red.shade600,
-      icon: Icons.error_outline,
+      statusColor: Theme.of(context).colorScheme.error,
+      icon: Icons.error_outline_rounded,
     );
   }
 
@@ -46,8 +73,8 @@ class FlushBarHelper {
     _show(
       context,
       message: message,
-      background: Colors.green.shade600,
-      icon: Icons.check_circle_outline,
+      statusColor: const Color(0xFF2E9D73),
+      icon: Icons.check_circle_outline_rounded,
       duration: const Duration(seconds: 2),
     );
   }
@@ -56,8 +83,10 @@ class FlushBarHelper {
     _show(
       context,
       message: message,
-      background: Colors.blue.shade600,
-      icon: Icons.info_outline,
+      statusColor: Theme.of(
+        context,
+      ).colorScheme.onSurface.withValues(alpha: 0.72),
+      icon: Icons.info_outline_rounded,
     );
   }
 
@@ -65,8 +94,8 @@ class FlushBarHelper {
     _show(
       context,
       message: message,
-      background: Colors.orange.shade700,
-      icon: Icons.warning_amber_outlined,
+      statusColor: const Color(0xFFC58A36),
+      icon: Icons.warning_amber_rounded,
     );
   }
 }

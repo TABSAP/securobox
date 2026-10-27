@@ -50,7 +50,7 @@ class MediaImporter {
   /// Document file extensions (no leading dots, lowercase), exposed so the
   /// file picker can restrict a Documents import to real document types.
   static List<String> get docExtensions =>
-      FileTypeRegistry.extensionsFor('document').toList();
+      FileTypeRegistry.documentExtensions.toList()..sort();
 
   /// The stored item type. Archives, code, ebooks and fonts all collapse to
   /// `'document'`, so every such file lands in the Documents category.
@@ -85,12 +85,19 @@ class MediaImporter {
     for (int i = 0; i < items.length; i++) {
       final f = items[i].file;
       try {
+        final originalName = items[i].originalName;
+        final typeSource = originalName?.trim().isNotEmpty == true
+            ? originalName!
+            : f.path;
+        final fileType = detectTypeFromPath(typeSource);
         final storedPath = encrypt
-            ? await VaultCrypto.instance.importEncrypted(f)
-            : await VaultCrypto.instance.importPlain(f);
-        final fileType = detectTypeFromPath(f.path);
+            ? await VaultCrypto.instance.importEncrypted(
+                f,
+                fileName: originalName,
+              )
+            : await VaultCrypto.instance.importPlain(f, fileName: originalName);
         final cat = category ?? defaultCategoryForType(fileType);
-        final original = items[i].originalName;
+        final original = originalName;
         final title = (original != null && original.trim().isNotEmpty)
             ? TitleHelper.originalName(original, type: fileType)
             : TitleHelper.smartName(f.path, type: fileType);

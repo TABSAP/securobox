@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:ui' show ImageFilter;
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +27,7 @@ import 'package:video_player_app/views/screens/secure_camera/secure_camera_scree
 import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/widgets/app_section_header.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 import 'package:video_player_app/widgets/vault_thumbnail.dart';
 
 class HomeDashboard extends StatefulWidget {
@@ -642,6 +642,8 @@ class HomeDashboardState extends State<HomeDashboard> {
       final items = <PickedMedia>[];
       SessionManager.instance.beginTrustedInteraction();
       try {
+        // Close the search keyboard before presenting the native Files UI.
+        FocusManager.instance.primaryFocus?.unfocus();
         final result = await FilePicker.platform.pickFiles(
           type: FileType.any,
           allowMultiple: true,
@@ -863,66 +865,22 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   Widget _appBarAction(IconData icon, String tooltip, VoidCallback onTap) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Tooltip(
         message: tooltip,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.07),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isDark
-                            ? [
-                                Colors.white.withValues(alpha: 0.12),
-                                theme.colorScheme.surface.withValues(
-                                  alpha: 0.64,
-                                ),
-                              ]
-                            : [
-                                Colors.white.withValues(alpha: 0.70),
-                                const Color(0xFFE8EBF1).withValues(alpha: 0.48),
-                              ],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.22)
-                            : Colors.white.withValues(alpha: 0.88),
-                        width: 1,
-                      ),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: theme.colorScheme.onSurface,
-                      size: 20,
-                    ),
-                  ),
-                ),
+        child: LiquidGlassSurface(
+          borderRadius: 14,
+          blur: 18,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(icon, color: theme.colorScheme.onSurface, size: 20),
               ),
             ),
           ),
@@ -940,69 +898,34 @@ class _PremiumImportFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     return Tooltip(
       message: 'Import media',
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(19),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.10),
-              blurRadius: 22,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(19),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-            child: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white.withValues(alpha: isDark ? 0.14 : 0.72),
-                    theme.colorScheme.surface.withValues(
-                      alpha: isDark ? 0.62 : 0.82,
+      child: LiquidGlassSurface(
+        borderRadius: 19,
+        blur: 22,
+        child: SizedBox(
+          width: 56,
+          height: 56,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(19),
+              splashColor: Colors.white.withValues(alpha: 0.24),
+              highlightColor: Colors.white.withValues(alpha: 0.10),
+              child: Center(
+                child: Icon(
+                  Icons.add_to_photos_rounded,
+                  color: theme.colorScheme.onSurface,
+                  size: 26,
+                  shadows: [
+                    Shadow(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.30,
+                      ),
+                      blurRadius: 8,
                     ),
-                    (isDark ? Colors.white : const Color(0xFFE5E7EB))
-                        .withValues(alpha: isDark ? 0.07 : 0.55),
                   ],
-                  stops: const [0, 0.52, 1],
-                ),
-                borderRadius: BorderRadius.circular(19),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: isDark ? 0.24 : 0.92),
-                  width: 1.1,
-                ),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: onPressed,
-                  borderRadius: BorderRadius.circular(19),
-                  splashColor: Colors.white.withValues(alpha: 0.24),
-                  highlightColor: Colors.white.withValues(alpha: 0.10),
-                  child: Center(
-                    child: Icon(
-                      Icons.add_to_photos_rounded,
-                      color: theme.colorScheme.onSurface,
-                      size: 26,
-                      shadows: [
-                        Shadow(
-                          color: theme.colorScheme.onSurface.withValues(
-                            alpha: 0.30,
-                          ),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
               ),
             ),
@@ -1089,45 +1012,11 @@ class _LibraryGlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.07),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withValues(alpha: isDark ? 0.08 : 0.68),
-                  theme.colorScheme.surface.withValues(
-                    alpha: isDark ? 0.40 : 0.58,
-                  ),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: isDark ? 0.16 : 0.82),
-                width: 1,
-              ),
-            ),
-            child: Padding(padding: padding, child: child),
-          ),
-        ),
-      ),
+    return LiquidGlassSurface(
+      borderRadius: radius,
+      blur: 18,
+      padding: padding,
+      child: child,
     );
   }
 }

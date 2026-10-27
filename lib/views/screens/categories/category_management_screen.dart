@@ -4,8 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:video_player_app/utils/category_service.dart';
 import 'package:video_player_app/utils/category_lock_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 /// Unified category management: default (built-in) and custom categories live
 /// together in one reorderable list. Users can rename and hide/show every
@@ -29,6 +31,14 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   List<CategoryInfo> _items = [];
   Set<String> _locked = {};
   bool _loading = true;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -121,10 +131,9 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
         (prefs.getBool('biometric_face') ?? false);
     if (!hasGate) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Set up a PIN or biometrics in Security first.'),
-          ),
+        FlushBarHelper.flushBarWarningMessage(
+          'Set up a PIN or biometrics in Security first.',
+          context,
         );
       }
       return;
@@ -212,83 +221,115 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
               Navigator.pop(ctx, value);
             }
 
-            return AlertDialog(
-              backgroundColor: LiquidColors.backgroundLight,
+            final theme = Theme.of(ctx);
+            return Dialog(
+              backgroundColor: Colors.transparent,
               surfaceTintColor: Colors.transparent,
-              shape: const RoundedRectangleBorder(borderRadius: AppRadius.rLg),
-              title: Text(
-                originalName == null ? 'New category' : 'Rename category',
-                style: TextStyle(
-                  color: LiquidColors.textPrimary,
-                  fontWeight: FontWeight.w800,
+              elevation: 0,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: LiquidGlassSurface(
+                borderRadius: AppRadius.lg,
+                blur: 24,
+                // Keep the dialog neutral: category icon accents should not
+                // tint the surrounding surface through the glass blur.
+                tintOpacity: 0,
+                padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      originalName == null ? 'New category' : 'Rename category',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      maxLength: _maxLength,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => submit(),
+                      onChanged: (_) {
+                        if (errorText != null) setLocal(() => errorText = null);
+                      },
+                      style: TextStyle(color: theme.colorScheme.onSurface),
+                      cursorColor: theme.colorScheme.primary,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Receipts',
+                        hintStyle: TextStyle(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.48,
+                          ),
+                        ),
+                        errorText: errorText,
+                        errorStyle: TextStyle(color: theme.colorScheme.error),
+                        counterStyle: TextStyle(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.48,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: theme.colorScheme.surface.withValues(
+                          alpha: theme.brightness == Brightness.dark
+                              ? 0.24
+                              : 0.48,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: AppRadius.rMd,
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.onSurface.withValues(
+                              alpha: 0.12,
+                            ),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: AppRadius.rMd,
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.primary,
+                            width: 1.5,
+                          ),
+                        ),
+                        errorBorder: OutlineInputBorder(
+                          borderRadius: AppRadius.rMd,
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                        focusedErrorBorder: OutlineInputBorder(
+                          borderRadius: AppRadius.rMd,
+                          borderSide: BorderSide(
+                            color: theme.colorScheme.error,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        _dialogAction(
+                          context: ctx,
+                          label: 'Cancel',
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                        const SizedBox(width: 10),
+                        _dialogAction(
+                          context: ctx,
+                          label: 'Save',
+                          primary: true,
+                          onPressed: submit,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              content: TextField(
-                controller: controller,
-                autofocus: true,
-                maxLength: _maxLength,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => submit(),
-                onChanged: (_) {
-                  if (errorText != null) setLocal(() => errorText = null);
-                },
-                style: TextStyle(color: LiquidColors.textPrimary),
-                cursorColor: LiquidColors.indigo,
-                decoration: InputDecoration(
-                  hintText: 'e.g. Receipts',
-                  hintStyle: TextStyle(color: LiquidColors.textTertiary),
-                  errorText: errorText,
-                  counterStyle: TextStyle(color: LiquidColors.textTertiary),
-                  filled: true,
-                  fillColor: LiquidColors.backgroundDeep.withValues(alpha: 0.6),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: AppRadius.rMd,
-                    borderSide: BorderSide(color: LiquidColors.cardBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: AppRadius.rMd,
-                    borderSide: BorderSide(
-                      color: LiquidColors.indigo,
-                      width: 1.5,
-                    ),
-                  ),
-                  errorBorder: OutlineInputBorder(
-                    borderRadius: AppRadius.rMd,
-                    borderSide: BorderSide(color: LiquidColors.error),
-                  ),
-                  focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: AppRadius.rMd,
-                    borderSide: BorderSide(
-                      color: LiquidColors.error,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text(
-                    'Cancel',
-                    style: TextStyle(color: LiquidColors.textSecondary),
-                  ),
-                ),
-                FilledButton(
-                  onPressed: submit,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: LiquidColors.indigo,
-                    foregroundColor: Colors.white,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: AppRadius.rMd,
-                    ),
-                  ),
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
             );
           },
         );
@@ -296,12 +337,50 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
     );
   }
 
+  Widget _dialogAction({
+    required BuildContext context,
+    required String label,
+    required VoidCallback onPressed,
+    bool primary = false,
+  }) {
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: 14,
+      blur: 14,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 88, minHeight: 46),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: primary
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor.withValues(alpha: 0.78),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -315,36 +394,72 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'New category',
-            onPressed: _addCategory,
-            icon: Icon(Icons.add_rounded, color: LiquidColors.indigo),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: LiquidGlassSurface(
+              borderRadius: 13,
+              blur: 14,
+              child: Material(
+                color: Colors.transparent,
+                child: IconButton(
+                  tooltip: 'New category',
+                  onPressed: _addCategory,
+                  icon: Icon(
+                    Icons.add_rounded,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
           ),
           const SizedBox(width: 6),
         ],
       ),
       body: _loading
           ? Center(child: CircularProgressIndicator(color: LiquidColors.indigo))
-          : _buildList(),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: _buildSearchBar(theme),
+                ),
+                Expanded(child: _buildList()),
+              ],
+            ),
       bottomNavigationBar: _loading
           ? null
           : SafeArea(
               minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: SizedBox(
                 height: 52,
-                child: FilledButton.icon(
-                  onPressed: _addCategory,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: LiquidColors.indigo,
-                    foregroundColor: Colors.white,
-                    shape: const RoundedRectangleBorder(
+                child: LiquidGlassSurface(
+                  borderRadius: AppRadius.lg,
+                  blur: 20,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: _addCategory,
                       borderRadius: AppRadius.rLg,
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.add_rounded,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'New category',
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.add_rounded),
-                  label: const Text(
-                    'New category',
-                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
@@ -352,31 +467,111 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
     );
   }
 
+  Widget _buildSearchBar(ThemeData theme) {
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.md,
+      blur: 18,
+      child: SizedBox(
+        height: 52,
+        child: TextField(
+          controller: _searchController,
+          textInputAction: TextInputAction.search,
+          style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 15),
+          cursorColor: theme.colorScheme.primary,
+          onChanged: (value) => setState(() => _searchQuery = value.trim()),
+          decoration: InputDecoration(
+            isDense: true,
+            filled: false,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            disabledBorder: InputBorder.none,
+            hintText: 'Search categories',
+            hintStyle: TextStyle(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.48),
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            suffixIcon: _searchQuery.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear search',
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildList() {
+    final filteredItems = _searchQuery.isEmpty
+        ? _items
+        : _items
+              .where(
+                (item) => item.name.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ),
+              )
+              .toList();
+
+    Widget buildTile(CategoryInfo item, int index) => Padding(
+      key: ValueKey(item.key),
+      padding: const EdgeInsets.only(bottom: 10),
+      child: _CategoryTile(
+        item: item,
+        index: index,
+        icon: _iconFor(item),
+        onRename: () => _renameCategory(item),
+        onToggleHidden: () => _toggleHidden(item),
+        onToggleLock: () => _toggleLock(item),
+        isLocked: _locked.contains(item.key.toLowerCase()),
+        onDelete: item.isDefault ? null : () => _deleteCategory(item),
+      ),
+    );
+
+    if (filteredItems.isEmpty) {
+      return Center(
+        child: Text(
+          _searchQuery.isEmpty ? 'No categories yet' : 'No matching categories',
+          style: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.58),
+          ),
+        ),
+      );
+    }
+
+    final padding = const EdgeInsets.fromLTRB(16, 14, 16, 24);
+    if (_searchQuery.isNotEmpty) {
+      return ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: padding,
+        itemCount: filteredItems.length,
+        itemBuilder: (context, index) => buildTile(filteredItems[index], index),
+      );
+    }
     return ReorderableListView.builder(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-      itemCount: _items.length,
+      padding: padding,
+      itemCount: filteredItems.length,
       onReorderItem: _onReorder,
       proxyDecorator: (child, index, animation) =>
           Material(color: Colors.transparent, child: child),
-      itemBuilder: (context, index) {
-        final item = _items[index];
-        return Padding(
-          key: ValueKey(item.key),
-          padding: const EdgeInsets.only(bottom: 10),
-          child: _CategoryTile(
-            item: item,
-            index: index,
-            icon: _iconFor(item),
-            onRename: () => _renameCategory(item),
-            onToggleHidden: () => _toggleHidden(item),
-            onToggleLock: () => _toggleLock(item),
-            isLocked: _locked.contains(item.key.toLowerCase()),
-            onDelete: item.isDefault ? null : () => _deleteCategory(item),
-          ),
-        );
-      },
+      itemBuilder: (context, index) => buildTile(filteredItems[index], index),
     );
   }
 }
@@ -404,24 +599,24 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final card = Container(
+    final card = LiquidGlassSurface(
+      borderRadius: AppRadius.lg,
+      blur: 18,
       padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
-      decoration: BoxDecoration(
-        color: LiquidColors.backgroundLight.withValues(alpha: 0.55),
-        borderRadius: AppRadius.rLg,
-        border: Border.all(color: LiquidColors.cardBorder),
-      ),
+      tintColor: isLocked ? LiquidColors.indigo : null,
+      tintOpacity: isLocked ? 0.07 : 0,
       child: Row(
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: LiquidColors.indigo.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(12),
+          LiquidGlassSurface(
+            borderRadius: 12,
+            blur: 12,
+            tintColor: LiquidColors.indigo,
+            tintOpacity: 0.12,
+            child: SizedBox(
+              width: 42,
+              height: 42,
+              child: Icon(icon, color: LiquidColors.indigo, size: 20),
             ),
-            child: Icon(icon, color: LiquidColors.indigo, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -493,12 +688,16 @@ class _CategoryTile extends StatelessWidget {
             ),
           ReorderableDragStartListener(
             index: index,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Icon(
-                Icons.drag_indicator_rounded,
-                color: LiquidColors.textTertiary,
-                size: 22,
+            child: LiquidGlassSurface(
+              borderRadius: 10,
+              blur: 10,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+                child: Icon(
+                  Icons.drag_indicator_rounded,
+                  color: LiquidColors.textTertiary,
+                  size: 20,
+                ),
               ),
             ),
           ),
@@ -510,17 +709,15 @@ class _CategoryTile extends StatelessWidget {
   }
 
   Widget _pill(String label) {
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: 999,
+      blur: 10,
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(999),
-      ),
       child: Text(
         label,
         style: TextStyle(
           color: LiquidColors.textTertiary,
-          fontSize: 11,
+          fontSize: 10.5,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -533,13 +730,24 @@ class _CategoryTile extends StatelessWidget {
     required Color color,
     required VoidCallback onPressed,
   }) {
+    final isDestructive = color == LiquidColors.error;
     return IconButton(
       tooltip: tooltip,
       visualDensity: VisualDensity.compact,
       constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
       padding: EdgeInsets.zero,
       onPressed: onPressed,
-      icon: Icon(icon, color: color, size: 20),
+      icon: LiquidGlassSurface(
+        borderRadius: 10,
+        blur: 10,
+        tintColor: isDestructive ? color : null,
+        tintOpacity: isDestructive ? 0.1 : 0,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(icon, color: color, size: 18),
+        ),
+      ),
     );
   }
 }

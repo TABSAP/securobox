@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/startup_router.dart';
 import 'package:video_player_app/widgets/app_brand_icon.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,21 +30,23 @@ class _SplashScreenState extends State<SplashScreen>
     curve: const Interval(0.0, 0.42, curve: Curves.easeOut),
   );
   late final Animation<double> _logoScale = Tween<double>(begin: 0.78, end: 1.0)
-      .animate(CurvedAnimation(
-    parent: _intro,
-    curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
-  ));
+      .animate(
+        CurvedAnimation(
+          parent: _intro,
+          curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+        ),
+      );
   late final Animation<double> _textFade = CurvedAnimation(
     parent: _intro,
     curve: const Interval(0.34, 0.82, curve: Curves.easeOut),
   );
   late final Animation<Offset> _textSlide =
       Tween<Offset>(begin: const Offset(0, 0.45), end: Offset.zero).animate(
-    CurvedAnimation(
-      parent: _intro,
-      curve: const Interval(0.34, 0.9, curve: Curves.easeOutCubic),
-    ),
-  );
+        CurvedAnimation(
+          parent: _intro,
+          curve: const Interval(0.34, 0.9, curve: Curves.easeOutCubic),
+        ),
+      );
   late final Animation<double> _bottomFade = CurvedAnimation(
     parent: _intro,
     curve: const Interval(0.6, 1.0, curve: Curves.easeOut),
@@ -114,44 +117,63 @@ class _SplashScreenState extends State<SplashScreen>
               child: _blob(LiquidColors.accentPurple, 340),
             ),
             Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FadeTransition(
-                    opacity: _logoFade,
-                    child: ScaleTransition(scale: _logoScale, child: _logo()),
-                  ),
-                  const SizedBox(height: 30),
-                  FadeTransition(
-                    opacity: _textFade,
-                    child: SlideTransition(
-                      position: _textSlide,
-                      child: Column(
-                        children: [
-                          Text(
-                            'SecuroBox',
-                            style: TextStyle(
-                              color: LiquidColors.textPrimary,
-                              fontSize: 30,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 1.6,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 380),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: LiquidGlassSurface(
+                    borderRadius: 36,
+                    blur: 24,
+                    tintColor: LiquidColors.accentBlue,
+                    tintOpacity: 0.05,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 38,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FadeTransition(
+                          opacity: _logoFade,
+                          child: ScaleTransition(
+                            scale: _logoScale,
+                            child: _logo(),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
+                        FadeTransition(
+                          opacity: _textFade,
+                          child: SlideTransition(
+                            position: _textSlide,
+                            child: Column(
+                              children: [
+                                Text(
+                                  'SecuroBox',
+                                  style: TextStyle(
+                                    color: LiquidColors.textPrimary,
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.6,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Your private, offline vault',
+                                  style: TextStyle(
+                                    color: LiquidColors.textSecondary,
+                                    fontSize: 13.5,
+                                    letterSpacing: 0.4,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Your private, offline vault',
-                            style: TextStyle(
-                              color: LiquidColors.textSecondary,
-                              fontSize: 13.5,
-                              letterSpacing: 0.4,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
             Positioned(
@@ -168,10 +190,12 @@ class _SplashScreenState extends State<SplashScreen>
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(3),
                         child: LinearProgressIndicator(
-                          backgroundColor:
-                              LiquidColors.textPrimary.withValues(alpha: 0.10),
+                          backgroundColor: LiquidColors.textPrimary.withValues(
+                            alpha: 0.10,
+                          ),
                           valueColor: AlwaysStoppedAnimation<Color>(
-                              LiquidColors.accentBlue),
+                            LiquidColors.accentBlue,
+                          ),
                         ),
                       ),
                     ),
@@ -179,8 +203,11 @@ class _SplashScreenState extends State<SplashScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.shield_rounded,
-                            size: 13, color: LiquidColors.textTertiary),
+                        Icon(
+                          Icons.shield_rounded,
+                          size: 13,
+                          color: LiquidColors.textTertiary,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'AES-256 encrypted · 100% offline',
@@ -224,7 +251,9 @@ class _SplashScreenState extends State<SplashScreen>
             borderRadius: BorderRadius.circular(30),
             boxShadow: [
               BoxShadow(
-                color: LiquidColors.accentBlue.withValues(alpha: 0.22 + 0.16 * g),
+                color: LiquidColors.accentBlue.withValues(
+                  alpha: 0.22 + 0.16 * g,
+                ),
                 blurRadius: 38 + 16 * g,
                 spreadRadius: 2 + 5 * g,
               ),
@@ -233,11 +262,7 @@ class _SplashScreenState extends State<SplashScreen>
           child: child,
         );
       },
-      child: const AppBrandIcon(
-        size: 120,
-        radius: 30,
-        showShadow: false,
-      ),
+      child: const AppBrandIcon(size: 120, radius: 30, showShadow: false),
     );
   }
 
@@ -248,10 +273,12 @@ class _SplashScreenState extends State<SplashScreen>
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [
-            color.withValues(alpha: 0.12),
-            color.withValues(alpha: 0.0),
-          ]),
+          gradient: RadialGradient(
+            colors: [
+              color.withValues(alpha: 0.12),
+              color.withValues(alpha: 0.0),
+            ],
+          ),
         ),
       ),
     );

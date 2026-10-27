@@ -9,6 +9,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/session_manager.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
+import 'package:video_player_app/widgets/liquid_glass_button.dart';
 
 class SendFeedbackScreen extends StatefulWidget {
   const SendFeedbackScreen({super.key});
@@ -35,25 +37,21 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       key: 'Bug',
       label: 'Bug',
       icon: Icons.bug_report_outlined,
-      color: Color(0xFFEF4444),
     ),
     _FeedbackCategory(
       key: 'Feature',
       label: 'Feature',
       icon: Icons.lightbulb_outline_rounded,
-      color: Color(0xFFF59E0B),
     ),
     _FeedbackCategory(
       key: 'Praise',
       label: 'Praise',
       icon: Icons.favorite_outline_rounded,
-      color: Color(0xFFEC4899),
     ),
     _FeedbackCategory(
       key: 'General',
       label: 'General',
       icon: Icons.chat_bubble_outline_rounded,
-      color: LiquidColors.accentBlue,
     ),
   ];
 
@@ -80,6 +78,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
     // auto-lock can fire and dismiss the picker mid-selection.
     SessionManager.instance.beginTrustedInteraction();
     try {
+      FocusManager.instance.primaryFocus?.unfocus();
       final result = await FilePicker.platform.pickFiles(
         type: imagesOnly ? FileType.image : FileType.any,
         allowMultiple: true,
@@ -287,11 +286,9 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       constraints: const BoxConstraints(maxWidth: 540),
-      builder: (sheetContext) => Container(
-        decoration: BoxDecoration(
-          color: LiquidColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
+      builder: (sheetContext) => LiquidGlassSurface(
+        borderRadius: 30,
+        blur: 26,
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(sheetContext).padding.bottom + 16,
         ),
@@ -362,7 +359,6 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   _fallbackTile(
                     sheetContext,
                     icon: Icons.public_rounded,
-                    color: LiquidColors.accentBlue,
                     title: 'Open Gmail in Browser',
                     subtitle: _attachments.isEmpty
                         ? 'Composes the message in web Gmail'
@@ -390,7 +386,6 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   _fallbackTile(
                     sheetContext,
                     icon: Icons.copy_rounded,
-                    color: LiquidColors.accentPurple,
                     title: 'Copy Message',
                     subtitle:
                         'Copies the full message to your clipboard so you can paste it anywhere',
@@ -410,7 +405,6 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                     _fallbackTile(
                       sheetContext,
                       icon: Icons.download_rounded,
-                      color: LiquidColors.success,
                       title: 'Install Gmail',
                       subtitle: 'Opens the Play Store',
                       onTap: () async {
@@ -424,19 +418,9 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
             const SizedBox(height: 14),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: TextButton(
+              child: LiquidGlassButton(
+                label: 'Cancel',
                 onPressed: () => Navigator.of(sheetContext).pop(),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: LiquidColors.textTertiary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -449,7 +433,6 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
   Widget _fallbackTile(
     BuildContext sheetContext, {
     required IconData icon,
-    required Color color,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
@@ -459,23 +442,20 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
-        child: Container(
+        child: LiquidGlassSurface(
+          borderRadius: 14,
+          blur: 16,
           padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
-          ),
           child: Row(
             children: [
               Container(
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
+                  color: LiquidColors.textPrimary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: LiquidColors.textSecondary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -531,11 +511,9 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       constraints: const BoxConstraints(maxWidth: 540),
-      builder: (sheetContext) => Container(
-        decoration: BoxDecoration(
-          color: LiquidColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
+      builder: (sheetContext) => LiquidGlassSurface(
+        borderRadius: 30,
+        blur: 26,
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(sheetContext).padding.bottom + 20,
         ),
@@ -551,28 +529,14 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            Container(
-              width: 86,
-              height: 86,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: LiquidColors.accentBlue.withValues(alpha: 0.4),
-                    blurRadius: 26,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
+            LiquidGlassSurface(
+              borderRadius: 48,
+              blur: 18,
+              padding: const EdgeInsets.all(24),
               child: Icon(
                 Icons.mark_email_read_outlined,
-                color: Colors.white,
-                size: 44,
+                color: LiquidColors.textPrimary,
+                size: 38,
               ),
             ),
             const SizedBox(height: 20),
@@ -604,23 +568,9 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
             const SizedBox(height: 26),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(sheetContext).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: LiquidColors.accentBlue,
-                    foregroundColor: LiquidColors.textPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: const Text(
-                    'Got it',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700,color: Colors.white),
-                  ),
-                ),
+              child: LiquidGlassButton(
+                label: 'Got it',
+                onPressed: () => Navigator.of(sheetContext).pop(),
               ),
             ),
             const SizedBox(height: 14),
@@ -645,25 +595,27 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryColor = _categories
-        .firstWhere((c) => c.key == _category)
-        .color;
+    final categoryColor = Theme.of(context).colorScheme.onSurface;
     final media = MediaQuery.of(context);
     final width = media.size.width;
     final horizontalPadding = width < 360 ? 16.0 : (width < 600 ? 20.0 : 28.0);
     final keyboardInset = media.viewInsets.bottom;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: LiquidColors.backgroundDeep,
+      backgroundColor: theme.scaffoldBackgroundColor,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        backgroundColor: LiquidColors.backgroundDeep,
+        backgroundColor: theme.scaffoldBackgroundColor,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: LiquidColors.systemOverlayStyle,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: theme.colorScheme.onSurface,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
@@ -673,16 +625,15 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               height: 40,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.09),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.12),
+                ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.send_rounded,
-                color: Colors.white,
+                color: theme.colorScheme.onSurface,
                 size: 20,
               ),
             ),
@@ -692,7 +643,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                 'Send Feedback',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: LiquidColors.textPrimary,
+                  color: theme.colorScheme.onSurface,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.2,
@@ -702,19 +653,8 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
           ],
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundMid,
-              LiquidColors.backgroundLight,
-            ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+      body: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
         child: SafeArea(
           top: false,
           child: Form(
@@ -797,40 +737,23 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
   }
 
   Widget _intro() {
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: 18,
+      blur: 20,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            LiquidColors.accentBlue.withValues(alpha: 0.16),
-            LiquidColors.accentPurple.withValues(alpha: 0.08),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: LiquidColors.accentBlue.withValues(alpha: 0.3),
-        ),
-      ),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  LiquidColors.accentBlue.withValues(alpha: 0.3),
-                  LiquidColors.accentBlue.withValues(alpha: 0.0),
-                ],
+          LiquidGlassSurface(
+            borderRadius: 13,
+            blur: 12,
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Icon(
+                Icons.forum_rounded,
+                color: LiquidColors.textPrimary,
+                size: 22,
               ),
-            ),
-            child: Icon(
-              Icons.forum_rounded,
-              color: LiquidColors.accentBlue,
-              size: 22,
             ),
           ),
           const SizedBox(width: 14),
@@ -898,25 +821,21 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: selected
-                    ? c.color.withValues(alpha: 0.18)
-                    : LiquidColors.textPrimary.withValues(alpha: 0.04),
+                    ? Theme.of(context).colorScheme.onSurface.withValues(
+                        alpha: Theme.of(context).brightness == Brightness.dark
+                            ? 0.14
+                            : 0.10,
+                      )
+                    : Theme.of(
+                        context,
+                      ).colorScheme.surface.withValues(alpha: 0.30),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: selected
-                      ? c.color
-                      : LiquidColors.textPrimary.withValues(alpha: 0.08),
-                  width: selected ? 1.4 : 1,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(
+                    alpha: selected ? 0.30 : 0.10,
+                  ),
+                  width: selected ? 1.3 : 1,
                 ),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: c.color.withValues(alpha: 0.32),
-                          blurRadius: 14,
-                          spreadRadius: -3,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -924,7 +843,9 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
                   Icon(
                     c.icon,
                     size: 16,
-                    color: selected ? c.color : LiquidColors.textSecondary,
+                    color: selected
+                        ? Theme.of(context).colorScheme.onSurface
+                        : LiquidColors.textSecondary,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -955,57 +876,68 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
     int? maxLength,
     String? Function(String?)? validator,
   }) {
-    return TextFormField(
-      controller: controller,
-      minLines: minLines,
-      maxLines: maxLines,
-      maxLength: maxLength,
-      validator: validator,
-      cursorColor: color,
-      style: TextStyle(
-        color: LiquidColors.textPrimary,
-        fontSize: 14,
-        height: 1.5,
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: LiquidColors.textTertiary,
-          fontSize: 13,
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: 14,
+      blur: 14,
+      child: TextFormField(
+        controller: controller,
+        minLines: minLines,
+        maxLines: maxLines,
+        maxLength: maxLength,
+        validator: validator,
+        cursorColor: color,
+        style: TextStyle(
+          color: LiquidColors.textPrimary,
+          fontSize: 14,
           height: 1.5,
         ),
-        filled: true,
-        fillColor: LiquidColors.textPrimary.withValues(alpha: 0.04),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-        counterStyle: TextStyle(color: LiquidColors.textTertiary, fontSize: 11),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: LiquidColors.textTertiary,
+            fontSize: 13,
+            height: 1.5,
           ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+          filled: true,
+          fillColor: Colors.transparent,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
           ),
+          counterStyle: TextStyle(
+            color: LiquidColors.textTertiary,
+            fontSize: 11,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.12),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.12),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.45),
+              width: 1.3,
+            ),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: LiquidColors.error),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: LiquidColors.error, width: 1.4),
+          ),
+          errorStyle: TextStyle(color: LiquidColors.error, fontSize: 12),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: color, width: 1.4),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: LiquidColors.error),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: LiquidColors.error, width: 1.4),
-        ),
-        errorStyle: TextStyle(color: LiquidColors.error, fontSize: 12),
       ),
     );
   }
@@ -1053,14 +985,9 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
         ),
         if (_attachments.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: LiquidColors.textPrimary.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-              ),
-            ),
+          LiquidGlassSurface(
+            borderRadius: 14,
+            blur: 14,
             child: Column(
               children: [
                 for (int i = 0; i < _attachments.length; i++) ...[
@@ -1091,28 +1018,14 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
       child: InkWell(
         onTap: disabled ? null : onTap,
         borderRadius: BorderRadius.circular(14),
-        child: Container(
+        child: LiquidGlassSurface(
+          borderRadius: 14,
+          blur: 14,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          decoration: BoxDecoration(
-            color: disabled
-                ? LiquidColors.textPrimary.withValues(alpha: 0.02)
-                : color.withValues(alpha: 0.10),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: disabled
-                  ? LiquidColors.textPrimary.withValues(alpha: 0.06)
-                  : color.withValues(alpha: 0.4),
-              width: 1,
-            ),
-          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                size: 18,
-                color: disabled ? LiquidColors.textTertiary : color,
-              ),
+              Icon(icon, size: 18, color: LiquidColors.textSecondary),
               const SizedBox(width: 8),
               Flexible(
                 child: Text(
@@ -1211,15 +1124,10 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
   }
 
   Widget _privacyNote() {
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: 12,
+      blur: 14,
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: LiquidColors.textPrimary.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-        ),
-      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1247,38 +1155,41 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
   }
 
   Widget _submitButton(Color accent) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: _sending ? null : _submit,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: accent,
-          disabledBackgroundColor: accent.withValues(alpha: 0.4),
-          foregroundColor: LiquidColors.textPrimary,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_sending)
-              AppLoader(size: 22, color: Colors.white)
-            else
-              Icon(Icons.send_rounded, size: 18, color: Colors.white),
-            const SizedBox(width: 10),
-            Text(
-              _sending ? 'Sending…' : 'Send Feedback',
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-                color: Colors.white,
-              ),
+    return LiquidGlassSurface(
+      borderRadius: 16,
+      blur: 18,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _sending ? null : _submit,
+          borderRadius: BorderRadius.circular(16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_sending)
+                  AppLoader(size: 22, color: LiquidColors.textPrimary)
+                else
+                  Icon(
+                    Icons.send_rounded,
+                    size: 18,
+                    color: LiquidColors.textPrimary,
+                  ),
+                const SizedBox(width: 10),
+                Text(
+                  _sending ? 'Sending…' : 'Send Feedback',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                    color: LiquidColors.textPrimary,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -1289,13 +1200,11 @@ class _FeedbackCategory {
   final String key;
   final String label;
   final IconData icon;
-  final Color color;
 
   const _FeedbackCategory({
     required this.key,
     required this.label,
     required this.icon,
-    required this.color,
   });
 }
 

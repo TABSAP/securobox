@@ -6,8 +6,14 @@ import '../../../../../utils/liquid_colors.dart';
 class LiquidBackground extends StatefulWidget {
   final Widget child;
   final bool animate;
+  final bool neutral;
 
-  const LiquidBackground({super.key, required this.child, this.animate = true});
+  const LiquidBackground({
+    super.key,
+    required this.child,
+    this.animate = true,
+    this.neutral = false,
+  });
 
   @override
   State<LiquidBackground> createState() => _LiquidBackgroundState();
@@ -47,7 +53,8 @@ class _LiquidBackgroundState extends State<LiquidBackground>
     ),
   );
 
-  Widget _glow(Color color, double size) {
+  Widget _glow(Color color, double size, {bool neutral = false}) {
+    final glowAlpha = neutral ? 0.07 : 0.16;
     return IgnorePointer(
       child: Container(
         width: size,
@@ -55,7 +62,10 @@ class _LiquidBackgroundState extends State<LiquidBackground>
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [color.withValues(alpha: 0.16), color.withValues(alpha: 0)],
+            colors: [
+              color.withValues(alpha: glowAlpha),
+              color.withValues(alpha: 0),
+            ],
           ),
         ),
       ),
@@ -81,12 +91,20 @@ class _LiquidBackgroundState extends State<LiquidBackground>
               Positioned(
                 left: size.width * (0.1 + sin(t) * 0.12) - 150,
                 top: size.height * (0.08 + cos(t) * 0.06) - 150,
-                child: _glow(LiquidColors.accentBlue, 320),
+                child: _glow(
+                  widget.neutral ? Colors.white : LiquidColors.accentBlue,
+                  320,
+                  neutral: widget.neutral,
+                ),
               ),
               Positioned(
                 right: size.width * (0.05 + cos(t) * 0.1) - 130,
                 bottom: size.height * (0.12 + sin(t) * 0.05) - 130,
-                child: _glow(LiquidColors.accentPurple, 300),
+                child: _glow(
+                  widget.neutral ? Colors.white : LiquidColors.accentPurple,
+                  300,
+                  neutral: widget.neutral,
+                ),
               ),
               child!,
             ],

@@ -42,13 +42,6 @@ class FaceRecognitionService {
         ),
       );
 
-  Future<void> dispose() async {
-    try {
-      await _detector?.close();
-    } catch (_) {}
-    _detector = null;
-  }
-
   Future<bool> isEnrolled() async {
     try {
       final v = await _secure.read(key: _kTemplateKey);

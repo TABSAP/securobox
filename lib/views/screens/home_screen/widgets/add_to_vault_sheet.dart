@@ -130,7 +130,10 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
   Future<void> _persistCustomCategories() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(_customKey, List<String>.from(_customCategories));
+      await prefs.setStringList(
+        _customKey,
+        List<String>.from(_customCategories),
+      );
     } catch (_) {}
   }
 
@@ -205,13 +208,15 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
         final f = await a.file;
         if (f != null && await f.exists()) {
           final name = await a.titleAsync;
-          items.add(PickedMedia(
-            f,
-            galleryAssetId: a.id,
-            originalName: name.isNotEmpty ? name : a.title,
-            origin: 'gallery',
-            originAlbum: a.relativePath ?? '',
-          ));
+          items.add(
+            PickedMedia(
+              f,
+              galleryAssetId: a.id,
+              originalName: name.isNotEmpty ? name : a.title,
+              origin: 'gallery',
+              originAlbum: a.relativePath ?? '',
+            ),
+          );
         }
       }
     } catch (_) {
@@ -242,6 +247,10 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     final items = <PickedMedia>[];
     SessionManager.instance.beginTrustedInteraction();
     try {
+      // Dismiss any search/category keyboard before UIKit presents Files.
+      // This also avoids iOS QuickType candidate-view constraint warnings
+      // during the picker transition.
+      FocusManager.instance.primaryFocus?.unfocus();
       final result = await FilePicker.platform.pickFiles(
         type: type,
         allowedExtensions: type == FileType.custom ? allowedExtensions : null,
@@ -260,12 +269,14 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
           file = await _materializePick(pf);
         }
         if (file != null) {
-          items.add(PickedMedia(
-            file,
-            identifier: pf.identifier,
-            originalName: pf.name,
-            origin: 'file',
-          ));
+          items.add(
+            PickedMedia(
+              file,
+              identifier: pf.identifier,
+              originalName: pf.name,
+              origin: 'file',
+            ),
+          );
         }
       }
     } catch (e) {
@@ -323,7 +334,8 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
           : '${import.added} files encrypted into $label';
       String msg = base;
       if (import.deleteOriginalsRequested && import.deletedOriginals > 0) {
-        msg = '$base. ${import.deletedOriginals} original${import.deletedOriginals == 1 ? '' : 's'} hidden from gallery.';
+        msg =
+            '$base. ${import.deletedOriginals} original${import.deletedOriginals == 1 ? '' : 's'} hidden from gallery.';
       } else if (import.deleteOriginalsRequested && Platform.isIOS) {
         msg = '$base. iOS will confirm removal from Photos.';
       }
@@ -337,12 +349,14 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       }
 
       if (import.added > 0) {
-        unawaited(NotificationService.instance.addEvent(
-          title: 'Files added to your vault',
-          body:
-              '${import.added} file${import.added == 1 ? '' : 's'} were encrypted and added.',
-          kind: 'info',
-        ));
+        unawaited(
+          NotificationService.instance.addEvent(
+            title: 'Files added to your vault',
+            body:
+                '${import.added} file${import.added == 1 ? '' : 's'} were encrypted and added.',
+            kind: 'info',
+          ),
+        );
         AppRating.recordImportAndMaybeAsk();
       }
     } catch (e) {
@@ -390,10 +404,10 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
         return 'Letters, numbers, spaces, _ and - only';
       }
       final lower = name.toLowerCase();
-      final all = [..._builtInCategories, ..._customCategories]
-          .map((c) => c.toLowerCase())
-          .where((c) => c != exclude)
-          .toSet();
+      final all = [
+        ..._builtInCategories,
+        ..._customCategories,
+      ].map((c) => c.toLowerCase()).where((c) => c != exclude).toSet();
       if (all.contains(lower)) return 'That category already exists';
       return null;
     }
@@ -522,8 +536,9 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                       child: ElevatedButton(
                         onPressed: () {
                           if (formKey.currentState?.validate() ?? false) {
-                            Navigator.of(dialogContext)
-                                .pop(controller.text.trim());
+                            Navigator.of(
+                              dialogContext,
+                            ).pop(controller.text.trim());
                           }
                         },
                         style: ElevatedButton.styleFrom(
@@ -598,8 +613,11 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  Icon(Icons.folder_rounded,
-                      size: 18, color: LiquidColors.accentBlue),
+                  Icon(
+                    Icons.folder_rounded,
+                    size: 18,
+                    color: LiquidColors.accentBlue,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -696,8 +714,10 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     if (idx == -1) return;
     setState(() => _customCategories[idx] = newName);
     await _persistCustomCategories();
-    final moved =
-        await MediaImporter.instance.moveCategoryItems(oldName, newName);
+    final moved = await MediaImporter.instance.moveCategoryItems(
+      oldName,
+      newName,
+    );
     await widget.onImported();
     if (!mounted) return;
     FlushBarHelper.flushBarSuccessMessage(
@@ -733,8 +753,11 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                   color: LiquidColors.error.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(Icons.delete_outline_rounded,
-                    color: LiquidColors.error, size: 28),
+                child: Icon(
+                  Icons.delete_outline_rounded,
+                  color: LiquidColors.error,
+                  size: 28,
+                ),
               ),
               const SizedBox(height: 14),
               Text(
@@ -808,8 +831,10 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     if (confirmed != true || !mounted) return;
     setState(() => _customCategories.remove(name));
     await _persistCustomCategories();
-    final moved =
-        await MediaImporter.instance.moveCategoryItems(name, 'Others');
+    final moved = await MediaImporter.instance.moveCategoryItems(
+      name,
+      'Others',
+    );
     await widget.onImported();
     if (!mounted) return;
     FlushBarHelper.flushBarSuccessMessage(
@@ -993,8 +1018,9 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                 child: LinearProgressIndicator(
                   minHeight: 5,
                   value: progress,
-                  backgroundColor:
-                      LiquidColors.textPrimary.withValues(alpha: 0.06),
+                  backgroundColor: LiquidColors.textPrimary.withValues(
+                    alpha: 0.06,
+                  ),
                   valueColor: AlwaysStoppedAnimation(LiquidColors.accentBlue),
                 ),
               ),
@@ -1015,10 +1041,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
           padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                LiquidColors.accentBlue,
-                LiquidColors.accentPurple,
-              ],
+              colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -1110,12 +1133,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
 
   Widget _categoryGrid() {
     if (_loadingCustoms) {
-      return SizedBox(
-        height: 80,
-        child: Center(
-          child: AppLoader(),
-        ),
-      );
+      return SizedBox(height: 80, child: Center(child: AppLoader()));
     }
     final customs = _customCategories;
     return GridView.builder(

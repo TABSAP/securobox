@@ -14,6 +14,7 @@ import 'package:video_player_app/services/media_service.dart';
 import 'package:video_player_app/utils/file_type_registry.dart';
 import 'package:video_player_app/utils/flush_bar_helper.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
+import 'package:video_player_app/utils/vault_crypto.dart';
 import 'package:video_player_app/video_player_screen/video_player_screen.dart';
 import 'package:video_player_app/widgets/decrypt_gate.dart';
 import 'package:video_player_app/widgets/image_viewer_screen.dart';
@@ -94,11 +95,23 @@ Future<void> openVaultMedia(
     }
   }
 
-  if (media.path.isEmpty || !await File(media.path).exists()) {
+  final resolvedPath = media.encrypted
+      ? await VaultCrypto.instance.resolveStoredFilePath(media.path)
+      : (media.path.isNotEmpty && await File(media.path).exists())
+      ? media.path
+      : null;
+  if (resolvedPath == null) {
     if (context.mounted) {
-      FlushBarHelper.flushBarErrorMessage('File not found', context);
+      FlushBarHelper.flushBarErrorMessage(
+        'This file is missing from the device. Re-import it to open it again.',
+        context,
+      );
     }
     return;
+  }
+  if (resolvedPath != media.path) {
+    media.path = resolvedPath;
+    await _mediaService.updateMediaPath(media.id, resolvedPath);
   }
   if (!context.mounted) return;
 
@@ -130,7 +143,13 @@ Future<void> openVaultMedia(
     }
   }
 
-  final hideBottomNav = media.type.toLowerCase() == 'video';
+  final mediaType = media.type.toLowerCase();
+  final hideBottomNav =
+      mediaType == 'video' ||
+      mediaType == 'audio' ||
+      mediaType == 'document' ||
+      mediaType == 'pdf';
+  final previousBottomNavVisibility = AppNav.bottomBarVisible.value;
   if (hideBottomNav) AppNav.bottomBarVisible.value = false;
   try {
     await Navigator.of(context).push(
@@ -143,7 +162,9 @@ Future<void> openVaultMedia(
       ),
     );
   } finally {
-    if (hideBottomNav) AppNav.bottomBarVisible.value = true;
+    if (hideBottomNav) {
+      AppNav.bottomBarVisible.value = previousBottomNavVisibility;
+    }
   }
   onChanged?.call();
 }

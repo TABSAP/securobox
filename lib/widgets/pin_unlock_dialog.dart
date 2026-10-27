@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/pin_crypto.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class PinUnlockDialog extends StatefulWidget {
   final int pinLength;
@@ -81,17 +82,13 @@ class _PinUnlockDialogState extends State<PinUnlockDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LiquidColors.cardGradient,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: LiquidColors.textPrimary.withValues(alpha: 0.06),
-          ),
-        ),
+      child: LiquidGlassSurface(
+        borderRadius: 24,
+        blur: 24,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
           child: Column(
@@ -101,18 +98,15 @@ class _PinUnlockDialogState extends State<PinUnlockDialog> {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  gradient: LiquidColors.primaryGradient,
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.09),
                   borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: LiquidColors.primaryStart.withValues(alpha: 0.4),
-                      blurRadius: 18,
-                      spreadRadius: 1,
-                    ),
-                  ],
                 ),
-                child: const Center(
-                  child: Icon(Icons.lock_rounded, color: Colors.white, size: 30),
+                child: Center(
+                  child: Icon(
+                    Icons.lock_rounded,
+                    color: theme.colorScheme.onSurface,
+                    size: 30,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -131,7 +125,9 @@ class _PinUnlockDialogState extends State<PinUnlockDialog> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,
-                  color: _error ? LiquidColors.error : LiquidColors.textTertiary,
+                  color: _error
+                      ? LiquidColors.error
+                      : LiquidColors.textTertiary,
                 ),
               ),
               const SizedBox(height: 18),
@@ -141,7 +137,7 @@ class _PinUnlockDialogState extends State<PinUnlockDialog> {
                   final filled = i < _entered.length;
                   final color = _error
                       ? LiquidColors.error
-                      : LiquidColors.accentBlue;
+                      : theme.colorScheme.onSurface;
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
                     margin: const EdgeInsets.symmetric(horizontal: 6),
@@ -210,34 +206,40 @@ class _PinUnlockDialogState extends State<PinUnlockDialog> {
   }
 
   Widget _keyButton(String k) {
-    return Material(
-      color: LiquidColors.textPrimary.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: () => k == '<' ? _backspace() : _press(k),
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: LiquidColors.textPrimary.withValues(alpha: 0.08),
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: 14,
+      blur: 12,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => k == '<' ? _backspace() : _press(k),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            width: 58,
+            height: 50,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.10),
+              ),
             ),
-          ),
-          child: k == '<'
-              ? Icon(
-                  Icons.backspace_outlined,
-                  size: 20,
-                  color: LiquidColors.textSecondary,
-                )
-              : Text(
-                  k,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: LiquidColors.textPrimary,
+            child: k == '<'
+                ? Icon(
+                    Icons.backspace_outlined,
+                    size: 20,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                  )
+                : Text(
+                    k,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );

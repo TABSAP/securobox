@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:photo_manager/photo_manager.dart';
 import 'package:video_player_app/models/app_models.dart';
 import 'package:video_player_app/services/private_locker_service.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/media_opener.dart';
-import 'package:video_player_app/widgets/app_card.dart';
+import 'package:video_player_app/utils/session_manager.dart';
+import 'package:video_player_app/utils/flush_bar_helper.dart';
+import 'package:video_player_app/views/screens/secure_picker/secure_media_picker_screen.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 import 'package:video_player_app/widgets/vault_thumbnail.dart';
 
 class PrivateLockerScreen extends StatefulWidget {
@@ -58,7 +59,14 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
-      if (mounted && !_locked) _lock();
+      // iOS reports `inactive` while PHPicker is presented. Keep the locker
+      // session alive for this trusted system interaction; otherwise the
+      // picker can return to a screen that was just locked and cleared.
+      if (mounted &&
+          !_locked &&
+          !SessionManager.instance.inTrustedInteraction) {
+        _lock();
+      }
     } else if (state == AppLifecycleState.resumed &&
         (ModalRoute.of(context)?.isCurrent ?? false) &&
         _enabled &&
@@ -222,49 +230,34 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
   Future<void> _addMedia() async {
     if (_busy || _locked) return;
     setState(() => _busy = true);
-    final staged = <File>[];
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.media,
-        allowMultiple: true,
-        withData: false,
-        withReadStream: true,
-        dialogTitle: 'Add photos and videos to Private Locker',
+      final assets = await SecureMediaPickerScreen.show(
+        context,
+        type: RequestType.common,
+        title: 'Add to Private Locker',
       );
-      if (result == null || result.files.isEmpty || !mounted) return;
+      if (assets == null || assets.isEmpty || !mounted) {
+        await SessionManager.instance.markActive();
+        return;
+      }
       final sources = <File>[];
       var unreadable = 0;
-      final tempDir = await getTemporaryDirectory();
-      for (final picked in result.files) {
-        final path = picked.path;
-        if (path != null && await File(path).exists()) {
-          sources.add(File(path));
-          continue;
+      SessionManager.instance.beginTrustedInteraction();
+      try {
+        for (final asset in assets) {
+          try {
+            final file = await asset.file;
+            if (file != null && await file.exists()) {
+              sources.add(file);
+            } else {
+              unreadable++;
+            }
+          } catch (_) {
+            unreadable++;
+          }
         }
-        final stream = picked.readStream;
-        if (stream == null) {
-          unreadable++;
-          continue;
-        }
-        final safeName = p
-            .basename(picked.name)
-            .replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-        final temp = File(
-          p.join(
-            tempDir.path,
-            'locker_${DateTime.now().microsecondsSinceEpoch}_${staged.length}_$safeName',
-          ),
-        );
-        staged.add(temp);
-        final sink = temp.openWrite();
-        try {
-          await sink.addStream(stream);
-          sources.add(temp);
-        } catch (_) {
-          unreadable++;
-        } finally {
-          await sink.close();
-        }
+      } finally {
+        SessionManager.instance.endTrustedInteraction();
       }
       if (sources.isEmpty) {
         _reportFailure(
@@ -297,11 +290,6 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
         );
       }
     } finally {
-      for (final file in staged) {
-        try {
-          if (await file.exists()) await file.delete();
-        } catch (_) {}
-      }
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -321,13 +309,7 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
 
   void _notice(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: LiquidColors.success,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    FlushBarHelper.flushBarSuccessMessage(message, context);
   }
 
   void _reportFailure(String message, {Future<void> Function()? retry}) {
@@ -358,14 +340,12 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
       child: AnimatedSize(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        child: Container(
-          width: double.infinity,
+        child: LiquidGlassSurface(
+          borderRadius: AppRadius.md,
+          blur: 14,
+          tintColor: LiquidColors.error,
+          tintOpacity: 0.04,
           padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-          decoration: BoxDecoration(
-            color: LiquidColors.error.withValues(alpha: .09),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            border: Border.all(color: LiquidColors.error.withValues(alpha: .3)),
-          ),
           child: Row(
             children: [
               Icon(
@@ -413,13 +393,12 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
   Widget get _recordWarning {
     final missing = _missingFiles > 0;
     final count = _missingFiles + _invalidRecords;
-    return Container(
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.md,
+      blur: 14,
+      tintColor: LiquidColors.warning,
+      tintOpacity: 0.04,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: LiquidColors.warning.withValues(alpha: .1),
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: LiquidColors.warning.withValues(alpha: .28)),
-      ),
       child: Row(
         children: [
           Icon(
@@ -449,54 +428,122 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: LiquidColors.backgroundDeep,
-    appBar: AppBar(
-      backgroundColor: LiquidColors.backgroundDeep,
-      surfaceTintColor: Colors.transparent,
-      title: const Text('Private Locker'),
-      actions: [
-        if (!_loading && _enabled && _configured && !_locked)
-          IconButton(
-            tooltip: 'Lock now',
-            onPressed: _lock,
-            icon: const Icon(Icons.lock_rounded),
-          ),
-      ],
-    ),
-    body: Column(
-      children: [
-        if (_feedback != null) _failureBanner,
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 240),
-            child: _loading
-                ? const Center(
-                    key: ValueKey('loading'),
-                    child: CircularProgressIndicator(),
-                  )
-                : _error != null
-                ? _stateView(
-                    key: const ValueKey('error'),
-                    icon: Icons.error_outline_rounded,
-                    title: 'Could not load locker',
-                    body: _error!,
-                    action: FilledButton.icon(
-                      onPressed: _loadState,
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Try again'),
-                    ),
-                  )
-                : !_enabled || !_configured
-                ? _setupView
-                : _locked
-                ? _lockedView
-                : _lockerContents,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
+        title: Text(
+          'Private Locker',
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w800,
           ),
         ),
-      ],
-    ),
-  );
+        actions: [
+          if (!_loading && _enabled && _configured && !_locked)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: LiquidGlassSurface(
+                borderRadius: 14,
+                blur: 14,
+                child: Material(
+                  color: Colors.transparent,
+                  child: IconButton(
+                    tooltip: 'Lock now',
+                    onPressed: _lock,
+                    icon: Icon(
+                      Icons.lock_rounded,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: ColoredBox(
+        color: theme.scaffoldBackgroundColor,
+        child: Column(
+          children: [
+            if (_feedback != null) _failureBanner,
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 240),
+                child: _loading
+                    ? Center(
+                        key: const ValueKey('loading'),
+                        child: CircularProgressIndicator(
+                          color: theme.colorScheme.primary,
+                        ),
+                      )
+                    : _error != null
+                    ? _stateView(
+                        key: const ValueKey('error'),
+                        icon: Icons.error_outline_rounded,
+                        title: 'Could not load locker',
+                        body: _error!,
+                        action: _glassActionButton(
+                          icon: Icons.refresh_rounded,
+                          label: 'Try again',
+                          onPressed: _loadState,
+                        ),
+                      )
+                    : !_enabled || !_configured
+                    ? _setupView
+                    : _locked
+                    ? _lockedView
+                    : _lockerContents,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _glassActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: AppRadius.pill,
+      blur: 18,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: AppRadius.rPill,
+          child: SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: theme.colorScheme.primary, size: 19),
+                const SizedBox(width: 9),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget get _setupView => _stateView(
     key: const ValueKey('setup'),
@@ -504,10 +551,10 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
     title: 'A private space for selected media',
     body:
         'Keep chosen photos and videos out of your regular SecuroBox library. Files are encrypted in a separate locker folder and protected by a dedicated PIN. Gallery originals are never deleted. Locker media is not included in regular vault backups, and this PIN cannot be recovered, so keep the PIN and another safe copy of your originals.',
-    action: FilledButton.icon(
+    action: _glassActionButton(
       onPressed: _busy ? null : _setup,
-      icon: const Icon(Icons.lock_outline_rounded),
-      label: const Text('Set up Private Locker'),
+      icon: Icons.lock_outline_rounded,
+      label: 'Set up Private Locker',
     ),
   );
 
@@ -517,10 +564,10 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
     title: 'Private Locker is locked',
     body:
         'Your private media stays encrypted and separate from the main library. Enter your locker PIN to continue.',
-    action: FilledButton.icon(
+    action: _glassActionButton(
       onPressed: _prompting ? null : _unlock,
-      icon: const Icon(Icons.lock_open_rounded),
-      label: const Text('Unlock locker'),
+      icon: Icons.lock_open_rounded,
+      label: 'Unlock locker',
     ),
   );
 
@@ -534,8 +581,9 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
     key: key,
     child: SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpace.lg),
-      child: AppCard(
-        elevated: true,
+      child: LiquidGlassSurface(
+        borderRadius: AppRadius.lg,
+        blur: 22,
         padding: const EdgeInsets.all(AppSpace.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -544,17 +592,23 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
               width: 72,
               height: 72,
               decoration: BoxDecoration(
-                color: LiquidColors.indigo.withValues(alpha: .12),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.06),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: LiquidColors.indigo, size: 34),
+              child: Icon(
+                icon,
+                color: Theme.of(context).colorScheme.primary,
+                size: 34,
+              ),
             ),
             const SizedBox(height: AppSpace.md),
             Text(
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: LiquidColors.textPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
@@ -564,7 +618,9 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
               body,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: LiquidColors.textSecondary,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.62),
                 fontSize: 13,
                 height: 1.45,
               ),
@@ -611,10 +667,10 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
                 title: 'Your locker is empty',
                 body:
                     'Add photos and videos here. They will be encrypted and kept out of the regular library.',
-                action: FilledButton.icon(
+                action: _glassActionButton(
                   onPressed: _busy ? null : _addMedia,
-                  icon: const Icon(Icons.add_photo_alternate_rounded),
-                  label: const Text('Add media'),
+                  icon: Icons.add_photo_alternate_rounded,
+                  label: 'Add media',
                 ),
               )
             : GridView.builder(
@@ -647,16 +703,14 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
                         child: child,
                       ),
                     ),
-                    child: GestureDetector(
-                      onTap: () => openVaultMedia(context, item),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: LiquidColors.backgroundLight,
-                            border: Border.all(color: LiquidColors.cardBorder),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
+                    child: LiquidGlassSurface(
+                      borderRadius: AppRadius.md,
+                      blur: 16,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => openVaultMedia(context, item),
+                          borderRadius: AppRadius.rMd,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -709,7 +763,9 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: LiquidColors.textPrimary,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -735,13 +791,10 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
           ),
           child: SizedBox(
             width: double.infinity,
-            child: FilledButton.icon(
+            child: _glassActionButton(
               onPressed: _busy ? null : _addMedia,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(_busy ? 'Adding securely…' : 'Add photos or videos'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
-              ),
+              icon: Icons.add_rounded,
+              label: _busy ? 'Adding securely…' : 'Add photos or videos',
             ),
           ),
         ),
@@ -749,30 +802,25 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
     ],
   );
 
-  Widget get _summaryCard => Container(
+  Widget get _summaryCard => LiquidGlassSurface(
+    borderRadius: AppRadius.lg,
+    blur: 18,
     padding: const EdgeInsets.all(AppSpace.md),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          LiquidColors.indigo.withValues(alpha: .15),
-          LiquidColors.backgroundLight,
-        ],
-      ),
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      border: Border.all(color: LiquidColors.indigo.withValues(alpha: .18)),
-    ),
     child: Row(
       children: [
         Container(
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: LiquidColors.indigo.withValues(alpha: .14),
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurface.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(Icons.shield_rounded, color: LiquidColors.indigo),
+          child: Icon(
+            Icons.shield_rounded,
+            color: Theme.of(context).colorScheme.primary,
+          ),
         ),
         const SizedBox(width: AppSpace.sm),
         Expanded(
@@ -782,7 +830,7 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
               Text(
                 'Private and encrypted',
                 style: TextStyle(
-                  color: LiquidColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),
@@ -791,7 +839,9 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
               Text(
                 '${_items.length} ${_items.length == 1 ? 'item' : 'items'} · separate from your library',
                 style: TextStyle(
-                  color: LiquidColors.textSecondary,
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.62),
                   fontSize: 11,
                 ),
               ),
@@ -838,132 +888,202 @@ class _LockerPinDialogState extends State<_LockerPinDialog> {
   @override
   Widget build(BuildContext context) {
     final canSubmit = _controller.text.length == 6;
-    return AlertDialog(
+    final theme = Theme.of(context);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      contentPadding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
-      actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      title: Row(
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.lock_rounded,
-              color: Colors.white,
-              size: 21,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              widget.title,
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.subtitle,
-              style: TextStyle(
-                color: LiquidColors.textSecondary,
-                fontSize: 14,
-                height: 1.45,
-              ),
-            ),
-            const SizedBox(height: AppSpace.md),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              obscureText: true,
-              obscuringCharacter: '•',
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.done,
-              textAlign: TextAlign.center,
-              maxLength: 6,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: const TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 10,
-              ),
-              decoration: InputDecoration(
-                labelText: '6-digit PIN',
-                hintText: '••••••',
-                errorText: _error,
-                counterText: '',
-                isDense: true,
-                filled: true,
-                fillColor: LiquidColors.textPrimary.withValues(alpha: .035),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 17,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide(
-                    color: LiquidColors.accentBlue,
-                    width: 1.6,
-                  ),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15),
-                  borderSide: BorderSide(color: LiquidColors.error),
-                ),
-              ),
-              onSubmitted: (_) => _submit(),
-            ),
-            if (_error == null) ...[
-              const SizedBox(height: 8),
+      child: LiquidGlassSurface(
+        borderRadius: AppRadius.lg,
+        blur: 22,
+        padding: const EdgeInsets.all(AppSpace.lg),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  Icon(
-                    Icons.privacy_tip_outlined,
-                    size: 15,
-                    color: LiquidColors.textTertiary,
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.07,
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.lock_rounded,
+                      color: theme.colorScheme.primary,
+                      size: 21,
+                    ),
                   ),
-                  const SizedBox(width: 7),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      'Separate from your main app PIN',
+                      widget.title,
                       style: TextStyle(
-                        color: LiquidColors.textTertiary,
-                        fontSize: 12,
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: AppSpace.md),
+              Text(
+                widget.subtitle,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
+                  fontSize: 14,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: AppSpace.md),
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                obscureText: true,
+                obscuringCharacter: '•',
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                textAlign: TextAlign.center,
+                maxLength: 6,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 10,
+                ),
+                decoration: InputDecoration(
+                  labelText: '6-digit PIN',
+                  hintText: '••••••',
+                  errorText: _error,
+                  counterText: '',
+                  isDense: true,
+                  filled: true,
+                  fillColor: theme.colorScheme.onSurface.withValues(
+                    alpha: 0.035,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 17,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.12,
+                      ),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.12,
+                      ),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                    borderSide: BorderSide(color: theme.colorScheme.error),
+                  ),
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
+              if (_error == null) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.privacy_tip_outlined,
+                      size: 15,
+                      color: theme.colorScheme.onSurface.withValues(
+                        alpha: 0.55,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        'Separate from your main app PIN',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface.withValues(
+                            alpha: 0.55,
+                          ),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: AppSpace.lg),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _pinDialogButton(
+                    context,
+                    label: 'Cancel',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const SizedBox(width: 10),
+                  _pinDialogButton(
+                    context,
+                    label: widget.actionLabel,
+                    onPressed: canSubmit ? _submit : null,
+                  ),
+                ],
+              ),
             ],
-          ],
+          ),
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+    );
+  }
+
+  Widget _pinDialogButton(
+    BuildContext context, {
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    final theme = Theme.of(context);
+    return LiquidGlassSurface(
+      borderRadius: 14,
+      blur: 14,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(14),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 84, minHeight: 44),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Center(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.82),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
-        FilledButton(
-          onPressed: canSubmit ? _submit : null,
-          child: Text(widget.actionLabel),
-        ),
-      ],
+      ),
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
+import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoPath;
@@ -340,29 +341,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   }, tooltip: 'Back'),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: .38),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: .14),
-                          ),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Text(
-                          widget.videoTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                          ),
+                    child: LiquidGlassSurface(
+                      borderRadius: 18,
+                      blur: 22,
+                      tintColor: Colors.black,
+                      tintOpacity: 0.12,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      child: Text(
+                        widget.videoTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -410,31 +405,34 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       scale: value.isPlaying ? .94 : 1,
                       duration: const Duration(milliseconds: 220),
                       curve: Curves.easeOutBack,
-                      child: Material(
-                        color: LiquidColors.indigo,
-                        shape: const CircleBorder(),
-                        elevation: 16,
-                        shadowColor: LiquidColors.indigo.withValues(alpha: .55),
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: _togglePlayPause,
-                          child: SizedBox(
-                            width: 74,
-                            height: 74,
-                            child: AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 180),
-                              transitionBuilder: (child, animation) =>
-                                  ScaleTransition(
-                                    scale: animation,
-                                    child: child,
-                                  ),
-                              child: Icon(
-                                value.isPlaying
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded,
-                                key: ValueKey(value.isPlaying),
-                                color: Colors.white,
-                                size: 38,
+                      child: LiquidGlassSurface(
+                        borderRadius: 50,
+                        blur: 24,
+                        tintColor: LiquidColors.accentBlue,
+                        tintOpacity: 0.48,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _togglePlayPause,
+                            child: SizedBox(
+                              width: 74,
+                              height: 74,
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 180),
+                                transitionBuilder: (child, animation) =>
+                                    ScaleTransition(
+                                      scale: animation,
+                                      child: child,
+                                    ),
+                                child: Icon(
+                                  value.isPlaying
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  key: ValueKey(value.isPlaying),
+                                  color: Colors.white,
+                                  size: 38,
+                                ),
                               ),
                             ),
                           ),
@@ -455,15 +453,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               left: 16,
               right: 16,
               bottom: MediaQuery.of(context).padding.bottom + 12,
-              child: Container(
+              child: LiquidGlassSurface(
+                borderRadius: 22,
+                blur: 24,
+                tintColor: Colors.black,
+                tintOpacity: 0.16,
                 padding: const EdgeInsets.fromLTRB(16, 11, 12, 10),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: .48),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: .12),
-                  ),
-                  borderRadius: BorderRadius.circular(22),
-                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -528,16 +523,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     bool compact = false,
   }) => Tooltip(
     message: tooltip,
-    child: Material(
-      color: Colors.black.withValues(alpha: .48),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: compact ? 40 : 44,
-          height: compact ? 40 : 44,
-          child: Icon(icon, color: Colors.white, size: compact ? 21 : 23),
+    child: LiquidGlassSurface(
+      borderRadius: compact ? 22 : 24,
+      blur: 20,
+      tintColor: Colors.black,
+      tintOpacity: 0.12,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: compact ? 40 : 44,
+            height: compact ? 40 : 44,
+            child: Icon(icon, color: Colors.white, size: compact ? 21 : 23),
+          ),
         ),
       ),
     ),
@@ -547,16 +547,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Material(
-            color: Colors.black.withValues(alpha: .46),
-            shape: const CircleBorder(),
-            child: InkWell(
-              customBorder: const CircleBorder(),
-              onTap: onTap,
-              child: SizedBox(
-                width: 54,
-                height: 54,
-                child: Icon(icon, color: Colors.white, size: 29),
+          LiquidGlassSurface(
+            borderRadius: 28,
+            blur: 18,
+            tintColor: Colors.black,
+            tintOpacity: 0.1,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: onTap,
+                child: SizedBox(
+                  width: 54,
+                  height: 54,
+                  child: Icon(icon, color: Colors.white, size: 29),
+                ),
               ),
             ),
           ),
@@ -573,28 +578,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       );
 
   Widget _playerPill(IconData icon, String label, VoidCallback onTap) =>
-      Material(
-        color: Colors.white.withValues(alpha: .13),
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 15, color: Colors.white),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+      LiquidGlassSurface(
+        borderRadius: 20,
+        blur: 18,
+        tintColor: Colors.black,
+        tintOpacity: 0.1,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 15, color: Colors.white),
+                  const SizedBox(width: 5),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -603,134 +613,132 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void _showPlaybackSpeedDialog() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: LiquidColors.backgroundLight,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 38,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: LiquidColors.textTertiary.withValues(alpha: .45),
-                  borderRadius: BorderRadius.circular(4),
+      builder: (sheetContext) => LiquidGlassSurface(
+        borderRadius: 26,
+        blur: 24,
+        padding: EdgeInsets.zero,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: LiquidColors.textTertiary.withValues(alpha: .45),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: LiquidColors.indigo.withValues(alpha: .13),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      Icons.speed_rounded,
-                      color: LiquidColors.indigo,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Playback speed',
-                          style: TextStyle(
-                            color: LiquidColors.textPrimary,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'Choose a comfortable pace',
-                          style: TextStyle(
-                            color: LiquidColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 11,
-                      vertical: 7,
-                    ),
-                    decoration: BoxDecoration(
-                      color: LiquidColors.indigo.withValues(alpha: .12),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Text(
-                      '${_playbackSpeed}x',
-                      style: TextStyle(
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: LiquidColors.indigo.withValues(alpha: .13),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        Icons.speed_rounded,
                         color: LiquidColors.indigo,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 2.3,
-                ),
-                itemCount: _playbackSpeeds.length,
-                itemBuilder: (context, index) {
-                  final speed = _playbackSpeeds[index];
-                  final isSelected = _playbackSpeed == speed;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 160),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? LiquidColors.indigo
-                          : LiquidColors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isSelected
-                            ? LiquidColors.indigo
-                            : LiquidColors.cardBorder,
-                      ),
-                    ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () {
-                        _changePlaybackSpeed(speed);
-                        Navigator.pop(sheetContext);
-                      },
-                      child: Center(
-                        child: Text(
-                          '${speed}x',
-                          style: TextStyle(
-                            color: isSelected
-                                ? Colors.white
-                                : LiquidColors.textSecondary,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Playback speed',
+                            style: TextStyle(
+                              color: LiquidColors.textPrimary,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
+                          Text(
+                            'Choose a comfortable pace',
+                            style: TextStyle(
+                              color: LiquidColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: LiquidColors.indigo.withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Text(
+                        '${_playbackSpeed}x',
+                        style: TextStyle(
+                          color: LiquidColors.indigo,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 18),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 2.3,
+                  ),
+                  itemCount: _playbackSpeeds.length,
+                  itemBuilder: (context, index) {
+                    final speed = _playbackSpeeds[index];
+                    final isSelected = _playbackSpeed == speed;
+                    return LiquidGlassSurface(
+                      borderRadius: 14,
+                      blur: 14,
+                      tintColor: isSelected ? LiquidColors.accentBlue : null,
+                      tintOpacity: isSelected ? 0.22 : 0,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () {
+                            _changePlaybackSpeed(speed);
+                            Navigator.pop(sheetContext);
+                          },
+                          child: Center(
+                            child: Text(
+                              '${speed}x',
+                              style: TextStyle(
+                                color: isSelected
+                                    ? LiquidColors.accentBlue
+                                    : LiquidColors.textSecondary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

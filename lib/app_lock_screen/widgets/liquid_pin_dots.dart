@@ -5,16 +5,19 @@ class LiquidPinDots extends StatelessWidget {
   final int enteredLength;
   final int totalLength;
   final bool hasError;
+  final bool neutralGlass;
 
   const LiquidPinDots({
     super.key,
     required this.enteredLength,
     this.totalLength = 4,
     this.hasError = false,
+    this.neutralGlass = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final neutral = Theme.of(context).colorScheme.onSurface;
     final spacing = totalLength == 6 ? 8.0 : 12.0;
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -36,20 +39,35 @@ class LiquidPinDots extends StatelessWidget {
                   gradient: RadialGradient(
                     colors: index < enteredLength
                         ? hasError
-                        ? [LiquidColors.error, LiquidColors.error.withValues(alpha:0.5)]
-                        : [LiquidColors.accentBlue, LiquidColors.primaryMid]
-                        : [LiquidColors.textPrimary.withValues(alpha: 0.24), LiquidColors.textPrimary.withValues(alpha: 0.12)],
+                              ? [
+                                  LiquidColors.error,
+                                  LiquidColors.error.withValues(alpha: 0.5),
+                                ]
+                              : neutralGlass
+                              ? [neutral, neutral.withValues(alpha: 0.52)]
+                              : [
+                                  LiquidColors.accentBlue,
+                                  LiquidColors.primaryMid,
+                                ]
+                        : [
+                            LiquidColors.textPrimary.withValues(alpha: 0.24),
+                            LiquidColors.textPrimary.withValues(alpha: 0.12),
+                          ],
                     center: Alignment.center,
                     radius: 0.8,
                   ),
                   boxShadow: index < enteredLength && !hasError
                       ? [
-                    BoxShadow(
-                      color: LiquidColors.accentBlue.withValues(alpha: 0.5),
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    ),
-                  ]
+                          BoxShadow(
+                            color:
+                                (neutralGlass
+                                        ? neutral
+                                        : LiquidColors.accentBlue)
+                                    .withValues(alpha: 0.35),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ]
                       : null,
                 ),
               ),

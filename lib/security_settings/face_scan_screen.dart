@@ -91,7 +91,6 @@ class _FaceScanScreenState extends State<FaceScanScreen>
     try {
       _controller?.dispose();
     } catch (_) {}
-    FaceRecognitionService.instance.dispose();
     super.dispose();
   }
 

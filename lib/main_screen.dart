@@ -300,16 +300,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 ),
                 bottomNavigationBar: ValueListenableBuilder<bool>(
                   valueListenable: AppNav.bottomBarVisible,
-                  builder: (context, visible, _) => visible
-                      ? LiquidBottomNav(
-                          key: const ValueKey('main-bottom-nav'),
-                          selectedIndex: _selectedIndex,
-                        )
-                      : const SizedBox(
-                          key: ValueKey('hidden-bottom-nav'),
-                          width: double.infinity,
-                          height: 0,
-                        ),
+                  builder: (context, visible, _) => Visibility(
+                    visible: visible,
+                    maintainState: true,
+                    maintainAnimation: true,
+                    child: LiquidBottomNav(
+                      key: const ValueKey('main-bottom-nav'),
+                      selectedIndex: _selectedIndex,
+                    ),
+                  ),
                 ),
               ),
               if (_showPrivacyShield) const _PrivacyShield(),

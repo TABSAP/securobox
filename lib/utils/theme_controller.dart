@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
@@ -12,9 +13,14 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
   static final ThemeController instance = ThemeController._();
 
   static const _kPrefKey = 'themeMode';
+  static const _kGlassIntensityPrefKey = 'glassIntensity';
 
   ThemeMode _mode = ThemeMode.system;
   ThemeMode get mode => _mode;
+
+  final ValueNotifier<double> glassIntensityListenable = ValueNotifier(1.0);
+  Timer? _glassIntensitySaveTimer;
+  double get glassIntensity => glassIntensityListenable.value;
 
   Brightness get effectiveBrightness {
     switch (_mode) {
@@ -31,10 +37,32 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final prefs = await SharedPreferences.getInstance();
       _mode = _decode(prefs.getString(_kPrefKey)) ?? ThemeMode.system;
+      glassIntensityListenable.value =
+          (prefs.getDouble(_kGlassIntensityPrefKey) ?? 1.0).clamp(0.0, 1.0);
     } catch (_) {
       _mode = ThemeMode.system;
+      glassIntensityListenable.value = 1.0;
     }
     LiquidColors.applyBrightness(effectiveBrightness);
+  }
+
+  void setGlassIntensity(double value) {
+    final normalized = value.clamp(0.0, 1.0).toDouble();
+    if ((normalized - glassIntensity).abs() < 0.001) return;
+    glassIntensityListenable.value = normalized;
+
+    // Slider drags can emit many changes; persist the final value once the
+    // gesture settles instead of writing on every frame.
+    _glassIntensitySaveTimer?.cancel();
+    _glassIntensitySaveTimer = Timer(
+      const Duration(milliseconds: 250),
+      () async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setDouble(_kGlassIntensityPrefKey, glassIntensity);
+        } catch (_) {}
+      },
+    );
   }
 
   Future<void> setMode(ThemeMode mode) async {

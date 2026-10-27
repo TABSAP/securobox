@@ -3,7 +3,9 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:local_auth/local_auth.dart';
@@ -13,6 +15,7 @@ import '../models/app_models.dart';
 import '../utils/session_manager.dart';
 import '../utils/thumbnail_cache.dart';
 import '../utils/vault_context.dart';
+import '../utils/vault_crypto.dart';
 
 List<VideoItem> _parseActiveMedia(List<String> raw) {
   final list = <VideoItem>[];
@@ -42,7 +45,8 @@ class MediaService {
   ///
   /// Uses [debugPrint] (not `developer.log`, which only reaches the VM service)
   /// so every step is visible in `adb logcat` and `flutter logs`.
-  static void _log(String message) => debugPrint('[SecuroBox.Restore] $message');
+  static void _log(String message) =>
+      debugPrint('[SecuroBox.Restore] $message');
 
   /// Reads the raw library as a **mutable** list.
   ///
@@ -86,7 +90,11 @@ class MediaService {
       final prefs = await SharedPreferences.getInstance();
       final mediaList = await _readRawLibrary(prefs);
 
-      final index = mediaList.indexWhere((item) => item.startsWith(media.id));
+      // Compare the serialized ID field exactly. Prefix matching can update a
+      // different media item when IDs share a prefix.
+      final index = mediaList.indexWhere(
+        (item) => item.split('|').first == media.id,
+      );
       if (index != -1) {
         mediaList[index] = updatedMedia.toStorageString();
         await prefs.setStringList(_storageKey, mediaList);
@@ -109,7 +117,9 @@ class MediaService {
       final prefs = await SharedPreferences.getInstance();
       final mediaList = await _readRawLibrary(prefs);
 
-      final index = mediaList.indexWhere((item) => item.startsWith(media.id));
+      final index = mediaList.indexWhere(
+        (item) => item.split('|').first == media.id,
+      );
       if (index == -1) return null;
       mediaList[index] = updatedMedia.toStorageString();
       await prefs.setStringList(_storageKey, mediaList);
@@ -292,65 +302,93 @@ class MediaService {
   }
 
   Future<bool> renameMedia(VideoItem media, String newName) async {
+    String? renamedPath;
+    String? originalPath;
     try {
-      if (newName.trim().isEmpty) {
-        return false;
-      }
-
-      final safeFileName = newName.trim().replaceAll(RegExp(r'[<>:"/\\|?*]'), '');
+      var safeFileName = newName.trim().replaceAll(
+        RegExp(r'[<>:"/\\|?*\u0000-\u001F]'),
+        '',
+      );
       if (safeFileName.isEmpty) {
         return false;
       }
 
-      final file = File(media.path);
-      if (!await file.exists()) {
-
-        final foundPath = await findActualFilePath(media.title);
-        if (foundPath.isEmpty) {
-          return false;
+      var oldPath = media.path;
+      var file = File(oldPath);
+      if (!await file.exists() && media.encrypted) {
+        final recovered = await VaultCrypto.instance.resolveStoredFilePath(
+          oldPath,
+        );
+        if (recovered != null) {
+          oldPath = recovered;
+          file = File(oldPath);
         }
+      }
+      if (!await file.exists()) return false;
 
-        final updatedMedia = media.copyWith(path: foundPath);
-        await updateMediaPath(media.id, foundPath);
-        return await renameMedia(updatedMedia, newName);
+      // Encrypted vault names end in `.enc`; keep both the original media
+      // extension and encryption suffix so opening continues to route by type.
+      final encryptedSuffix = media.encrypted && oldPath.endsWith('.enc');
+      final unwrappedPath = encryptedSuffix
+          ? oldPath.substring(0, oldPath.length - '.enc'.length)
+          : oldPath;
+      final extension = p.extension(unwrappedPath);
+      if (extension.isNotEmpty &&
+          safeFileName.toLowerCase().endsWith(extension.toLowerCase())) {
+        safeFileName = safeFileName.substring(
+          0,
+          safeFileName.length - extension.length,
+        );
+      }
+      if (safeFileName.trim().isEmpty) return false;
+
+      final newPath = p.join(
+        file.parent.path,
+        '$safeFileName$extension${encryptedSuffix ? '.enc' : ''}',
+      );
+      if (newPath == oldPath) {
+        if (oldPath != media.path) await updateMediaPath(media.id, oldPath);
+        return true;
       }
 
-      final directory = file.parent;
-      final extension = media.path.split('.').last;
-
-      final newPath = '${directory.path}/$safeFileName.$extension';
-
-      if (await File(newPath).exists()) {
-        return false;
-      }
-
-      await file.rename(newPath);
+      if (await File(newPath).exists()) return false;
+      originalPath = oldPath;
+      final renamed = await file.rename(newPath);
+      renamedPath = renamed.path;
 
       final prefs = await SharedPreferences.getInstance();
       final mediaList = await _readRawLibrary(prefs);
 
-      final index = mediaList.indexWhere((item) => item.startsWith(media.id));
-      if (index != -1) {
-
-        final oldMedia = VideoItem.fromStorageString(mediaList[index]);
-        final updatedMedia = oldMedia.copyWith(
-          title: safeFileName,
-          path: newPath,
-        );
-
-        mediaList[index] = updatedMedia.toStorageString();
-        await prefs.setStringList(_storageKey, mediaList);
-
-        final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
-        if (localIndex != -1) {
-          _mediaList[localIndex] = updatedMedia;
-        }
-
-        return true;
+      final index = mediaList.indexWhere(
+        (raw) => raw.startsWith('${media.id}|'),
+      );
+      if (index < 0) {
+        await File(renamedPath).rename(originalPath);
+        return false;
       }
 
-      return false;
-    } catch (e) {
+      final updatedMedia = VideoItem.fromStorageString(
+        mediaList[index],
+      ).copyWith(title: safeFileName, path: renamedPath);
+      mediaList[index] = updatedMedia.toStorageString();
+      final saved = await prefs.setStringList(_storageKey, mediaList);
+      if (!saved) {
+        await File(renamedPath).rename(originalPath);
+        return false;
+      }
+
+      final localIndex = _mediaList.indexWhere((item) => item.id == media.id);
+      if (localIndex >= 0) _mediaList[localIndex] = updatedMedia;
+      return true;
+    } catch (_) {
+      if (renamedPath != null &&
+          originalPath != null &&
+          await File(renamedPath).exists() &&
+          !await File(originalPath).exists()) {
+        try {
+          await File(renamedPath).rename(originalPath);
+        } catch (_) {}
+      }
       return false;
     }
   }
@@ -408,12 +446,12 @@ class MediaService {
         try {
           final dir = Directory(dirPath);
           if (await dir.exists()) {
-
             final files = dir.listSync().whereType<File>().toList();
 
             final baseName = fileName.split('.').first;
             for (final file in files) {
-              if (file.path.contains(baseName) || file.path.contains(fileName)) {
+              if (file.path.contains(baseName) ||
+                  file.path.contains(fileName)) {
                 return file.path;
               }
             }
@@ -435,9 +473,15 @@ class MediaService {
     }
   }
 
-  Future<String> _searchDirectoryRecursively(Directory dir, String fileName) async {
+  Future<String> _searchDirectoryRecursively(
+    Directory dir,
+    String fileName,
+  ) async {
     try {
-      await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      await for (final entity in dir.list(
+        recursive: true,
+        followLinks: false,
+      )) {
         if (entity is File) {
           if (entity.path.contains(fileName) ||
               entity.path.contains(fileName.split('.').first)) {
@@ -473,16 +517,33 @@ class MediaService {
 
       bool saved = false;
 
-      if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'm4v', 'mpg', 'mpeg']
-          .contains(ext)) {
+      if ([
+        'mp4',
+        'mkv',
+        'avi',
+        'mov',
+        'webm',
+        '3gp',
+        'm4v',
+        'mpg',
+        'mpeg',
+      ].contains(ext)) {
         await PhotoManager.editor.saveVideo(
           file,
           title: fileName,
           relativePath: 'Movies/$galleryAlbum',
         );
         saved = true;
-      } else if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif']
-          .contains(ext)) {
+      } else if ([
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+        'gif',
+        'bmp',
+        'heic',
+        'heif',
+      ].contains(ext)) {
         await PhotoManager.editor.saveImage(
           await file.readAsBytes(),
           title: fileName,
@@ -493,8 +554,8 @@ class MediaService {
       } else if (Platform.isAndroid) {
         final folder =
             ['mp3', 'wav', 'aac', 'ogg', 'm4a', 'flac', 'opus'].contains(ext)
-                ? 'Music/$galleryAlbum'
-                : 'Download/$galleryAlbum';
+            ? 'Music/$galleryAlbum'
+            : 'Download/$galleryAlbum';
         final dir = Directory('/storage/emulated/0/$folder');
         if (!await dir.exists()) {
           await dir.create(recursive: true);
@@ -531,8 +592,17 @@ class MediaService {
   /// standard public directories. Anything else throws
   /// `IllegalArgumentException: Primary directory ... not allowed`.
   static const _allowedPrimaryDirs = {
-    'DCIM', 'Pictures', 'Movies', 'Music', 'Download', 'Documents',
-    'Alarms', 'Audiobooks', 'Notifications', 'Podcasts', 'Ringtones',
+    'DCIM',
+    'Pictures',
+    'Movies',
+    'Music',
+    'Download',
+    'Documents',
+    'Alarms',
+    'Audiobooks',
+    'Notifications',
+    'Podcasts',
+    'Ringtones',
   };
 
   /// Normalises a stored `originAlbum` into a MediaStore-safe relative path, or
@@ -580,22 +650,40 @@ class MediaService {
     File file,
     String fileName,
   ) async {
-    final ext =
-        fileName.contains('.') ? fileName.split('.').last.toLowerCase() : '';
+    final ext = fileName.contains('.')
+        ? fileName.split('.').last.toLowerCase()
+        : '';
 
     const videoExts = {
-      'mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'm4v', 'mpg', 'mpeg',
+      'mp4',
+      'mkv',
+      'avi',
+      'mov',
+      'webm',
+      '3gp',
+      'm4v',
+      'mpg',
+      'mpeg',
     };
     const imageExts = {
-      'jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'heic', 'heif',
+      'jpg',
+      'jpeg',
+      'png',
+      'webp',
+      'gif',
+      'bmp',
+      'heic',
+      'heif',
     };
 
     final isVideo = videoExts.contains(ext);
     final isImage = imageExts.contains(ext);
     final sourceSize = await file.length();
-    _log('export: name=$fileName ext=$ext isVideo=$isVideo isImage=$isImage '
-        'src=${file.path} size=$sourceSize origin=${media.origin} '
-        'originAlbum="${media.originAlbum}"');
+    _log(
+      'export: name=$fileName ext=$ext isVideo=$isVideo isImage=$isImage '
+      'src=${file.path} size=$sourceSize origin=${media.origin} '
+      'originAlbum="${media.originAlbum}"',
+    );
 
     if (isVideo || isImage) {
       final permission = await PhotoManager.requestPermissionExtend();
@@ -610,15 +698,20 @@ class MediaService {
         try {
           _log('export: trying album="$album"');
           final asset = isVideo
-              ? await PhotoManager.editor
-                  .saveVideo(file, title: fileName, relativePath: album)
+              ? await PhotoManager.editor.saveVideo(
+                  file,
+                  title: fileName,
+                  relativePath: album,
+                )
               : await PhotoManager.editor.saveImage(
                   bytes!,
                   title: fileName,
                   relativePath: album,
                   filename: fileName,
                 );
-          _log('export: saved assetId=${asset.id} relativePath=${asset.relativePath}');
+          _log(
+            'export: saved assetId=${asset.id} relativePath=${asset.relativePath}',
+          );
           if (asset.id.isEmpty) continue;
 
           // Verify the asset is really on disk and readable before we let the
@@ -626,8 +719,10 @@ class MediaService {
           final written = await asset.file;
           final exists = written != null && await written.exists();
           final size = exists ? await written.length() : -1;
-          _log('export: verify path=${written?.path} exists=$exists size=$size '
-              'expected=$sourceSize');
+          _log(
+            'export: verify path=${written?.path} exists=$exists size=$size '
+            'expected=$sourceSize',
+          );
           if (exists && size > 0) return true;
 
           _log('export: verification FAILED for album="$album", trying next');
@@ -644,8 +739,9 @@ class MediaService {
     return _exportToDownloads(file, fileName, sourceSize);
   }
 
-  static const MethodChannel _mediaStoreChannel =
-      MethodChannel('secure_player/media_store');
+  static const MethodChannel _mediaStoreChannel = MethodChannel(
+    'secure_player/media_store',
+  );
 
   static const Map<String, String> _mimeTypes = {
     'pdf': 'application/pdf',
@@ -697,18 +793,22 @@ class MediaService {
         _log('downloads: invoking MediaStore saveToDownloads mime=$mime');
         final result = await _mediaStoreChannel
             .invokeMapMethod<String, dynamic>('saveToDownloads', {
-          'path': file.path,
-          'fileName': fileName,
-          'mimeType': mime,
-        });
+              'path': file.path,
+              'fileName': fileName,
+              'mimeType': mime,
+            });
         if (result != null) {
           final uri = result['uri'];
           final bytes = (result['bytes'] as num?)?.toInt() ?? -1;
-          _log('downloads: MediaStore uri=$uri bytes=$bytes expected=$sourceSize');
+          _log(
+            'downloads: MediaStore uri=$uri bytes=$bytes expected=$sourceSize',
+          );
           if (bytes == sourceSize) return true;
           _log('downloads: byte-count mismatch — treating as failure');
         } else {
-          _log('downloads: MediaStore returned null (see SecuroBoxRestore tag)');
+          _log(
+            'downloads: MediaStore returned null (see SecuroBoxRestore tag)',
+          );
         }
       } on MissingPluginException catch (e) {
         _log('downloads: native handler MISSING ($e)');
@@ -727,14 +827,53 @@ class MediaService {
       return false;
     }
 
-    // iOS/other: hand off to the share sheet. We cannot verify a write, so we
-    // deliberately report failure and keep the vault copy.
+    if (Platform.isIOS) {
+      // Export through Files so the user chooses a destination. The native
+      // picker only returns a path after a successful export; cancellation
+      // leaves the original encrypted item untouched.
+      const maxPickerExportBytes = 128 * 1024 * 1024;
+      if (sourceSize > maxPickerExportBytes) {
+        _log('iOS export: file exceeds safe in-memory export limit');
+        return false;
+      }
+      try {
+        final bytes = await file.readAsBytes();
+        if (bytes.length != sourceSize) return false;
+        final dot = fileName.lastIndexOf('.');
+        final extension = dot >= 0 && dot < fileName.length - 1
+            ? fileName.substring(dot + 1).toLowerCase()
+            : null;
+        SessionManager.instance.beginTrustedInteraction();
+        try {
+          final savedPath = await FilePicker.platform.saveFile(
+            fileName: fileName,
+            type: extension == null ? FileType.any : FileType.custom,
+            allowedExtensions: extension == null ? null : [extension],
+            bytes: bytes,
+          );
+          _log(
+            'iOS export: picker result=${savedPath == null ? 'cancelled' : 'saved'}',
+          );
+          return savedPath != null;
+        } finally {
+          SessionManager.instance.endTrustedInteraction();
+        }
+      } catch (e) {
+        _log('iOS export: failed ($e)');
+        return false;
+      }
+    }
+
+    // Other platforms: present the system share sheet, but keep the vault
+    // copy because the recipient's save operation cannot be verified.
     try {
       await SharePlus.instance.share(
         ShareParams(files: [XFile(file.path)], subject: fileName),
       );
     } catch (_) {}
-    _log('downloads: non-Android share sheet — not treated as a verified write');
+    _log(
+      'downloads: non-Android share sheet — not treated as a verified write',
+    );
     return false;
   }
 
@@ -751,8 +890,10 @@ class MediaService {
   ) async {
     final file = File(decryptedPath);
     int size = 0;
-    _log('=== restore START id=${media.id} title="${media.title}" '
-        'type=${media.type} encrypted=${media.encrypted} vaultPath=${media.path}');
+    _log(
+      '=== restore START id=${media.id} title="${media.title}" '
+      'type=${media.type} encrypted=${media.encrypted} vaultPath=${media.path}',
+    );
     try {
       if (!await file.exists()) {
         _log('restore ABORT: decrypted source missing at $decryptedPath');
@@ -853,7 +994,8 @@ class MediaService {
 
       final id = DateTime.now().millisecondsSinceEpoch.toString();
       final date = DateTime.now().toIso8601String();
-      final downloadData = '$id|$fileName|$fileSize|completed|$date|$filePath||::1.0';
+      final downloadData =
+          '$id|$fileName|$fileSize|completed|$date|$filePath||::1.0';
 
       downloadList.add(downloadData);
       await prefs.setStringList(_downloadHistoryKey, downloadList);
