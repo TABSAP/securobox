@@ -185,7 +185,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _confirmAndSave() async {
-    // Guard against re-entry from rapid taps while the PIN is being saved.
     if (_saving) return;
 
     if (_newPin != _confirmPin) {
@@ -204,8 +203,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       return;
     }
 
-    // PIN hashing and recovery setup run off the UI thread. Guard against
-    // rapid taps while secure storage is being updated.
     setState(() {
       _saving = true;
       _error = null;
@@ -273,7 +270,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       );
       if (ok) {
         final prefs = await SharedPreferences.getInstance();
-        // Onboarding explicitly offers device biometrics, not a modality.
         await prefs.setBool('biometric', true);
         await prefs.setBool('biometric_face', false);
       }
@@ -338,6 +334,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget _welcome() {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final compact = constraints.maxHeight < 900;
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: ConstrainedBox(
@@ -347,10 +344,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
-                    const SizedBox(height: 24),
+                    SizedBox(height: compact ? 12 : 24),
                     SizedBox(
-                      width: 104,
-                      height: 104,
+                      width: compact ? 88 : 104,
+                      height: compact ? 88 : 104,
                       child: LiquidGlassSurface(
                         borderRadius: 26,
                         blur: 22,
@@ -363,7 +360,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    SizedBox(height: compact ? 18 : 28),
                     Text(
                       'Welcome to SecuroBox',
                       textAlign: TextAlign.center,
@@ -374,9 +371,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         letterSpacing: 0.3,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: compact ? 8 : 12),
                     Text(
-                      'A private offline vault for your videos, photos, audio and documents. Files stay on your device — protected by a PIN you control.',
+                      'A private on-device vault for your videos, photos, audio and documents. Files stay on your device — protected by a PIN you control.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14.5,
@@ -384,7 +381,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 28),
+                    SizedBox(height: compact ? 16 : 28),
                     LiquidGlassSurface(
                       borderRadius: 20,
                       blur: 18,
@@ -403,12 +400,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                           const SizedBox(height: 14),
                           _featureRow(
                             Icons.cloud_off_rounded,
-                            '100% offline — no cloud, no tracking',
+                            'Files stay on device · no cloud sync',
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: compact ? 14 : 24),
                     LiquidGlassSurface(
                       borderRadius: 16,
                       blur: 16,
@@ -436,7 +433,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       ),
                     ),
                     const Spacer(),
-                    const SizedBox(height: 20),
+                    SizedBox(height: compact ? 8 : 20),
                     SizedBox(
                       width: double.infinity,
                       child: _brandButton(
@@ -449,7 +446,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         height: 58,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: compact ? 10 : 16),
                   ],
                 ),
               ),

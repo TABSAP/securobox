@@ -31,10 +31,7 @@ class _LiquidInfoCardState extends State<LiquidInfoCard>
     )..repeat(reverse: true);
 
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.03).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
-      ),
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 
@@ -94,11 +91,7 @@ class _LiquidInfoCardState extends State<LiquidInfoCard>
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
-                    child: Icon(
-                      widget.icon,
-                      color: widget.color,
-                      size: 20,
-                    ),
+                    child: Icon(widget.icon, color: widget.color, size: 20),
                   ),
                 ),
                 const SizedBox(width: 12),

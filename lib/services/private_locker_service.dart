@@ -32,11 +32,6 @@ class LockerLoadResult {
   final int missingFiles;
 }
 
-/// Private Locker metadata, PIN verifier, and encrypted imports.
-///
-/// The separate list ensures locker items are not part of the regular library.
-/// Media bytes still use the app's existing vault encryption key and are
-/// stored below a dedicated private_locker directory.
 class PrivateLockerService {
   PrivateLockerService._();
   static final instance = PrivateLockerService._();
@@ -300,6 +295,7 @@ class PrivateLockerService {
             type: type,
             category: type == 'image' ? 'Photos' : 'Videos',
             encrypted: true,
+            encryptionVersion: 1,
             origin: 'private_locker',
           ).toStorageString(),
         );

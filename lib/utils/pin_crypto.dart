@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/pbkdf2.dart';
@@ -14,14 +14,9 @@ class PinCrypto {
   static const _kSaltKey = 'pin_salt_v1';
   static const _kIterKey = 'pin_iters_v1';
   static const _kPinLengthKey = 'pin_length_v1';
-  // Iteration count for NEW/updated PINs. A numeric PIN has very low inherent
-  // entropy (10k–1M combinations), so the marginal brute-force resistance of a
-  // very high count is small while the unlock latency it adds is real. 50k
-  // keeps a solid work factor while letting the unlock complete well under a
-  // second. Legacy PINs hashed at the old count still verify (see verifyPin)
-  // and are transparently re-hashed to this count on the next unlock.
-  static const _kIterations = 50000;
+  static const _kIterations = 600000;
   static const _kLegacyIterations = 100000;
+  static const _kMaxIterations = 1000000;
   static const _kHashLengthBytes = 32;
   static const _kSaltLengthBytes = 16;
   static const defaultPinLength = 4;
@@ -62,6 +57,41 @@ class PinCrypto {
     await prefs.remove('secure_pin');
   }
 
+  Future<void> migrateLegacyPinOnStartup() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedHash = await _secure.read(key: _kHashKey);
+      final storedSalt = await _secure.read(key: _kSaltKey);
+      final storedIterations = await _secure.read(key: _kIterKey);
+      final decodedHash = storedHash == null ? null : base64Decode(storedHash);
+      final decodedSalt = storedSalt == null ? null : base64Decode(storedSalt);
+      final iterations = int.tryParse(storedIterations ?? '');
+      final hasValidVerifier =
+          decodedHash?.length == _kHashLengthBytes &&
+          decodedSalt?.length == _kSaltLengthBytes &&
+          iterations != null &&
+          iterations > 0 &&
+          iterations <= _kMaxIterations;
+      if (hasValidVerifier) {
+        await prefs.remove('appPin');
+        await prefs.remove('secure_pin');
+        return;
+      }
+      final legacy =
+          prefs.getStringList('appPin') ?? prefs.getStringList('secure_pin');
+      if (legacy == null ||
+          (legacy.length != 4 && legacy.length != 6) ||
+          legacy.any(
+            (digit) => digit.length != 1 || int.tryParse(digit) == null,
+          )) {
+        return;
+      }
+      await setPin(legacy.join());
+    } catch (error) {
+      if (kDebugMode) debugPrint('Legacy PIN migration failed: $error');
+    }
+  }
+
   Future<int> getPinLength() async {
     final prefs = await SharedPreferences.getInstance();
     final len = prefs.getInt(_kPinLengthKey) ?? defaultPinLength;
@@ -84,13 +114,22 @@ class PinCrypto {
       return await _migrateLegacyAndVerify(pin);
     }
 
-    // PINs created before iteration counts were stored used the old, higher
-    // count; honour whatever count this hash was actually derived with.
     final iterStr = await _secure.read(key: _kIterKey);
     final iterations = int.tryParse(iterStr ?? '') ?? _kLegacyIterations;
+    if (iterations <= 0 || iterations > _kMaxIterations) return false;
 
-    final salt = base64Decode(saltStr);
-    final stored = base64Decode(hashStr);
+    late final Uint8List salt;
+    late final Uint8List stored;
+    try {
+      salt = base64Decode(saltStr);
+      stored = base64Decode(hashStr);
+    } on FormatException {
+      return false;
+    }
+    if (salt.length != _kSaltLengthBytes ||
+        stored.length != _kHashLengthBytes) {
+      return false;
+    }
     final candidate = await pbkdf2(
       Uint8List.fromList(utf8.encode(pin)),
       salt,
@@ -99,9 +138,6 @@ class PinCrypto {
     );
 
     final ok = _constantTimeEqual(stored, candidate);
-    // Transparently upgrade an old-count hash to the current (faster) count so
-    // subsequent unlocks are quicker. Runs after the result is known and is not
-    // awaited, so it never delays the unlock.
     if (ok && iterations != _kIterations) {
       unawaited(setPin(pin));
     }

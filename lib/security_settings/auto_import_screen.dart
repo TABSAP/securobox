@@ -14,8 +14,6 @@ import 'package:video_player_app/widgets/app_spacing.dart';
 import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 import 'package:video_player_app/widgets/liquid_glass_button.dart';
 
-/// Foreground album rules: selected albums are scanned while the owner opens
-/// this screen. New files remain in a review queue until explicitly imported.
 class AutoImportScreen extends StatefulWidget {
   const AutoImportScreen({super.key});
 
@@ -125,7 +123,6 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
       } else {
         _rules.remove(album.id);
       }
-      // No old selection can be imported while a different rule set is pending.
       _queue.clear();
       _selected.clear();
       _originPaths.clear();
@@ -201,7 +198,6 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
       if (mounted && revision == _rulesRevision) {
         setState(() {
           final previousIds = _queue.map((a) => a.id).toSet();
-          // Keep manual deselections during periodic scans; select only new items.
           _selected.removeWhere((id) => !candidates.containsKey(id));
           _selected.addAll(
             candidates.keys.where((id) => !previousIds.contains(id)),
@@ -265,7 +261,6 @@ class _AutoImportScreenState extends State<AutoImportScreen> {
       }
       final result = await MediaImporter.instance.importFiles(
         items: picked,
-        encrypt: true,
         deleteOriginalsOverride: !_keepOriginals,
       );
       if (result.added == picked.length && result.added > 0) {

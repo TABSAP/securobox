@@ -73,7 +73,6 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _goNext() async {
     if (_navigated || !mounted) return;
     _navigated = true;
-    // This is the one and only time the splash is shown on this device.
     await StartupRouter.markSplashSeen();
     final next = await StartupRouter.resolveStartScreen();
     if (!mounted) return;
@@ -158,7 +157,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Your private, offline vault',
+                                  'Your private, on-device vault',
                                   style: TextStyle(
                                     color: LiquidColors.textSecondary,
                                     fontSize: 13.5,
@@ -210,7 +209,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'AES-256 encrypted · 100% offline',
+                          'AES-256 encrypted · stored on device',
                           style: TextStyle(
                             color: LiquidColors.textTertiary,
                             fontSize: 11,

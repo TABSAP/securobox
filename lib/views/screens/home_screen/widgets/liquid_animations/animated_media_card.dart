@@ -319,7 +319,6 @@ class _AnimatedMediaCardState extends State<AnimatedMediaCard>
                   'Change category',
                   LiquidColors.success,
                 ),
-                // Restores the source file and removes SecuroBox's copy.
                 _glassMenuItem(
                   'gallery',
                   Icons.lock_open_rounded,

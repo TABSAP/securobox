@@ -10,23 +10,9 @@ import 'package:video_player_app/widgets/app_spacing.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:xml/xml.dart';
 
-/// A fully offline, self-contained document previewer for the secure vault.
-///
-/// It is handed an ALREADY-DECRYPTED plaintext file on disk (the caller
-/// decrypts first) and renders it locally — nothing is ever shared with other
-/// apps or the network. Supports plain-text formats, and Office Open XML
-/// documents (`.docx`, `.xlsx`, `.pptx`). Any other type — including the legacy
-/// binary `.doc/.xls/.ppt` — or any parse failure falls back to a graceful
-/// "preview not available" state instead of crashing.
-///
-/// PDFs are intentionally NOT handled here — the app has a dedicated PDF
-/// viewer and this screen is only ever given non-PDF documents.
 class DocumentViewerScreen extends StatefulWidget {
-  /// Path to the decrypted plaintext file on disk. The real extension is
-  /// derived from this path (not [fileName], which is only a display title).
   final String filePath;
 
-  /// Display title shown in the AppBar. May lack a file extension.
   final String fileName;
 
   const DocumentViewerScreen({
@@ -39,40 +25,31 @@ class DocumentViewerScreen extends StatefulWidget {
   State<DocumentViewerScreen> createState() => _DocumentViewerScreenState();
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Parsed content models
-// ─────────────────────────────────────────────────────────────────────────
-
 abstract class _DocContent {
   const _DocContent();
 }
 
-/// Monospaced, selectable plain text (optionally truncated).
 class _TextContent extends _DocContent {
   final String text;
   const _TextContent(this.text);
 }
 
-/// Readable paragraphs (Word documents).
 class _ParagraphsContent extends _DocContent {
   final List<String> paragraphs;
   const _ParagraphsContent(this.paragraphs);
 }
 
-/// A 2D grid (spreadsheets).
 class _TableContent extends _DocContent {
   final List<List<String>> rows;
   final bool truncated;
   const _TableContent(this.rows, this.truncated);
 }
 
-/// Slide-by-slide text (presentations).
 class _SlidesContent extends _DocContent {
   final List<List<String>> slides;
   const _SlidesContent(this.slides);
 }
 
-/// Graceful fallback for anything that cannot be previewed.
 class _UnsupportedContent extends _DocContent {
   const _UnsupportedContent();
 }
@@ -80,7 +57,7 @@ class _UnsupportedContent extends _DocContent {
 class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
   late final Future<_DocContent> _future;
 
-  static const int _maxTextBytes = 500 * 1024; // ~500 KB
+  static const int _maxTextBytes = 500 * 1024;
   static const int _maxRows = 200;
   static const int _maxCols = 30;
 
@@ -109,7 +86,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
         case '.yml':
         case '.ini':
         case '.tsv':
-        // Source code & data files are plain text — show them in the text view.
         case '.sql':
         case '.css':
         case '.js':
@@ -147,12 +123,10 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
           return const _UnsupportedContent();
       }
     } catch (_) {
-      // Never surface a red error screen — fall back gracefully.
       return const _UnsupportedContent();
     }
   }
 
-  // ── Plain text ───────────────────────────────────────────────────────────
   Future<_DocContent> _loadText() async {
     final file = File(widget.filePath);
     final length = await file.length();
@@ -173,7 +147,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     try {
       content = utf8.decode(bytes);
     } catch (_) {
-      // Lenient fallback: latin1 maps every byte to a code point, never throws.
       content = latin1.decode(bytes);
     }
 
@@ -183,7 +156,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return _TextContent(content);
   }
 
-  // ── Word (.docx) ─────────────────────────────────────────────────────────
   Future<_DocContent> _loadDocx() async {
     final archive = ZipDecoder().decodeBytes(
       File(widget.filePath).readAsBytesSync(),
@@ -206,13 +178,11 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return _ParagraphsContent(paragraphs);
   }
 
-  // ── Excel (.xlsx) ────────────────────────────────────────────────────────
   Future<_DocContent> _loadXlsx() async {
     final archive = ZipDecoder().decodeBytes(
       File(widget.filePath).readAsBytesSync(),
     );
 
-    // Shared strings table (may be absent for numeric-only sheets).
     final sharedStrings = <String>[];
     final sharedEntry = archive.findFile('xl/sharedStrings.xml');
     if (sharedEntry != null) {
@@ -282,7 +252,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
 
     if (grid.isEmpty) return const _UnsupportedContent();
 
-    // Normalise every row to the widest row so the table is rectangular.
     for (final r in grid) {
       while (r.length < maxColUsed) {
         r.add('');
@@ -291,7 +260,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return _TableContent(grid, truncated);
   }
 
-  // ── PowerPoint (.pptx) ───────────────────────────────────────────────────
   Future<_DocContent> _loadPptx() async {
     final archive = ZipDecoder().decodeBytes(
       File(widget.filePath).readAsBytesSync(),
@@ -321,14 +289,11 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return _SlidesContent(slides);
   }
 
-  // ── eBook (.epub) ────────────────────────────────────────────────────────
   Future<_DocContent> _loadEpub() async {
     final archive = ZipDecoder().decodeBytes(
       File(widget.filePath).readAsBytesSync(),
     );
 
-    // Reading order: META-INF/container.xml → OPF → <spine> of <itemref>s,
-    // resolved to hrefs via the <manifest>. Falls back to name-sorted XHTML.
     final order = <String>[];
     try {
       final container = archive.findFile('META-INF/container.xml');
@@ -353,16 +318,18 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
           }
         }
       }
-    } catch (_) {
-      // Fall through to the name-sorted fallback below.
-    }
+    } catch (_) {}
     if (order.isEmpty) {
       order.addAll(
         archive.files
-            .where((f) =>
-                f.isFile &&
-                RegExp(r'\.(x?html?|htm)$', caseSensitive: false)
-                    .hasMatch(f.name))
+            .where(
+              (f) =>
+                  f.isFile &&
+                  RegExp(
+                    r'\.(x?html?|htm)$',
+                    caseSensitive: false,
+                  ).hasMatch(f.name),
+            )
             .map((f) => f.name)
             .toList()
           ..sort(),
@@ -388,7 +355,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return _ParagraphsContent(paragraphs);
   }
 
-  // ── OpenDocument (.odt / .ods / .odp) ────────────────────────────────────
   Future<_DocContent> _loadOdf() async {
     final archive = ZipDecoder().decodeBytes(
       File(widget.filePath).readAsBytesSync(),
@@ -398,8 +364,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
 
     final doc = XmlDocument.parse(utf8.decode(entry.content));
     final paragraphs = <String>[];
-    // OpenDocument paragraphs are <text:p> (local name 'p'); this reads text
-    // from documents, spreadsheets and presentations alike.
     for (final para in _byLocalName(doc.rootElement, 'p')) {
       final text = para.innerText.replaceAll(RegExp(r'\s+'), ' ').trim();
       if (text.isNotEmpty) paragraphs.add(text);
@@ -408,7 +372,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return _ParagraphsContent(paragraphs);
   }
 
-  // ── eBook (.fb2 — FictionBook XML) ───────────────────────────────────────
   Future<_DocContent> _loadFb2() async {
     final raw = utf8.decode(
       File(widget.filePath).readAsBytesSync(),
@@ -426,15 +389,12 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return _ParagraphsContent(paragraphs);
   }
 
-  /// Extracts readable paragraphs from an (X)HTML chapter's raw bytes. Prefers
-  /// well-formed XML parsing (paragraph elements, else the body text); falls
-  /// back to stripping tags so malformed markup still yields text.
   Iterable<String> _htmlParagraphs(List<int> bytes) {
     final out = <String>[];
     try {
       final doc = XmlDocument.parse(utf8.decode(bytes, allowMalformed: true));
-      final body = _byLocalName(doc.rootElement, 'body').firstOrNull ??
-          doc.rootElement;
+      final body =
+          _byLocalName(doc.rootElement, 'body').firstOrNull ?? doc.rootElement;
       final ps = _byLocalName(body, 'p').toList();
       if (ps.isNotEmpty) {
         for (final para in ps) {
@@ -456,14 +416,12 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return out;
   }
 
-  // ── XML helpers (namespace-robust, match by local name) ──────────────────
   Iterable<XmlElement> _byLocalName(XmlElement root, String local) {
-    return root.descendants
-        .whereType<XmlElement>()
-        .where((e) => e.name.local == local);
+    return root.descendants.whereType<XmlElement>().where(
+      (e) => e.name.local == local,
+    );
   }
 
-  /// Converts a cell reference like "AB12" to a 0-based column index.
   int _refToColumn(String ref) {
     var col = 0;
     for (final code in ref.codeUnits) {
@@ -472,7 +430,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
       } else if (code >= 97 && code <= 122) {
         col = col * 26 + (code - 96);
       } else {
-        break; // reached the digits of the reference
+        break;
       }
     }
     return col > 0 ? col - 1 : 0;
@@ -489,10 +447,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
         scrolledUnderElevation: 0,
         systemOverlayStyle: LiquidColors.systemOverlayStyle,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_rounded,
-            color: LiquidColors.textPrimary,
-          ),
+          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
@@ -527,7 +482,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     return _buildUnsupported();
   }
 
-  // ── Renderers ────────────────────────────────────────────────────────────
   Widget _buildText(_TextContent content) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),

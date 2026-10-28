@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'app_spacing.dart';
 import 'liquid_glass_surface.dart';
 
-/// Compact neutral action that matches the vault's frosted glass surfaces.
 class LiquidGlassButton extends StatelessWidget {
   const LiquidGlassButton({
     super.key,

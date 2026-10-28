@@ -15,7 +15,8 @@ void main() {
     final baseVector = List<double>.generate(len, (i) => (i % 10) * 0.1);
     final samples = List.generate(
       FaceRecognitionService.enrollSamples,
-      (sIdx) => List<double>.generate(len, (i) => baseVector[i] + (sIdx * 0.005)),
+      (sIdx) =>
+          List<double>.generate(len, (i) => baseVector[i] + (sIdx * 0.005)),
     );
     await FaceRecognitionService.instance.enroll(samples);
   }
@@ -30,64 +31,62 @@ void main() {
     await FaceRecognitionService.instance.clearEnrollment();
   });
 
-  testWidgets('FaceScanScreen is opened on launch when face is enrolled and falls back to PIN on cancel', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: AppLockScreen()),
-    );
-    await tester.pump(); // frame 1
-    await tester.pump(const Duration(milliseconds: 100)); // post frame
-    await tester.pump(const Duration(milliseconds: 500)); // route transition
+  testWidgets(
+    'FaceScanScreen is opened on launch when face is enrolled and falls back to PIN on cancel',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: AppLockScreen()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 500));
 
-    // FaceScanScreen was opened
-    expect(find.byType(FaceScanScreen), findsOneWidget);
+      expect(find.byType(FaceScanScreen), findsOneWidget);
 
-    // Cancel / dismiss face scan screen
-    final navState = tester.state<NavigatorState>(
-      find.descendant(
-        of: find.byType(MaterialApp),
-        matching: find.byType(Navigator),
-      ).first,
-    );
-    navState.pop(false);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+      final navState = tester.state<NavigatorState>(
+        find
+            .descendant(
+              of: find.byType(MaterialApp),
+              matching: find.byType(Navigator),
+            )
+            .first,
+      );
+      navState.pop(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
 
-    // Should fall back to PIN stage
-    expect(find.text('Type your PIN to unlock the vault'), findsOneWidget);
+      expect(find.text('Type your PIN to unlock the vault'), findsOneWidget);
 
-    // "Unlock with Face" pill button was removed to keep PIN pad clean
-    expect(find.text('Unlock with Face'), findsNothing);
+      expect(find.text('Unlock with Face'), findsNothing);
 
-    // Button 9 on keypad displays Face Scan icon
-    expect(
-      find.descendant(
-        of: find.byType(LiquidActionButton),
-        matching: find.byIcon(Icons.face_retouching_natural),
-      ),
-      findsOneWidget,
-    );
-  });
+      expect(
+        find.descendant(
+          of: find.byType(LiquidActionButton),
+          matching: find.byIcon(Icons.face_retouching_natural),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
 
-  testWidgets('Keypad button 9 triggers FaceScanScreen when tapped', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(home: AppLockScreen()),
-    );
+  testWidgets('Keypad button 9 triggers FaceScanScreen when tapped', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: AppLockScreen()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 500));
 
-    // Pop the initial auto-prompt
     final navState = tester.state<NavigatorState>(
-      find.descendant(
-        of: find.byType(MaterialApp),
-        matching: find.byType(Navigator),
-      ).first,
+      find
+          .descendant(
+            of: find.byType(MaterialApp),
+            matching: find.byType(Navigator),
+          )
+          .first,
     );
     navState.pop(false);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    // Scroll to and tap button 9 on keypad
     final btn9 = find.descendant(
       of: find.byType(LiquidActionButton),
       matching: find.byIcon(Icons.face_retouching_natural),
@@ -111,18 +110,18 @@ void main() {
 
     expect(find.byType(FaceScanScreen), findsOneWidget);
 
-    // Simulate successful face scan
     final navState = tester.state<NavigatorState>(
-      find.descendant(
-        of: find.byType(MaterialApp),
-        matching: find.byType(Navigator),
-      ).first,
+      find
+          .descendant(
+            of: find.byType(MaterialApp),
+            matching: find.byType(Navigator),
+          )
+          .first,
     );
     navState.pop(true);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    // AppLockScreen overlay is popped upon successful unlock
     expect(find.byType(AppLockScreen), findsNothing);
   });
 }

@@ -53,8 +53,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Your data stays on your device. No servers, no accounts, no '
-                'tracking. Here is exactly how SecuroBox handles your privacy.',
+                'Vault files and PINs stay on your device. SecuroBox has no '
+                'accounts or vault cloud sync. Advertising is disclosed '
+                'below. Here is how your privacy is handled.',
                 style: TextStyle(
                   color: LiquidColors.textSecondary,
                   fontSize: 13.5,
@@ -83,9 +84,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
               _section(
                 title: 'What we collect',
                 body:
-                    'Nothing. SecuroBox has no server, no analytics SDK, '
-                    'no advertising identifiers, and no telemetry. The app '
-                    'works fully offline.',
+                    'SecuroBox does not upload vault files or PINs. The app '
+                    'uses Google Mobile Ads for App Open ads and a banner in '
+                    'Settings. Ad '
+                    'requests are configured as non-personalized; Google may '
+                    'process device, app, and diagnostic data as described in '
+                    'Google’s privacy disclosures. UMP manages consent where '
+                    'required.',
               ),
               _section(
                 title: 'How your files are stored',
@@ -95,13 +100,13 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     'cannot read. The encryption key is generated on first '
                     'launch and held in the OS keychain (iOS) or '
                     'EncryptedSharedPreferences backed by Android Keystore. '
-                    'Cloud backup is disabled — your files never leave the '
-                    'device.',
+                    'Vault files are excluded from system backups. They stay '
+                    'in app-private storage unless you explicitly export them.',
               ),
               _section(
                 title: 'Your PIN',
                 body:
-                    'Hashed with PBKDF2-HMAC-SHA256 and a random salt. The PIN itself is never stored or transmitted. If you forget it, locally stored recovery-question verifiers can let you choose a new PIN; your encrypted files remain on this device. Recovery answers are not synced or recoverable if you lose access to this device.',
+                    'The PIN is hashed with PBKDF2-HMAC-SHA256 and a random salt. The PIN itself is never stored or transmitted. It controls access to the app but does not encrypt or wrap the vault key, which is stored separately in OS secure storage. If you forget it, locally stored recovery-question verifiers can let you choose a new PIN; your encrypted files remain on this device. Recovery answers are not synced or recoverable if you lose access to this device.',
               ),
               _section(
                 title: 'Permissions we ask for',
@@ -115,18 +120,21 @@ class PrivacyPolicyScreen extends StatelessWidget {
               _section(
                 title: 'Third-party services',
                 body:
-                    'None. SecuroBox does not integrate any analytics, '
-                    'ads, crash reporting, or cloud sync provider. The app '
-                    'connects to the network only when you explicitly '
-                    'request it (for example, when downloading a URL you '
-                    'paste yourself).',
+                    'Google Mobile Ads is used for App Open ads when the app '
+                    'launches or returns to the foreground, and a clearly '
+                    'labeled banner on the Settings screen. App Open ads are '
+                    'subject to a 30-minute frequency cap. The app also '
+                    'connects when you explicitly request a network action '
+                    '(for example, downloading a URL you paste yourself). '
+                    'Vault files remain in app-private storage.',
               ),
               _section(
                 title: 'Children\'s privacy',
                 body:
                     'SecuroBox is not designed for or directed at '
-                    'children under 13. Because the app collects no data, '
-                    'we cannot knowingly identify or contact any user.',
+                    'children under 13. We do not knowingly collect children’s '
+                    'personal information. Google Mobile Ads may process data '
+                    'as described above when an ad is requested.',
               ),
               _section(
                 title: 'Changes to this policy',

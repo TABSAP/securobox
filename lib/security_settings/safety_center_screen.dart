@@ -136,8 +136,6 @@ class _SafetyCenterScreenState extends State<SafetyCenterScreen> {
         SessionManager.instance.endTrustedInteraction();
       }
       if (path == null) return;
-      // Android/iOS document providers persist the bytes passed to saveFile.
-      // Desktop providers return a path and require a direct write.
       if (!Platform.isAndroid && !Platform.isIOS) {
         await File(path).writeAsBytes(bytes, flush: true);
       }

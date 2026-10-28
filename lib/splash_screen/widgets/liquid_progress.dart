@@ -4,10 +4,7 @@ import '../../utils/liquid_colors.dart';
 class LiquidProgress extends StatefulWidget {
   final Animation<double> animation;
 
-  const LiquidProgress({
-    super.key,
-    required this.animation,
-  });
+  const LiquidProgress({super.key, required this.animation});
 
   @override
   State<LiquidProgress> createState() => _LiquidProgressState();

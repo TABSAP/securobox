@@ -97,7 +97,6 @@ void main() {
         );
       }
       expect(await service.lockoutRemaining(), greaterThan(Duration.zero));
-      // Even correct answers cannot bypass the active cooldown.
       expect(await service.verify(answers), isFalse);
     },
   );

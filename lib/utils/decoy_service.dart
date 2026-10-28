@@ -63,7 +63,6 @@ class DecoyService {
     await _secure.write(key: _kFakeSalt, value: base64Encode(salt));
     await _secure.write(key: _kFakeHash, value: base64Encode(hash));
     await _secure.write(key: _kFakeLen, value: pin.length.toString());
-    // The decoy vault starts empty. The user adds their own decoy content.
   }
 
   Future<bool> verifyFakePin(String pin) async {
@@ -104,7 +103,10 @@ class DecoyService {
       while (stamps.length > 10) {
         stamps.removeAt(0);
       }
-      await _secure.write(key: _kDuressLog, value: '$count|${stamps.join(',')}');
+      await _secure.write(
+        key: _kDuressLog,
+        value: '$count|${stamps.join(',')}',
+      );
     } catch (_) {}
   }
 
@@ -118,14 +120,6 @@ class DecoyService {
     }
   }
 
-  /// One-time cleanup for installs that were seeded with fake decoy content by
-  /// an earlier build. Runs once (guarded by a flag) and only removes the
-  /// clearly-fake seeds — real, user-added content is never touched:
-  ///   - decoy media whose file path is empty (seeded fakes never had a real
-  ///     file; imported items always have a path),
-  ///   - the seeded empty 'Travel'/'Work' custom categories (only if no real
-  ///     decoy item uses them),
-  ///   - the seeded decoy download history.
   Future<void> purgeSeededDecoyData() async {
     const purgedFlag = 'decoy_seed_purged_v1';
     const decoyConfigKey = 'categoriesConfig_decoy';
@@ -133,7 +127,6 @@ class DecoyService {
       final prefs = await SharedPreferences.getInstance();
       if (prefs.getBool(purgedFlag) == true) return;
 
-      // 1) Drop fake media (empty path in field index 2).
       final lib = prefs.getStringList(VaultContext.decoyLibraryKey);
       if (lib != null && lib.isNotEmpty) {
         final kept = lib.where((row) {
@@ -144,15 +137,13 @@ class DecoyService {
           await prefs.setStringList(VaultContext.decoyLibraryKey, kept);
         }
 
-        // 2) Remove the seeded 'Travel'/'Work' categories if now unused.
-        final usedCats = kept
-            .map((r) {
-              final p = r.split('|');
-              return p.length > 5 ? p[5].toLowerCase() : '';
-            })
-            .toSet();
-        final customs =
-            prefs.getStringList(VaultContext.decoyCustomCategoriesKey);
+        final usedCats = kept.map((r) {
+          final p = r.split('|');
+          return p.length > 5 ? p[5].toLowerCase() : '';
+        }).toSet();
+        final customs = prefs.getStringList(
+          VaultContext.decoyCustomCategoriesKey,
+        );
         if (customs != null && customs.isNotEmpty) {
           final keptCats = customs.where((c) {
             final lc = c.toLowerCase();
@@ -161,14 +152,14 @@ class DecoyService {
           }).toList();
           if (keptCats.length != customs.length) {
             await prefs.setStringList(
-                VaultContext.decoyCustomCategoriesKey, keptCats);
-            // Rebuild the decoy category config from the cleaned list.
+              VaultContext.decoyCustomCategoriesKey,
+              keptCats,
+            );
             await prefs.remove(decoyConfigKey);
           }
         }
       }
 
-      // 3) Remove the seeded fake download history.
       await prefs.remove(VaultContext.decoyDownloadHistoryKey);
 
       await prefs.setBool(purgedFlag, true);

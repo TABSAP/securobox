@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import 'package:video_player_app/utils/liquid_colors.dart';
 
-/// Full-screen, pinch-to-zoom viewer for a decrypted image file.
 class ImageViewerScreen extends StatelessWidget {
   final String path;
   final String title;

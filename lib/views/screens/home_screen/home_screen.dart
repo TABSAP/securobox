@@ -49,9 +49,6 @@ class HomeScreenState extends State<HomeScreen>
   final List<VideoItem> _filteredMedia = [];
   final List<String> _customCategories = [];
 
-  /// Windowed pagination: only [_visibleCount] filtered items are rendered at a
-  /// time to avoid decrypting hundreds of thumbnails at once. The window grows
-  /// by [_pageSize] as the user scrolls toward the bottom.
   static const int _pageSize = 30;
   int _visibleCount = _pageSize;
 
@@ -67,8 +64,6 @@ class HomeScreenState extends State<HomeScreen>
   bool _categoryGatePending = false;
   final Set<String> _selectedIds = {};
 
-  /// Pseudo-category for the Favorites filter — kept out of [_allCategoriesForFilter]
-  /// so it never appears as an assignable folder in the Change Category menu.
   static const String _favoritesFilter = 'Favorites';
 
   List<String> get _allCategoriesForFilter {
@@ -82,7 +77,7 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   List<String> get _filterChips {
-    final base = _allCategoriesForFilter; // ['All', ...categories]
+    final base = _allCategoriesForFilter;
     return [base.first, _favoritesFilter, ...base.skip(1)];
   }
 
@@ -212,8 +207,6 @@ class HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  /// Grows the rendered window as the user nears the bottom of the list so the
-  /// next batch of thumbnails is decrypted lazily instead of all at once.
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     if (_visibleCount >= _filteredMedia.length) return;
@@ -243,8 +236,6 @@ class HomeScreenState extends State<HomeScreen>
       _selectedCategory = 'All';
       _searchController.clear();
     });
-    // Clearing the controller synchronously schedules its listener debounce;
-    // cancel it so only this fresh, complete filter pass runs.
     _searchDebounce?.cancel();
     _filterMedia();
     _searchFocusNode.unfocus();
@@ -257,7 +248,6 @@ class HomeScreenState extends State<HomeScreen>
     final typeFilter = widget.typeFilter;
 
     setState(() {
-      // A new filter/search/reload starts the render window from the top.
       _visibleCount = _pageSize;
       _filteredMedia.clear();
 
@@ -975,7 +965,10 @@ class HomeScreenState extends State<HomeScreen>
               ),
             );
             try {
-              savePath = await VaultCrypto.instance.decryptToTemp(media.path);
+              savePath = await VaultCrypto.instance.decryptToTemp(
+                media.path,
+                formatVersion: media.encryptionVersion,
+              );
               decryptedToTemp = true;
             } catch (_) {
               if (!mounted) return;
@@ -1030,8 +1023,6 @@ class HomeScreenState extends State<HomeScreen>
     if (!await _confirmRestore(media)) return;
     if (!mounted) return;
 
-    // Legacy items already exported to the gallery: nothing to restore, just
-    // drop the vault copy so it stops appearing in the app.
     if (media.inGallery) {
       final removed = await _mediaService.removeVaultCopy(media);
       if (!mounted) return;
@@ -1088,7 +1079,10 @@ class HomeScreenState extends State<HomeScreen>
     bool decryptedToTemp = false;
     try {
       if (media.encrypted) {
-        savePath = await VaultCrypto.instance.decryptToTemp(media.path);
+        savePath = await VaultCrypto.instance.decryptToTemp(
+          media.path,
+          formatVersion: media.encryptionVersion,
+        );
         decryptedToTemp = true;
       }
       final saveName = _saveFileNameFor(media);
@@ -1119,7 +1113,6 @@ class HomeScreenState extends State<HomeScreen>
         context,
       );
     } finally {
-      // The loader must never outlive this flow, even on an early !mounted exit.
       closeLoader();
       if (decryptedToTemp) {
         try {
@@ -1129,11 +1122,6 @@ class HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// Unlocking removes the file from the vault, so confirm before doing it.
-  ///
-  /// NOTE: [AppConfirmDialog] pops itself before invoking `onConfirm`, so the
-  /// callback must NOT pop again — doing so returns null from `showDialog` and
-  /// pops the screen underneath. Capture the answer in a flag instead.
   Future<bool> _confirmRestore(VideoItem media) async {
     var confirmed = false;
     await showDialog<void>(
@@ -1155,9 +1143,6 @@ class HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openMedia(VideoItem media) async {
-    // Shared opener: pushes the correct viewer directly onto this screen so the
-    // back stack stays intuitive, and routes documents (PDF / Office / text) to
-    // their dedicated in-app viewers.
     await openVaultMedia(
       context,
       media,
@@ -1242,7 +1227,6 @@ class HomeScreenState extends State<HomeScreen>
       floatingActionButton: _selectionMode
           ? null
           : Padding(
-              // Lift this nested-screen action above MainScreen's glass bar.
               padding: const EdgeInsets.only(bottom: 88),
               child: _buildAddFab(),
             ),
@@ -1633,7 +1617,6 @@ class HomeScreenState extends State<HomeScreen>
       itemCount: visible + (hasMore ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= visible) {
-          // Bottom sentinel row shown while more items remain to be revealed.
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(child: AppLoader(size: 24)),

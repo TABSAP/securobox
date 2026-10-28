@@ -4,19 +4,70 @@ class TitleHelper {
   TitleHelper._();
 
   static const _leadingNoisePrefixes = [
-    'whatsapp image', 'whatsapp video', 'whatsapp audio', 'whatsapp ',
-    'screen recording', 'screen_recording', 'screenrecording',
-    'screenshot_', 'screenshot-', 'screenshot ',
-    'voice recorder', 'voice memo', 'voice ', 'voice_', 'voice-',
-    'recording_', 'recording-', 'recording ',
-    'fb_img_', 'fb_img', 'facebook_', 'messenger_', 'telegram ',
-    'signal-', 'snapchat-', 'snapchat_', 'instagram_', 'twitter_',
-    'received_', 'received-', 'downloaded_', 'download_',
-    'img_', 'vid_', 'aud_', 'dsc_', 'dscn', 'mvi_', 'mvimg_', 'mov_',
-    'pxl_', 'gopr', 'gh01', 'gp01', 'sam_', 'wp_', 'ops_', 'win_',
-    'cymera_', 'capture_', 'capture-', 'snap_', 'photo_', 'video_',
-    'image_', 'audio_', 'pic_', 'tmp_', 'temp_', 'untitled_', 'img-',
-    'vid-', 'aud-', 'ptt-',
+    'whatsapp image',
+    'whatsapp video',
+    'whatsapp audio',
+    'whatsapp ',
+    'screen recording',
+    'screen_recording',
+    'screenrecording',
+    'screenshot_',
+    'screenshot-',
+    'screenshot ',
+    'voice recorder',
+    'voice memo',
+    'voice ',
+    'voice_',
+    'voice-',
+    'recording_',
+    'recording-',
+    'recording ',
+    'fb_img_',
+    'fb_img',
+    'facebook_',
+    'messenger_',
+    'telegram ',
+    'signal-',
+    'snapchat-',
+    'snapchat_',
+    'instagram_',
+    'twitter_',
+    'received_',
+    'received-',
+    'downloaded_',
+    'download_',
+    'img_',
+    'vid_',
+    'aud_',
+    'dsc_',
+    'dscn',
+    'mvi_',
+    'mvimg_',
+    'mov_',
+    'pxl_',
+    'gopr',
+    'gh01',
+    'gp01',
+    'sam_',
+    'wp_',
+    'ops_',
+    'win_',
+    'cymera_',
+    'capture_',
+    'capture-',
+    'snap_',
+    'photo_',
+    'video_',
+    'image_',
+    'audio_',
+    'pic_',
+    'tmp_',
+    'temp_',
+    'untitled_',
+    'img-',
+    'vid-',
+    'aud-',
+    'ptt-',
   ];
 
   static const _datePatterns = [
@@ -53,12 +104,18 @@ class TitleHelper {
       ' ',
     );
     name = name.replaceAll(RegExp(r'\d{8,}'), ' ');
-    name = name.replaceAll(RegExp(r'\b[0-9a-f]{12,}\b', caseSensitive: false), ' ');
+    name = name.replaceAll(
+      RegExp(r'\b[0-9a-f]{12,}\b', caseSensitive: false),
+      ' ',
+    );
 
     name = name.replaceAll(RegExp(r'\(\s*\d+\s*\)'), ' ');
     name = name.replaceAll(RegExp(r'\bcopy\s+of\b', caseSensitive: false), ' ');
     name = name.replaceAll(RegExp(r'[\-_ ]+copy\b', caseSensitive: false), ' ');
-    name = name.replaceAll(RegExp(r'\(\s*copy\s*\)', caseSensitive: false), ' ');
+    name = name.replaceAll(
+      RegExp(r'\(\s*copy\s*\)', caseSensitive: false),
+      ' ',
+    );
 
     name = name.replaceAll(RegExp(r'[_\-\.]+'), ' ');
     name = name.replaceAll(RegExp(r'\s+'), ' ').trim();
@@ -87,8 +144,7 @@ class TitleHelper {
     return name;
   }
 
-  static String prettyTitleFromFilename(String filename) =>
-      smartName(filename);
+  static String prettyTitleFromFilename(String filename) => smartName(filename);
 
   static String prettyTitleFromUrl(Uri uri, {String fallback = 'Downloaded'}) {
     final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();

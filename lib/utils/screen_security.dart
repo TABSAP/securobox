@@ -24,10 +24,6 @@ class ScreenSecurity {
   }
 
   static Future<void> _apply(bool value) async {
-    // iOS has no public API for blocking screenshots. The old implementation
-    // reparented Flutter's root CALayer beneath a secure UITextField layer,
-    // which is unsupported and can break UIKit scene snapshots. SceneDelegate
-    // provides the supported app-switcher privacy cover instead.
     if (kIsWeb || !Platform.isAndroid) return;
     try {
       if (value) {

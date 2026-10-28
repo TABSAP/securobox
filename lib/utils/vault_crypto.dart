@@ -23,11 +23,7 @@ class VaultCrypto {
   static const _kTagLengthBytes = 32;
   static const _kTempPrefix = 'sp_dec_';
 
-  // New files use authenticated encryption: a 4-byte magic marks the format,
-  // then [IV(16)][AES-256-CTR ciphertext][HMAC-SHA256 tag(32)]. Files written by
-  // older builds have no magic (they start with the raw IV) and are still
-  // decrypted, just without tamper-detection.
-  static const List<int> _kMagic = [0x53, 0x42, 0x45, 0x31]; // 'SBE1'
+  static const List<int> _kMagic = [0x53, 0x42, 0x45, 0x31];
   static const _kMagicLength = 4;
 
   static const _allMasterKeyIds = [
@@ -89,8 +85,6 @@ class VaultCrypto {
     return dir;
   }
 
-  /// Public accessor for the vault's temp dir, so preview generators (e.g.
-  /// [ThumbnailCache]) write into the same location that lock wipes.
   Future<Directory> previewTempDir({bool forceReal = false}) =>
       _tempDir(forceReal: forceReal);
 
@@ -126,12 +120,20 @@ class VaultCrypto {
 
     final sourceLength = await source.length();
 
-    await _encryptFile(
-      srcPath: source.path,
-      dstPath: outPath,
-      key: key,
-      iv: iv,
-    );
+    try {
+      await _encryptFile(
+        srcPath: source.path,
+        dstPath: outPath,
+        key: key,
+        iv: iv,
+      );
+    } catch (_) {
+      try {
+        final partial = File(outPath);
+        if (await partial.exists()) await partial.delete();
+      } catch (_) {}
+      rethrow;
+    }
 
     final outFile = File(outPath);
     final outLength = await outFile.exists() ? await outFile.length() : -1;
@@ -150,33 +152,6 @@ class VaultCrypto {
     return outPath;
   }
 
-  /// Copies [source] into the vault's private storage WITHOUT encrypting it,
-  /// returning the stored path. Used when the user opts out of encryption for a
-  /// shared import; the file still lives in the app's protected sandbox, just in
-  /// plaintext, so existing viewers (which honour `VideoItem.encrypted`) can
-  /// open it directly.
-  Future<String> importPlain(
-    File source, {
-    String? fileName,
-    String? subdir,
-    bool forceReal = false,
-  }) async {
-    final baseDir = await _vaultDir(forceReal: forceReal);
-    final outDir = subdir == null
-        ? baseDir
-        : await Directory(p.join(baseDir.path, subdir)).create(recursive: true);
-    final requestedExtension = p.extension(fileName ?? '');
-    final ext = requestedExtension.isNotEmpty
-        ? requestedExtension
-        : p.extension(source.path);
-    final outName = '${const Uuid().v4()}$ext';
-    final outPath = p.join(outDir.path, outName);
-    await source.copy(outPath);
-    return outPath;
-  }
-
-  /// Recovers a vault file when a saved library path has an obsolete sandbox
-  /// prefix. Only an exact basename match inside the active vault is accepted.
   Future<String?> resolveStoredFilePath(String storedPath) async {
     if (storedPath.isEmpty) return null;
     final storedFile = File(storedPath);
@@ -205,6 +180,7 @@ class VaultCrypto {
   Future<String> decryptToTemp(
     String encryptedPath, {
     bool forceReal = false,
+    int? formatVersion,
   }) async {
     final cached = _plainCache[encryptedPath];
     if (cached != null && await File(cached).exists()) {
@@ -217,12 +193,26 @@ class VaultCrypto {
     final magic = await raf.read(_kMagicLength);
     await raf.close();
 
-    final authenticated =
+    final hasAuthenticatedMarker =
         magic.length == _kMagicLength &&
         magic[0] == _kMagic[0] &&
         magic[1] == _kMagic[1] &&
         magic[2] == _kMagic[2] &&
         magic[3] == _kMagic[3];
+    final requiresAuthentication =
+        formatVersion == 1 ||
+        (formatVersion == null && encryptedPath.endsWith('.enc'));
+    if (requiresAuthentication && !hasAuthenticatedMarker) {
+      throw const FormatException(
+        'Encrypted vault file has an invalid format marker.',
+      );
+    }
+    final authenticated = hasAuthenticatedMarker || requiresAuthentication;
+    if (authenticated && !hasAuthenticatedMarker) {
+      throw const FormatException(
+        'Authenticated vault file has an invalid format marker.',
+      );
+    }
 
     final temp = await _tempDir(forceReal: forceReal);
     final origExt = encryptedPath.endsWith('.enc')
@@ -231,12 +221,20 @@ class VaultCrypto {
     final outName = '$_kTempPrefix${const Uuid().v4()}$origExt';
     final outPath = p.join(temp.path, outName);
 
-    await _decryptFile(
-      srcPath: encryptedPath,
-      dstPath: outPath,
-      key: key,
-      authenticated: authenticated,
-    );
+    try {
+      await _decryptFile(
+        srcPath: encryptedPath,
+        dstPath: outPath,
+        key: key,
+        authenticated: authenticated,
+      );
+    } catch (_) {
+      try {
+        final output = File(outPath);
+        if (await output.exists()) await output.delete();
+      } catch (_) {}
+      rethrow;
+    }
 
     _plainCache[encryptedPath] = outPath;
     return outPath;
@@ -245,9 +243,6 @@ class VaultCrypto {
   bool hasCachedPlaintext(String encryptedPath) =>
       _plainCache.containsKey(encryptedPath);
 
-  /// Removes one decrypted cache entry when a secondary vault is locked.
-  /// This lets Private Locker clear only its own working files without wiping
-  /// previews that another active vault screen may still be using.
   Future<void> forgetCachedPlaintext(String encryptedPath) async {
     final cached = _plainCache.remove(encryptedPath);
     if (cached == null) return;
@@ -381,7 +376,7 @@ class VaultCrypto {
       );
       await File(srcPath).writeAsBytes(original);
 
-      final key = await _getMasterKey();
+      final key = _randomBytes(_kKeyLengthBytes);
       final iv = _randomBytes(_kIvLengthBytes);
 
       await _encryptFile(srcPath: srcPath, dstPath: encPath, key: key, iv: iv);

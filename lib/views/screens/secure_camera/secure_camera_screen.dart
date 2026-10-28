@@ -59,8 +59,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Invalidate any initialize() call still in flight. It will dispose its
-    // controller when it completes instead of attaching to a dead screen.
     _controllerGeneration++;
     _recordTimer?.cancel();
     _reviewVideo?.dispose();
@@ -74,8 +72,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
     final c = _controller;
     if (state == AppLifecycleState.inactive) {
       _appIsActive = false;
-      // A resume can arrive before initialize() completes. Invalidate that
-      // pending start so it cannot race a second controller into existence.
       _controllerGeneration++;
       _recordTimer?.cancel();
       if (_reviewPath != null) {
@@ -325,8 +321,6 @@ class _SecureCameraScreenState extends State<SecureCameraScreen>
       if (!mounted) return;
       _savedCount++;
       HapticFeedback.lightImpact();
-      // The capture is safely in the vault — close the camera automatically and
-      // return the user to the Home dashboard.
       Navigator.of(context).pop(_savedCount);
     } catch (_) {
       if (mounted) {

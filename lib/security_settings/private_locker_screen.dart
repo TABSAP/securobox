@@ -59,9 +59,6 @@ class _PrivateLockerScreenState extends State<PrivateLockerScreen>
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
-      // iOS reports `inactive` while PHPicker is presented. Keep the locker
-      // session alive for this trusted system interaction; otherwise the
-      // picker can return to a screen that was just locked and cleared.
       if (mounted &&
           !_locked &&
           !SessionManager.instance.inTrustedInteraction) {

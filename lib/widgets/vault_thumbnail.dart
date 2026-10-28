@@ -6,14 +6,6 @@ import 'package:video_player_app/models/app_models.dart';
 import 'package:video_player_app/utils/media_helper.dart';
 import 'package:video_player_app/utils/thumbnail_cache.dart';
 
-/// A rounded media thumbnail for a vault item.
-///
-/// Images and videos that are not individually locked are decrypted to a temp
-/// file (reusing [VaultCrypto.decryptToTemp]'s session cache, wiped on lock);
-/// images show a real preview and videos show an extracted first-frame preview
-/// (generated once per session and cached in memory). Audio, documents and any
-/// locked item show a type-appropriate gradient icon, so a preview never leaks
-/// a locked item's contents.
 class VaultThumbnail extends StatefulWidget {
   final VideoItem item;
   final double width;
@@ -46,8 +38,6 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
   void initState() {
     super.initState();
     if (_canPreview) {
-      // Warm cache (e.g. primed at import) renders on the first frame with no
-      // placeholder flash; otherwise generate it lazily.
       _image = ThumbnailCache.instance.peek(widget.item.id);
       if (_image == null) _load();
     }
@@ -73,9 +63,7 @@ class _VaultThumbnailState extends State<VaultThumbnail> {
       if (mounted && generation == _loadGeneration && file != null) {
         setState(() => _image = file);
       }
-    } catch (_) {
-      // Keep the fallback icon on any decrypt/read failure.
-    }
+    } catch (_) {}
   }
 
   @override

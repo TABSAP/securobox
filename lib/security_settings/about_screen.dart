@@ -96,7 +96,7 @@ class AboutScreen extends StatelessWidget {
         ),
         AppSpace.h4,
         Text(
-          'Your private, offline vault.',
+          'Your private, on-device vault.',
           style: TextStyle(
             color: LiquidColors.textSecondary,
             fontSize: 13,
@@ -148,9 +148,9 @@ class AboutScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'SecuroBox is a fully offline private vault for your videos, photos, '
-            'audio files, and documents. Everything you import is encrypted on '
-            'this device — no servers, no analytics, no cloud sync.',
+            'SecuroBox encrypts your videos, photos, audio, and documents on '
+            'this device. Vault files are never sent to our servers. Optional '
+            'non-personalized ads may load when you open Settings online.',
             style: TextStyle(
               color: LiquidColors.textSecondary,
               fontSize: 13.5,
@@ -160,14 +160,14 @@ class AboutScreen extends StatelessWidget {
           AppSpace.h16,
           _factRow(
             Icons.wifi_off_rounded,
-            'Works 100% offline',
-            'Nothing ever leaves your phone.',
+            'Vault stays on device',
+            'Ads are requested only from Settings when online.',
           ),
           AppSpace.h12,
           _factRow(
             Icons.do_not_disturb_on_outlined,
-            'No account, no tracking',
-            'You don\'t sign in. We don\'t see you.',
+            'No account required',
+            'Ad consent and privacy choices are managed by Google UMP.',
           ),
           AppSpace.h12,
           _factRow(
@@ -185,13 +185,14 @@ class AboutScreen extends StatelessWidget {
   Widget _securityInfoCard() {
     const points = <String>[
       'AES-256-CTR encryption for every file at rest',
-      'PIN hashed with PBKDF2-HMAC-SHA256 (100,000 rounds)',
+      'PIN hashed with PBKDF2-HMAC-SHA256 (600,000 rounds)',
       'Hash and master key stored in the OS Keychain / Keystore',
+      'PIN controls app access; it does not wrap the vault key',
       'Random UUID filenames — originals are never exposed',
-      'Cloud backup disabled — files stay on this device',
+      'Vault files excluded from system backup; encrypted export is available',
       'Biometric verification via the OS BiometricPrompt',
       'Escalating cooldown after repeated wrong PINs',
-      'No analytics, no trackers, no servers',
+      'No vault cloud sync; ad traffic is disclosed in the privacy policy',
     ];
     return _card(
       child: Column(

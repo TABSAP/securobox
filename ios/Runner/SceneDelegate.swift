@@ -1,14 +1,6 @@
 import Flutter
 import UIKit
 
-/// Scene delegate for the UIScene lifecycle (required by upcoming iOS versions).
-///
-/// Subclasses Flutter's `FlutterSceneDelegate` so Flutter continues to own the
-/// window and engine wiring. We only reinstate the app-switcher privacy shield
-/// that previously lived in `AppDelegate`'s now-deprecated app-lifecycle
-/// callbacks (`applicationWillResignActive` / `applicationDidEnterBackground` /
-/// `applicationDidBecomeActive`), which the system no longer delivers once a
-/// scene manifest is present.
 class SceneDelegate: FlutterSceneDelegate {
   private var privacyView: UIView?
 
@@ -27,7 +19,6 @@ class SceneDelegate: FlutterSceneDelegate {
     hidePrivacyView()
   }
 
-  // MARK: - App-switcher privacy shield
 
   private func showPrivacyView() {
     guard let window = window else { return }

@@ -15,8 +15,6 @@ import 'package:video_player_app/utils/pbkdf2.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 
-/// Portable password-encrypted backup container. Cloud providers are accessed
-/// through the OS file picker; SecuroBox never receives provider credentials.
 class VaultBackupService {
   VaultBackupService._();
   static final instance = VaultBackupService._();
@@ -26,8 +24,6 @@ class VaultBackupService {
   static const _ivLength = 16;
   static const _tagLength = 32;
   static const _iterations = 180000;
-  // The ZIP plus authenticated envelope currently use in-memory buffers.
-  // Bound the plaintext input to keep mobile devices from running out of RAM.
   static const _maxBackupBytes = 128 * 1024 * 1024;
 
   Future<int> get itemCount async {
@@ -50,7 +46,10 @@ class VaultBackupService {
         throw StateError('A vault file is missing: ${item.title}');
       }
       final plainPath = item.encrypted
-          ? await VaultCrypto.instance.decryptToTemp(item.path)
+          ? await VaultCrypto.instance.decryptToTemp(
+              item.path,
+              formatVersion: item.encryptionVersion,
+            )
           : item.path;
       final plainFile = File(plainPath);
       totalBytes += await plainFile.length();
@@ -216,6 +215,7 @@ class VaultBackupService {
           var restored = item.copyWith(
             path: stored,
             encrypted: true,
+            encryptionVersion: 1,
             inGallery: false,
             galleryId: '',
           );

@@ -4,10 +4,7 @@ import '../../utils/liquid_colors.dart';
 class LiquidTitle extends StatelessWidget {
   final Animation<double> animation;
 
-  const LiquidTitle({
-    super.key,
-    required this.animation,
-  });
+  const LiquidTitle({super.key, required this.animation});
 
   @override
   Widget build(BuildContext context) {

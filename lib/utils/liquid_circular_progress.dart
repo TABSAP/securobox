@@ -23,8 +23,7 @@ class LiquidCircularProgress extends StatefulWidget {
   });
 
   @override
-  State<LiquidCircularProgress> createState() =>
-      _LiquidCircularProgressState();
+  State<LiquidCircularProgress> createState() => _LiquidCircularProgressState();
 }
 
 class _LiquidCircularProgressState extends State<LiquidCircularProgress>
@@ -60,7 +59,8 @@ class _LiquidCircularProgressState extends State<LiquidCircularProgress>
 
   @override
   Widget build(BuildContext context) {
-    final palette = widget.colors ??
+    final palette =
+        widget.colors ??
         [
           LiquidColors.accentBlue,
           LiquidColors.accentPurple,
@@ -194,19 +194,22 @@ class _LiquidCircularPainter extends CustomPainter {
     );
 
     final highlight = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          LiquidColors.textPrimary.withValues(alpha: 0.10),
-          LiquidColors.textPrimary.withValues(alpha: 0.0),
-        ],
-      ).createShader(Rect.fromLTWH(
-        center.dx - innerRadius,
-        waveY,
-        innerRadius * 2,
-        innerRadius * 0.4,
-      ));
+      ..shader =
+          LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              LiquidColors.textPrimary.withValues(alpha: 0.10),
+              LiquidColors.textPrimary.withValues(alpha: 0.0),
+            ],
+          ).createShader(
+            Rect.fromLTWH(
+              center.dx - innerRadius,
+              waveY,
+              innerRadius * 2,
+              innerRadius * 0.4,
+            ),
+          );
     canvas.drawRect(
       Rect.fromLTWH(
         center.dx - innerRadius,
@@ -259,8 +262,20 @@ class _LiquidCircularPainter extends CustomPainter {
 
     const droplets = [
       _Droplet(speed: 1.0, sweepDeg: 90, lag: 0.0, alpha: 1.0, widthMul: 1.0),
-      _Droplet(speed: 1.3, sweepDeg: 50, lag: 0.22, alpha: 0.65, widthMul: 0.75),
-      _Droplet(speed: 0.7, sweepDeg: 24, lag: 0.45, alpha: 0.40, widthMul: 0.55),
+      _Droplet(
+        speed: 1.3,
+        sweepDeg: 50,
+        lag: 0.22,
+        alpha: 0.65,
+        widthMul: 0.75,
+      ),
+      _Droplet(
+        speed: 0.7,
+        sweepDeg: 24,
+        lag: 0.45,
+        alpha: 0.40,
+        widthMul: 0.55,
+      ),
     ];
 
     for (final d in droplets) {
@@ -298,14 +313,14 @@ class _LiquidCircularPainter extends CustomPainter {
         headCenter,
         headSize + 2,
         Paint()
-          ..color =
-              colors[2 % colors.length].withValues(alpha: d.alpha * 0.45)
+          ..color = colors[2 % colors.length].withValues(alpha: d.alpha * 0.45)
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
       );
       canvas.drawCircle(
         headCenter,
         headSize,
-        Paint()..color = LiquidColors.textPrimary.withValues(alpha: 0.85 * d.alpha),
+        Paint()
+          ..color = LiquidColors.textPrimary.withValues(alpha: 0.85 * d.alpha),
       );
     }
   }
@@ -321,11 +336,7 @@ class _LiquidCircularPainter extends CustomPainter {
     final shader = SweepGradient(
       startAngle: start,
       endAngle: start + 2 * pi,
-      colors: [
-        colors.first,
-        ...colors.skip(1),
-        colors.first,
-      ],
+      colors: [colors.first, ...colors.skip(1), colors.first],
     ).createShader(rect);
 
     final paint = Paint()

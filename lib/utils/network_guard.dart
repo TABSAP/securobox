@@ -49,12 +49,12 @@ class NetworkGuard {
   }
 
   static bool _isOnline(List<ConnectivityResult> results) => results.any(
-        (r) =>
-            r == ConnectivityResult.wifi ||
-            r == ConnectivityResult.mobile ||
-            r == ConnectivityResult.ethernet ||
-            r == ConnectivityResult.vpn,
-      );
+    (r) =>
+        r == ConnectivityResult.wifi ||
+        r == ConnectivityResult.mobile ||
+        r == ConnectivityResult.ethernet ||
+        r == ConnectivityResult.vpn,
+  );
 
   void _seal() {
     unawaited(VaultCrypto.instance.revokeSession());

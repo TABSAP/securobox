@@ -38,21 +38,16 @@ class HomeDashboard extends StatefulWidget {
 }
 
 class HomeDashboardState extends State<HomeDashboard> {
-  /// The dashboard grid stays compact: only the first six categories (in the
-  /// user's chosen order) are shown. The rest — including any custom categories
-  /// they create — are reachable via "View all" / "Manage".
   static const int _dashboardCategoryLimit = 6;
 
   final MediaService _mediaService = MediaService();
   final TextEditingController _searchController = TextEditingController();
   List<VideoItem> _all = const [];
-  // Visible categories (defaults + custom) in the user's chosen order.
   List<CategoryInfo> _categories = const [];
   Set<String> _lockedCategoryKeys = const {};
   bool _loading = true;
   bool _isImportFlowActive = false;
   String _query = '';
-  // Items sitting in the Recycle Bin, shown as a badge on the bin icon.
   int _deletedCount = 0;
 
   @override
@@ -90,7 +85,6 @@ class HomeDashboardState extends State<HomeDashboard> {
   Future<void> _load() async {
     final media = await _mediaService.loadMedia();
     final cats = await CategoryService.instance.load();
-    // Same filter the Recycle Bin uses, so the badge always matches its list.
     final deleted = await _mediaService.getDeletedMedia();
     final locked = await CategoryLockService.instance.lockedKeys();
     final deletedCount = deleted.where((m) => !m.isHidden).length;
@@ -128,7 +122,6 @@ class HomeDashboardState extends State<HomeDashboard> {
       MaterialPageRoute(
         builder: (_) {
           if (cat.type == 'favorite') {
-            // Smart category: filter by the favourite flag.
             return HomeScreen(
               initialCategory: 'Favorites',
               screenTitle: cat.name,
@@ -148,14 +141,11 @@ class HomeDashboardState extends State<HomeDashboard> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const CategoryManagementScreen()));
-    // Categories may have changed (rename/hide/reorder/delete) while managing.
     if (mounted) _load();
   }
 
   Future<void> _openItem(VideoItem item) async {
     HapticFeedback.selectionClick();
-    // Open the viewer directly on top of the dashboard so Back returns here
-    // (to Recently Added) instead of a filtered list the user never opened.
     await openVaultMedia(context, item, onChanged: _load);
   }
 
@@ -212,8 +202,6 @@ class HomeDashboardState extends State<HomeDashboard> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        // Restoring or permanently deleting changes the bin count — reload so
-        // the badge on the bin icon stays accurate.
         builder: (_) => DeletedVideosScreen(onVideosChanged: _load),
       ),
     );
@@ -225,7 +213,6 @@ class HomeDashboardState extends State<HomeDashboard> {
     NotificationPreviewSheet.show(context);
   }
 
-  /// A small red count bubble, anchored to the top-right of an app-bar action.
   Widget _countBadge(int count) {
     return Positioned(
       right: 4,
@@ -296,7 +283,6 @@ class HomeDashboardState extends State<HomeDashboard> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        // Status-bar icons follow the theme (dark on white, light on black).
         systemOverlayStyle: isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
@@ -324,8 +310,6 @@ class HomeDashboardState extends State<HomeDashboard> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      // The parent glass bar overlays this nested tab. Lift the FAB above its
-      // hit area while leaving the shared navigation itself unchanged.
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 88),
         child: _importFab(),
@@ -336,9 +320,6 @@ class HomeDashboardState extends State<HomeDashboard> {
 
   Widget _body() {
     final inset = context.contentInset(phone: 16);
-    // The screen chrome renders immediately; a small loader fills the content
-    // area while the library loads, so arriving here (e.g. straight after a
-    // fingerprint/Face ID unlock) never looks like the app has frozen.
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -363,16 +344,11 @@ class HomeDashboardState extends State<HomeDashboard> {
   }
 
   Widget _dashboardContent(double inset) {
-    // Latest 10 only — a rolling FIFO window over the (newest-first) library,
-    // so importing an 11th file pushes the oldest entry out of Recently Added.
-    // This only trims the displayed list; the files stay stored in their
-    // categories and are never deleted.
     final recent = _accessibleItems.take(10).toList();
     return ListView(
       physics: const BouncingScrollPhysics(),
       padding: EdgeInsets.only(bottom: AppSpace.xl + 40),
       children: [
-        // Recently added — a compact strip shown only when the vault has files.
         if (recent.isNotEmpty) ...[
           Padding(
             padding: EdgeInsets.symmetric(horizontal: inset),
@@ -386,9 +362,6 @@ class HomeDashboardState extends State<HomeDashboard> {
           _recentCarousel(recent, inset),
           const SizedBox(height: AppSpace.lg),
         ],
-        // Categories — the dashboard shows only the first six (in the user's
-        // chosen order) to stay compact. Everything else, including custom
-        // categories the user creates, lives behind "View all" / "Manage".
         Padding(
           padding: EdgeInsets.symmetric(horizontal: inset),
           child: Column(
@@ -627,7 +600,6 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-  // FAB to import files: pick files → choose a category → save into it.
   Widget _importFab() {
     return _PremiumImportFab(onPressed: _importFlow);
   }
@@ -637,12 +609,9 @@ class HomeDashboardState extends State<HomeDashboard> {
     _isImportFlowActive = true;
     HapticFeedback.lightImpact();
     try {
-      // 1) Open the device file picker directly. Keep the vault session active
-      // while iOS presents its document picker outside the Flutter lifecycle.
       final items = <PickedMedia>[];
       SessionManager.instance.beginTrustedInteraction();
       try {
-        // Close the search keyboard before presenting the native Files UI.
         FocusManager.instance.primaryFocus?.unfocus();
         final result = await FilePicker.platform.pickFiles(
           type: FileType.any,
@@ -650,8 +619,6 @@ class HomeDashboardState extends State<HomeDashboard> {
           withData: false,
         );
         if (result == null || result.files.isEmpty) {
-          // iOS calls documentPickerWasCancelled and returns null on dismissal.
-          // Treat it as a normal exit and restart the inactivity clock.
           await SessionManager.instance.markActive();
           return;
         }
@@ -682,8 +649,6 @@ class HomeDashboardState extends State<HomeDashboard> {
 
       if (items.isEmpty || !mounted) return;
 
-      // 2) Encrypt + import. Each file's category is auto-detected from its
-      // type (video/image/document) — no manual picker.
       await _runImportInto(items, null);
     } finally {
       _isImportFlowActive = false;
@@ -710,13 +675,12 @@ class HomeDashboardState extends State<HomeDashboard> {
         category: category,
       );
     } catch (_) {
-      // fall through to error handling below
     } finally {
       SessionManager.instance.endTrustedInteraction();
     }
 
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).pop(); // dismiss loader
+    Navigator.of(context, rootNavigator: true).pop();
     await _load();
     if (!mounted) return;
 
@@ -756,8 +720,6 @@ class HomeDashboardState extends State<HomeDashboard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Minimal icon tile tinted with the category colour — a small,
-              // consistent splash of colour that keeps the grid clean.
               Container(
                 width: 40,
                 height: 40,
@@ -825,8 +787,6 @@ class HomeDashboardState extends State<HomeDashboard> {
     );
   }
 
-  // A compact rounded-square thumbnail — the real image/video frame (or a type
-  // icon) with the file name beneath. No coloured ring.
   Widget _recentCard(VideoItem m) {
     const double size = 62;
     return GestureDetector(
@@ -936,8 +896,6 @@ class _PremiumImportFab extends StatelessWidget {
   }
 }
 
-/// Ambient color keeps the transparent surfaces legible while allowing their
-/// blur to pick up a subtle indigo reflection as the library scrolls.
 class _LibraryAmbientBackground extends StatelessWidget {
   const _LibraryAmbientBackground();
 
@@ -998,7 +956,6 @@ class _LibraryAmbientBackground extends StatelessWidget {
   }
 }
 
-/// Shared glass treatment for Library controls and content cards.
 class _LibraryGlassPanel extends StatelessWidget {
   final Widget child;
   final double radius;

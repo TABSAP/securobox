@@ -18,10 +18,9 @@ class MyApp extends StatelessWidget {
         final isDark =
             ThemeController.instance.effectiveBrightness == Brightness.dark;
         LiquidColors.applyBrightness(
-            isDark ? Brightness.dark : Brightness.light);
-        SystemChrome.setSystemUIOverlayStyle(
-          LiquidColors.systemOverlayStyle,
+          isDark ? Brightness.dark : Brightness.light,
         );
+        SystemChrome.setSystemUIOverlayStyle(LiquidColors.systemOverlayStyle);
         return MaterialApp(
           navigatorKey: appNavigatorKey,
           debugShowCheckedModeBanner: false,
@@ -40,12 +39,15 @@ class MyApp extends StatelessWidget {
     final bg = dark ? const Color(0xFF0B0B0F) : const Color(0xFFFFFFFF);
     final surface = dark ? const Color(0xFF141418) : const Color(0xFFFFFFFF);
     final raised = dark ? const Color(0xFF1A1A20) : const Color(0xFFF3F4F6);
-    final textPrimary =
-        dark ? const Color(0xFFFFFFFF) : const Color(0xFF0A0A0C);
-    final textSecondary =
-        dark ? const Color(0xFFA0A4AB) : const Color(0xFF5B5F66);
-    final textTertiary =
-        dark ? const Color(0xFF6B7078) : const Color(0xFF9AA0A8);
+    final textPrimary = dark
+        ? const Color(0xFFFFFFFF)
+        : const Color(0xFF0A0A0C);
+    final textSecondary = dark
+        ? const Color(0xFFA0A4AB)
+        : const Color(0xFF5B5F66);
+    final textTertiary = dark
+        ? const Color(0xFF6B7078)
+        : const Color(0xFF9AA0A8);
     final accent = dark ? const Color(0xFF6366F1) : const Color(0xFF4F46E5);
     final outline = dark ? const Color(0x1AFFFFFF) : const Color(0xFFE6E8EC);
     final inputFill = dark ? const Color(0x14FFFFFF) : const Color(0xFFF1F2F4);

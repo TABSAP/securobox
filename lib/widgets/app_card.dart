@@ -43,9 +43,6 @@ class AppCard extends StatelessWidget {
               ]
             : null,
       ),
-      // ListTile paints its background and ink on the nearest Material. Keep
-      // that surface inside the decorated card so the card background cannot
-      // cover the tile's splash (and Flutter's debug assertion stays clear).
       child: Material(
         color: Colors.transparent,
         borderRadius: br,

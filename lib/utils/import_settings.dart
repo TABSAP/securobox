@@ -70,10 +70,7 @@ class ImportSettings {
         hasAll: true,
       );
       if (paths.isEmpty) return null;
-      final all = paths.firstWhere(
-        (e) => e.isAll,
-        orElse: () => paths.first,
-      );
+      final all = paths.firstWhere((e) => e.isAll, orElse: () => paths.first);
       final total = await all.assetCountAsync;
       if (total == 0) return null;
 
@@ -84,7 +81,9 @@ class ImportSettings {
 
       while (scanned < scanLimit) {
         final remaining = scanLimit - scanned;
-        final size = remaining < _galleryPageSize ? remaining : _galleryPageSize;
+        final size = remaining < _galleryPageSize
+            ? remaining
+            : _galleryPageSize;
         final assets = await all.getAssetListPaged(page: page, size: size);
         if (assets.isEmpty) break;
 

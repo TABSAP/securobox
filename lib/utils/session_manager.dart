@@ -35,7 +35,6 @@ class SessionManager {
     60: 'After 1 minute',
     300: 'After 5 minutes',
     900: 'After 15 minutes',
-
   };
 
   int _autoLockSeconds = 60;
@@ -64,7 +63,10 @@ class SessionManager {
 
   Future<void> markActive() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kSessionLastActive, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setInt(
+      _kSessionLastActive,
+      DateTime.now().millisecondsSinceEpoch,
+    );
   }
 
   Future<bool> hasInactivityElapsed() async {

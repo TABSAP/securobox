@@ -33,14 +33,14 @@ class FaceRecognitionService {
 
   FaceDetector? _detector;
   FaceDetector get _faceDetector => _detector ??= FaceDetector(
-        options: FaceDetectorOptions(
-          enableContours: true,
-          enableClassification: true,
-          enableLandmarks: true,
-          performanceMode: FaceDetectorMode.accurate,
-          minFaceSize: 0.15,
-        ),
-      );
+    options: FaceDetectorOptions(
+      enableContours: true,
+      enableClassification: true,
+      enableLandmarks: true,
+      performanceMode: FaceDetectorMode.accurate,
+      minFaceSize: 0.15,
+    ),
+  );
 
   Future<bool> isEnrolled() async {
     try {
@@ -71,12 +71,16 @@ class FaceRecognitionService {
     if (faces.isEmpty) {
       return (vector: null, error: 'No face detected — center your face.');
     }
-    faces.sort((a, b) => (b.boundingBox.width * b.boundingBox.height)
-        .compareTo(a.boundingBox.width * a.boundingBox.height));
+    faces.sort(
+      (a, b) => (b.boundingBox.width * b.boundingBox.height).compareTo(
+        a.boundingBox.width * a.boundingBox.height,
+      ),
+    );
     final face = faces.first;
     if (faces.length > 1) {
       final second = faces[1];
-      final dominant = (face.boundingBox.width * face.boundingBox.height) >
+      final dominant =
+          (face.boundingBox.width * face.boundingBox.height) >
           (second.boundingBox.width * second.boundingBox.height) * 2.0;
       if (!dominant) {
         return (vector: null, error: 'More than one face in view.');
@@ -92,7 +96,10 @@ class FaceRecognitionService {
 
     final vec = _buildVector(face);
     if (vec == null) {
-      return (vector: null, error: 'Move closer, in good light, and hold steady.');
+      return (
+        vector: null,
+        error: 'Move closer, in good light, and hold steady.',
+      );
     }
     return (vector: vec, error: null);
   }
@@ -121,10 +128,16 @@ class FaceRecognitionService {
   ];
 
   List<double>? _buildVector(Face face) {
-    final eyeL =
-        _eyePoint(face, FaceContourType.leftEye, FaceLandmarkType.leftEye);
-    final eyeR =
-        _eyePoint(face, FaceContourType.rightEye, FaceLandmarkType.rightEye);
+    final eyeL = _eyePoint(
+      face,
+      FaceContourType.leftEye,
+      FaceLandmarkType.leftEye,
+    );
+    final eyeR = _eyePoint(
+      face,
+      FaceContourType.rightEye,
+      FaceLandmarkType.rightEye,
+    );
     if (eyeL == null || eyeR == null) return null;
 
     final midX = (eyeL[0] + eyeR[0]) / 2;
@@ -316,8 +329,10 @@ class FaceRecognitionService {
       if (raw == null || raw.isEmpty) return null;
       final bytes = base64Decode(raw);
       if (bytes.lengthInBytes % 8 != 0 || bytes.lengthInBytes < 16) return null;
-      final f64 = bytes.buffer
-          .asFloat64List(bytes.offsetInBytes, bytes.lengthInBytes ~/ 8);
+      final f64 = bytes.buffer.asFloat64List(
+        bytes.offsetInBytes,
+        bytes.lengthInBytes ~/ 8,
+      );
       return (spread: f64[0], vector: f64.sublist(1).toList(growable: false));
     } catch (_) {
       return null;
@@ -332,8 +347,9 @@ class FaceRecognitionService {
       return (matched: false, dist: double.infinity);
     }
     final d = distance(candidate, tmpl.vector);
-    final budget =
-        math.min(matchThreshold, tmpl.spread + _spreadMargin).clamp(0.02, matchThreshold);
+    final budget = math
+        .min(matchThreshold, tmpl.spread + _spreadMargin)
+        .clamp(0.02, matchThreshold);
     return (matched: d <= budget, dist: d);
   }
 }

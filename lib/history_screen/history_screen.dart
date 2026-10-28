@@ -699,7 +699,6 @@ class _HistoryScreenState extends State<HistoryScreen>
     return null;
   }
 
-
   Future<void> _clearDownloads() async {
     showDialog(
       context: context,
@@ -858,10 +857,7 @@ class _HistoryScreenState extends State<HistoryScreen>
               height: 38,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    LiquidColors.accentBlue,
-                    LiquidColors.accentPurple,
-                  ],
+                  colors: [LiquidColors.accentBlue, LiquidColors.accentPurple],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

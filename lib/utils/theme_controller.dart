@@ -51,8 +51,6 @@ class ThemeController extends ChangeNotifier with WidgetsBindingObserver {
     if ((normalized - glassIntensity).abs() < 0.001) return;
     glassIntensityListenable.value = normalized;
 
-    // Slider drags can emit many changes; persist the final value once the
-    // gesture settles instead of writing on every frame.
     _glassIntensitySaveTimer?.cancel();
     _glassIntensitySaveTimer = Timer(
       const Duration(milliseconds: 250),

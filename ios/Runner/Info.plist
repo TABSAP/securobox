@@ -2,8 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
-		<!-- Share to SecuroBox: App Group shared with the Share Extension, and
-		     the URL scheme the extension uses to hand shared files to the app. -->
+		<key>GADApplicationIdentifier</key>
+		<string>$(ADMOB_APP_ID)</string>
+
 		<key>AppGroupId</key>
 		<string>$(CUSTOM_GROUP_ID)</string>
 		<key>CFBundleURLTypes</key>

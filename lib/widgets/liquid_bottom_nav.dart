@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:native_glass_navbar/native_glass_navbar.dart';
@@ -11,7 +9,6 @@ class AppNav {
   static final ValueNotifier<int> tab = ValueNotifier<int>(0);
   static final ValueNotifier<bool> bottomBarVisible = ValueNotifier<bool>(true);
 
-  /// Callback registered by MainScreen to handle tab selection.
   static void Function(int index)? onTabSelected;
 
   static void selectTab(int index) {
@@ -80,104 +77,29 @@ class LiquidBottomNav extends StatelessWidget {
 
   Widget _buildPremiumFallback(BuildContext context, int current) {
     final theme = Theme.of(context);
-    final neutral = theme.colorScheme.onSurface;
     return SafeArea(
       top: false,
-      minimum: const EdgeInsets.only(bottom: 4),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 5, 12, 4),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: Container(
-                  height: 66,
-                  decoration: BoxDecoration(
-                    color: LiquidColors.surface.withValues(
-                      alpha: LiquidColors.isDark ? 0.74 : 0.88,
-                    ),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(
-                      color: Colors.white.withValues(
-                        alpha: LiquidColors.isDark ? 0.16 : 0.78,
-                      ),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: LiquidColors.isDark ? 0.18 : 0.07,
-                        ),
-                        blurRadius: 20,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(5),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) => Stack(
-                        children: [
-                          AnimatedAlign(
-                            alignment: current == 0
-                                ? Alignment.centerLeft
-                                : Alignment.centerRight,
-                            duration: const Duration(milliseconds: 360),
-                            curve: Curves.easeOutCubic,
-                            child: SizedBox(
-                              width: constraints.maxWidth / _navItems.length,
-                              height: constraints.maxHeight,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                  color: neutral.withValues(
-                                    alpha: theme.brightness == Brightness.dark
-                                        ? 0.16
-                                        : 0.10,
-                                  ),
-                                  border: Border.all(
-                                    color: neutral.withValues(
-                                      alpha: theme.brightness == Brightness.dark
-                                          ? 0.24
-                                          : 0.18,
-                                    ),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: neutral.withValues(
-                                        alpha:
-                                            theme.brightness == Brightness.dark
-                                            ? 0.08
-                                            : 0.04,
-                                      ),
-                                      blurRadius: 12,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Row(
-                            children: List.generate(_navItems.length, (i) {
-                              return Expanded(
-                                child: _NavButton(
-                                  item: _navItems[i],
-                                  selected: i == current,
-                                  showLabel: false,
-                                  onTap: () => _onTap(i),
-                                ),
-                              );
-                            }),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: LiquidColors.surface,
+          border: Border(
+            top: BorderSide(color: theme.dividerColor, width: 0.7),
+          ),
+        ),
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: List.generate(_navItems.length, (i) {
+              return Expanded(
+                child: _NavButton(
+                  item: _navItems[i],
+                  selected: i == current,
+                  showLabel: true,
+                  onTap: () => _onTap(i),
                 ),
-              ),
-            ),
+              );
+            }),
           ),
         ),
       ),

@@ -87,8 +87,7 @@ class _SecureMediaPickerScreenState extends State<SecureMediaPickerScreen> {
   }
 
   void _onScroll() {
-    if (_scroll.position.pixels >=
-        _scroll.position.maxScrollExtent - 600) {
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 600) {
       _loadMore();
     }
   }
@@ -97,7 +96,10 @@ class _SecureMediaPickerScreenState extends State<SecureMediaPickerScreen> {
     if (_album == null || _loadingMore || (!_hasMore && !initial)) return;
     _loadingMore = true;
     try {
-      final batch = await _album!.getAssetListPaged(page: _page, size: _pageSize);
+      final batch = await _album!.getAssetListPaged(
+        page: _page,
+        size: _pageSize,
+      );
       if (!mounted) return;
       setState(() {
         _assets.addAll(batch);
@@ -149,9 +151,7 @@ class _SecureMediaPickerScreenState extends State<SecureMediaPickerScreen> {
   Widget _buildBody() {
     if (_denied) return _buildDenied();
     if (_loading) {
-      return Center(
-        child: AppLoader(),
-      );
+      return Center(child: AppLoader());
     }
     if (_assets.isEmpty) {
       return Center(

@@ -9,9 +9,6 @@ class UnsupportedBiometricModality implements Exception {
   final String message;
 }
 
-/// Checks the requested modality before displaying the OS biometric prompt.
-/// Android's public BiometricPrompt filters security classes, not modalities,
-/// so the Face Unlock preference uses the OS-selected eligible biometric.
 class BiometricPolicy {
   static bool supports(
     TargetPlatform platform,
@@ -24,7 +21,6 @@ class BiometricPolicy {
     final requiredType = requested == BiometricModality.face
         ? BiometricType.face
         : BiometricType.fingerprint;
-    // iOS reports the device's biometryType. Reject ambiguous responses.
     return enrolled.toSet().length == 1 && enrolled.contains(requiredType);
   }
 
@@ -42,10 +38,6 @@ class BiometricPolicy {
           ? BiometricModality.face
           : BiometricModality.device;
     }
-    // Android cannot guarantee face-only authentication through BiometricPrompt.
-    // Still honor the user's Face Unlock preference by invoking the system
-    // prompt with the device's eligible biometric set; the OS decides whether
-    // face, fingerprint, or another enrolled modality is offered.
     final effectiveRequest =
         defaultTargetPlatform == TargetPlatform.android &&
             requested == BiometricModality.face

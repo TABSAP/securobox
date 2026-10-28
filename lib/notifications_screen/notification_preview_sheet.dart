@@ -6,9 +6,6 @@ import 'package:video_player_app/utils/notification_service.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
 import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
-/// A compact modal bottom-sheet preview of the latest notifications, opened
-/// from the bell icon. Shows up to 5 newest notifications and a "View All"
-/// action that pushes the full [NotificationsScreen].
 class NotificationPreviewSheet extends StatefulWidget {
   const NotificationPreviewSheet({super.key});
 
@@ -30,7 +27,6 @@ class _NotificationPreviewSheetState extends State<NotificationPreviewSheet> {
   @override
   void initState() {
     super.initState();
-    // Opening the sheet marks everything as read (clears the bell badge).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.instance.markAllRead();
     });
@@ -60,7 +56,6 @@ class _NotificationPreviewSheetState extends State<NotificationPreviewSheet> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Grab handle.
               Padding(
                 padding: const EdgeInsets.only(top: 10, bottom: 6),
                 child: Container(
@@ -72,7 +67,6 @@ class _NotificationPreviewSheetState extends State<NotificationPreviewSheet> {
                   ),
                 ),
               ),
-              // Header.
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
                 child: Row(

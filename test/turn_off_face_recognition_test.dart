@@ -14,7 +14,8 @@ void main() {
     final baseVector = List<double>.generate(len, (i) => (i % 10) * 0.1);
     final samples = List.generate(
       FaceRecognitionService.enrollSamples,
-      (sIdx) => List<double>.generate(len, (i) => baseVector[i] + (sIdx * 0.005)),
+      (sIdx) =>
+          List<double>.generate(len, (i) => baseVector[i] + (sIdx * 0.005)),
     );
     await FaceRecognitionService.instance.enroll(samples);
   }
@@ -49,9 +50,7 @@ void main() {
     'Turn off Face Recognition dialog: Cancel button dismisses dialog cleanly without crashing',
     (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: SecuritySettingsScreen(),
-        ),
+        const MaterialApp(home: SecuritySettingsScreen()),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
@@ -60,22 +59,18 @@ void main() {
       expect(faceSwitch, findsOneWidget);
       await tester.ensureVisible(faceSwitch);
 
-      // Toggle switch OFF
       await tester.tap(faceSwitch);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      // Confirmation dialog should be visible
       expect(find.text('Turn off Face Recognition?'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Verify & turn off'), findsOneWidget);
 
-      // Tap Cancel
       await tester.tap(find.text('Cancel'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
-      // Dialog should be dismissed, and SecuritySettingsScreen is still mounted and intact
       expect(find.text('Turn off Face Recognition?'), findsNothing);
       expect(find.byType(SecuritySettingsScreen), findsOneWidget);
       expect(await FaceRecognitionService.instance.isEnrolled(), isTrue);
@@ -86,9 +81,7 @@ void main() {
     'Turn off Face Recognition dialog: Verify & turn off opens PIN dialog and turns off on PIN entry',
     (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: SecuritySettingsScreen(),
-        ),
+        const MaterialApp(home: SecuritySettingsScreen()),
       );
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
@@ -97,22 +90,21 @@ void main() {
       expect(faceSwitch, findsOneWidget);
       await tester.ensureVisible(faceSwitch);
 
-      // Toggle switch OFF
       await tester.tap(faceSwitch);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('Turn off Face Recognition?'), findsOneWidget);
 
-      // Tap "Verify & turn off"
       await tester.tap(find.text('Verify & turn off'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
 
-      // Should prompt for PIN via PinUnlockDialog
-      expect(find.text('Verify your PIN to turn off Face Recognition'), findsOneWidget);
+      expect(
+        find.text('Verify your PIN to turn off Face Recognition'),
+        findsOneWidget,
+      );
 
-      // Enter correct PIN: '1', '2', '3', '4' inside PinUnlockDialog
       for (final digit in ['1', '2', '3', '4']) {
         final keyBtn = find.widgetWithText(InkWell, digit);
         expect(keyBtn, findsOneWidget);
@@ -121,14 +113,16 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
       }
 
-      // Wait for real async isolate PBKDF2 calculation
       await tester.runAsync(() async {
-        await Future.delayed(const Duration(milliseconds: 1500));
+        final deadline = DateTime.now().add(const Duration(seconds: 15));
+        while (DateTime.now().isBefore(deadline) &&
+            await FaceRecognitionService.instance.isEnrolled()) {
+          await Future.delayed(const Duration(milliseconds: 100));
+        }
       });
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
 
-      // Enrollment should now be cleared
       expect(await FaceRecognitionService.instance.isEnrolled(), isFalse);
     },
   );

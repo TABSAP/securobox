@@ -1,4 +1,3 @@
-
 class DownloadItem {
   final String id;
   final String fileName;
@@ -31,18 +30,11 @@ class VideoItem {
   bool isDeleted;
   DateTime? deletedDate;
   final bool encrypted;
+  final int? encryptionVersion;
   bool isHidden;
   bool isFavorite;
-  // Whether this item is currently saved/visible in the device gallery.
-  // Videos default to "hidden from gallery" (locked); unlocking saves them
-  // back to the gallery. `galleryId` is the device asset id, kept so the item
-  // can be removed from the gallery again when re-hidden.
   bool inGallery;
   String galleryId;
-  // Where this file came from, so unlocking can restore it to its original
-  // spot. `origin` is 'gallery' | 'camera' | 'file' | ''. `originAlbum` is the
-  // device album relative path to restore into (e.g. 'DCIM/Camera',
-  // 'Pictures/Trips'); empty means "no known original location".
   String origin;
   String originAlbum;
 
@@ -56,6 +48,7 @@ class VideoItem {
     this.isDeleted = false,
     this.deletedDate,
     this.encrypted = false,
+    this.encryptionVersion,
     this.isHidden = false,
     this.isFavorite = false,
     this.inGallery = false,
@@ -74,6 +67,7 @@ class VideoItem {
     bool? isDeleted,
     DateTime? deletedDate,
     bool? encrypted,
+    int? encryptionVersion,
     bool? isHidden,
     bool? isFavorite,
     bool? inGallery,
@@ -91,6 +85,7 @@ class VideoItem {
       isDeleted: isDeleted ?? this.isDeleted,
       deletedDate: deletedDate ?? this.deletedDate,
       encrypted: encrypted ?? this.encrypted,
+      encryptionVersion: encryptionVersion ?? this.encryptionVersion,
       isHidden: isHidden ?? this.isHidden,
       isFavorite: isFavorite ?? this.isFavorite,
       inGallery: inGallery ?? this.inGallery,
@@ -104,7 +99,7 @@ class VideoItem {
       v.replaceAll('|', ' ').replaceAll(RegExp(r'[\r\n]'), ' ');
 
   String toStorageString() {
-    return '$id|${_safe(title)}|${_safe(path)}|$type|$isLocked|${_safe(category)}|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite|$inGallery|${_safe(galleryId)}|${_safe(origin)}|${_safe(originAlbum)}';
+    return '$id|${_safe(title)}|${_safe(path)}|$type|$isLocked|${_safe(category)}|$isDeleted|${deletedDate?.toIso8601String() ?? ""}|$encrypted|$isHidden|$isFavorite|$inGallery|${_safe(galleryId)}|${_safe(origin)}|${_safe(originAlbum)}|${encryptionVersion ?? ""}';
   }
 
   factory VideoItem.fromStorageString(String storageString) {
@@ -133,6 +128,7 @@ class VideoItem {
           ? DateTime.tryParse(parts[7])
           : null,
       encrypted: parts.length > 8 ? parts[8] == 'true' : false,
+      encryptionVersion: parts.length > 15 ? int.tryParse(parts[15]) : null,
       isHidden: parts.length > 9 ? parts[9] == 'true' : false,
       isFavorite: parts.length > 10 ? parts[10] == 'true' : false,
       inGallery: parts.length > 11 ? parts[11] == 'true' : false,

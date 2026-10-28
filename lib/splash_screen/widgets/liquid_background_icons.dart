@@ -15,7 +15,6 @@ class LiquidBackgroundIcons extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-
         ...List.generate(6, (index) {
           final delay = index * 200;
           final isEven = index.isEven;
@@ -24,9 +23,7 @@ class LiquidBackgroundIcons extends StatelessWidget {
 
           return Positioned(
             top: screenHeight * (index * 0.15) % screenHeight,
-            left: isEven
-                ? screenWidth * 0.1
-                : screenWidth * 0.8,
+            left: isEven ? screenWidth * 0.1 : screenWidth * 0.8,
             child: TweenAnimationBuilder(
               tween: Tween<double>(begin: 0, end: 1),
               duration: Duration(milliseconds: 1500 + delay),

@@ -74,8 +74,6 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
     }
 
     HapticFeedback.selectionClick();
-    // Opening the system picker sends the app inactive; without this the
-    // auto-lock can fire and dismiss the picker mid-selection.
     SessionManager.instance.beginTrustedInteraction();
     try {
       FocusManager.instance.primaryFocus?.unfocus();
@@ -129,8 +127,6 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
         context,
       );
     } finally {
-      // Must run on every path — the block above has several early returns,
-      // and a leaked depth would suppress auto-lock for the rest of the session.
       SessionManager.instance.endTrustedInteraction();
     }
   }

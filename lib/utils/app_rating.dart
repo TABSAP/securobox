@@ -32,7 +32,9 @@ class AppRating {
     if (Platform.isIOS) {
       if (_appStoreId.isNotEmpty) {
         final launched = await _launch(
-          Uri.parse('https://apps.apple.com/app/id$_appStoreId?action=write-review'),
+          Uri.parse(
+            'https://apps.apple.com/app/id$_appStoreId?action=write-review',
+          ),
         );
         if (launched) return;
         try {

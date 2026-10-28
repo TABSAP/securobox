@@ -5,10 +5,7 @@ import '../../widgets/app_brand_icon.dart';
 class LiquidLogo extends StatelessWidget {
   final Animation<double> animation;
 
-  const LiquidLogo({
-    super.key,
-    required this.animation,
-  });
+  const LiquidLogo({super.key, required this.animation});
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +23,9 @@ class LiquidLogo extends StatelessWidget {
               borderRadius: BorderRadius.circular(35),
               boxShadow: [
                 BoxShadow(
-                  color: LiquidColors.primaryStart.withValues(alpha: 0.5 * value),
+                  color: LiquidColors.primaryStart.withValues(
+                    alpha: 0.5 * value,
+                  ),
                   blurRadius: 30,
                   spreadRadius: 10,
                   offset: const Offset(0, 15),
@@ -39,11 +38,7 @@ class LiquidLogo extends StatelessWidget {
                 ),
               ],
             ),
-            child: const AppBrandIcon(
-              size: 140,
-              radius: 35,
-              showShadow: false,
-            ),
+            child: const AppBrandIcon(size: 140, radius: 35, showShadow: false),
           ),
         );
       },

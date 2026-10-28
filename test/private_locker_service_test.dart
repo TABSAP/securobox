@@ -54,7 +54,6 @@ void main() {
       for (var attempt = 0; attempt < 5; attempt++) {
         expect(await service.verifyPin('000000'), isFalse);
       }
-      // A correct PIN is rejected during the cooldown after five failures.
       expect(await service.verifyPin('482619'), isFalse);
     },
   );

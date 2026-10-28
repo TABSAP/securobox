@@ -24,13 +24,8 @@ import 'package:video_player_app/utils/vault_context.dart';
 class AddToVaultSheet extends StatefulWidget {
   final Future<void> Function() onImported;
 
-  /// When set (with [autoStart]), imports go straight into this category and
-  /// the category grid is skipped.
   final String? initialCategory;
 
-  /// When true, the sheet opens the picker immediately instead of showing the
-  /// Quick Import grid. If [initialCategory] is null a smart (all-types) picker
-  /// is used; otherwise the picker is filtered for that category.
   final bool autoStart;
 
   const AddToVaultSheet({
@@ -83,16 +78,12 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     super.initState();
     _loadCustomCategories();
     if (widget.autoStart) {
-      // The sheet can be dismissed before the frame ends; _autoStartRun opens a
-      // picker and pops this route, so it must not run on a dead widget.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _autoStartRun();
       });
     }
   }
 
-  // Direct-pick mode: open the (category-filtered) picker immediately, import
-  // into the chosen category, then dismiss — no Quick Import grid.
   Future<void> _autoStartRun() async {
     try {
       if (widget.initialCategory != null) {
@@ -152,8 +143,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     }
   }
 
-  /// Allowed extensions for a custom-typed picker (Documents only). Returns
-  /// null for every other category, which uses a broader [FileType].
   List<String>? _allowedExtensionsForCategory(String category) {
     if (category != 'Documents') return null;
     return MediaImporter.docExtensions
@@ -247,9 +236,6 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     final items = <PickedMedia>[];
     SessionManager.instance.beginTrustedInteraction();
     try {
-      // Dismiss any search/category keyboard before UIKit presents Files.
-      // This also avoids iOS QuickType candidate-view constraint warnings
-      // during the picker transition.
       FocusManager.instance.primaryFocus?.unfocus();
       final result = await FilePicker.platform.pickFiles(
         type: type,

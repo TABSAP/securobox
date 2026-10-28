@@ -7,13 +7,6 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:video_player_app/models/app_models.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 
-/// Session cache of ready-to-render preview files, keyed by vault item id.
-///
-/// Previews are decrypted/extracted plaintext, so — like [VaultCrypto]'s temp
-/// cache — everything lives under the vault temp dir and is wiped on lock. The
-/// importer *primes* this cache the moment a file is imported (while the source
-/// is still in hand), so [VaultThumbnail] can show the real preview instantly
-/// on first build instead of flashing a placeholder icon.
 class ThumbnailCache {
   ThumbnailCache._();
   static final ThumbnailCache instance = ThumbnailCache._();
@@ -21,13 +14,11 @@ class ThumbnailCache {
   final Map<String, File> _cache = {};
   final Map<String, Future<File?>> _inflight = {};
 
-  /// Synchronous cache hit — used in `initState` so a warm preview renders on
-  /// the very first frame (no placeholder flash). Returns null on a miss.
   File? peek(String id) {
     final f = _cache[id];
     if (f == null) return null;
     if (f.existsSync()) return f;
-    _cache.remove(id); // stale (temp wiped) — drop it.
+    _cache.remove(id);
     return null;
   }
 
@@ -43,8 +34,6 @@ class ThumbnailCache {
     _inflight.clear();
   }
 
-  /// Ensures a preview exists for [item], generating it from the encrypted file
-  /// on a cache miss. Concurrent callers for the same id share one future.
   Future<File?> ensure(VideoItem item) {
     final hit = peek(item.id);
     if (hit != null) return Future.value(hit);
@@ -64,19 +53,22 @@ class ThumbnailCache {
     try {
       if (item.type == 'image') {
         final path = item.encrypted
-            ? await VaultCrypto.instance.decryptToTemp(item.path)
+            ? await VaultCrypto.instance.decryptToTemp(
+                item.path,
+                formatVersion: item.encryptionVersion,
+              )
             : item.path;
         final f = File(path);
         return await f.exists() ? f : null;
       }
       if (item.type == 'video') {
         final videoPath = item.encrypted
-            ? await VaultCrypto.instance.decryptToTemp(item.path)
+            ? await VaultCrypto.instance.decryptToTemp(
+                item.path,
+                formatVersion: item.encryptionVersion,
+              )
             : item.path;
         final dir = await VaultCrypto.instance.previewTempDir();
-        // Many phone videos begin with a black frame. A frame around one
-        // second in usually gives a useful preview; fall back to the first
-        // frame for very short clips or formats that cannot seek reliably.
         for (final timeMs in const [1000, 0]) {
           final thumbPath = await VideoThumbnail.thumbnailFile(
             video: videoPath,
@@ -93,17 +85,10 @@ class ThumbnailCache {
           }
         }
       }
-    } catch (_) {
-      // Fall back to the type icon on any decrypt/extract failure.
-    }
+    } catch (_) {}
     return null;
   }
 
-  /// Primes the cache straight from the plaintext [source] at import time, so
-  /// the preview is ready before the item ever appears on screen. Images are
-  /// copied synchronously (fast, and avoids a race with original-deletion);
-  /// videos have a first frame extracted in the background from the encrypted
-  /// file via [ensure]. No-ops for types without previews (audio/documents).
   Future<void> primeFromSource({
     required VideoItem item,
     required File source,
@@ -118,8 +103,6 @@ class ThumbnailCache {
       } else if (item.type == 'video') {
         unawaited(ensure(item));
       }
-    } catch (_) {
-      // A failed prime just means the thumbnail loads lazily later.
-    }
+    } catch (_) {}
   }
 }

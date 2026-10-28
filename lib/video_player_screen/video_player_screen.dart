@@ -69,8 +69,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         _isInitialized = true;
       });
 
-      // Start playback immediately — the UI renders a raw VideoPlayer with
-      // custom controls, so the controller must be told to play directly.
       await _videoPlayerController.play();
       _hideOverlayAfterDelay();
     } catch (_) {
@@ -805,8 +803,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Keep letterbox/system inset areas dark while the video fills the
-      // player viewport, so no white bands flash around a portrait clip.
       backgroundColor: Colors.black,
       body: _buildVideoPlayerWithOrientationHandler(),
     );

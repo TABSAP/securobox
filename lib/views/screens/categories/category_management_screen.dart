@@ -9,10 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
 import 'package:video_player_app/widgets/liquid_glass_surface.dart';
 
-/// Unified category management: default (built-in) and custom categories live
-/// together in one reorderable list. Users can rename and hide/show every
-/// category, reorder them all, and delete custom ones (defaults can only be
-/// hidden). All persistence goes through [CategoryService].
 class CategoryManagementScreen extends StatefulWidget {
   const CategoryManagementScreen({super.key});
 
@@ -25,7 +21,6 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   static const int _maxLength = 24;
   static final RegExp _allowed = RegExp(r'^[A-Za-z0-9 _\-]+$');
 
-  /// Filter pseudo-categories that can never be used as a custom name.
   static const List<String> _reserved = ['All', 'Favorites'];
 
   List<CategoryInfo> _items = [];
@@ -76,8 +71,6 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
     }
   }
 
-  /// Validates [name] and returns an error string, or null when valid.
-  /// [originalKey] is supplied on rename so the item's own name/key is allowed.
   String? _validate(String name, {String? originalKey}) {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'Please enter a name';
@@ -200,8 +193,6 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
     await _reload();
   }
 
-  /// Shows the add/rename dialog. Returns the trimmed valid name, or null when
-  /// cancelled. When [originalName] is provided the dialog is in rename mode.
   Future<String?> _showEditDialog({String? originalName, String? originalKey}) {
     final controller = TextEditingController(text: originalName ?? '');
     return showDialog<String>(
@@ -230,8 +221,6 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
               child: LiquidGlassSurface(
                 borderRadius: AppRadius.lg,
                 blur: 24,
-                // Keep the dialog neutral: category icon accents should not
-                // tint the surrounding surface through the glass blur.
                 tintOpacity: 0,
                 padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
                 child: Column(

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,6 @@ import '../utils/liquid_colors.dart';
 
 enum FaceScanMode { enroll, verify }
 
-const Color _kGreenDeep = Color(0xFF008A3D);
 const Color _kGreen = Color(0xFF12B25C);
 const Color _kGreenBright = Color(0xFF2BD976);
 const Color _kRed = Color(0xFFE5484D);
@@ -365,18 +365,7 @@ class _FaceScanScreenState extends State<FaceScanScreen>
     return Scaffold(
       backgroundColor: LiquidColors.backgroundDeep,
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              _kGreenDeep.withValues(alpha: 0.16),
-              LiquidColors.backgroundDeep,
-              LiquidColors.backgroundDeep,
-            ],
-            stops: const [0.0, 0.42, 1.0],
-          ),
-        ),
+        decoration: BoxDecoration(gradient: LiquidColors.backgroundGradient),
         child: SafeArea(
           child: Stack(
             children: [
@@ -387,34 +376,79 @@ class _FaceScanScreenState extends State<FaceScanScreen>
                     constraints: BoxConstraints(minHeight: c.maxHeight),
                     child: Center(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _titleText(),
-                            const SizedBox(height: 8),
-                            _subtitleText(),
-                            const SizedBox(height: 30),
-                            _orbArea(orb),
-                            const SizedBox(height: 26),
-                            if (_isEnroll && _phase == _Phase.scanning) ...[
-                              _enrollDots(),
-                              const SizedBox(height: 16),
-                            ],
-                            _hintText(),
-                            if (_phase == _Phase.scanning && _cameraReady) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                'Tap the circle to capture now',
-                                style: TextStyle(
-                                  color: LiquidColors.textTertiary,
-                                  fontSize: 12,
-                                ),
+                        padding: const EdgeInsets.fromLTRB(18, 56, 18, 20),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(
+                                18,
+                                24,
+                                18,
+                                20,
                               ),
-                            ],
-                            const SizedBox(height: 26),
-                            _stateButtons(),
-                          ],
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    LiquidColors.surfaceMuted.withValues(
+                                      alpha: LiquidColors.isDark ? 0.62 : 0.68,
+                                    ),
+                                    LiquidColors.surface.withValues(
+                                      alpha: LiquidColors.isDark ? 0.42 : 0.72,
+                                    ),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(
+                                  color: LiquidColors.cardBorder.withValues(
+                                    alpha: LiquidColors.isDark ? 0.9 : 0.95,
+                                  ),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: LiquidColors.shadow.withValues(
+                                      alpha: LiquidColors.isDark ? 0.3 : 0.1,
+                                    ),
+                                    blurRadius: 28,
+                                    offset: const Offset(0, 12),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _titleText(),
+                                  const SizedBox(height: 8),
+                                  _subtitleText(),
+                                  const SizedBox(height: 24),
+                                  _orbArea(orb),
+                                  const SizedBox(height: 20),
+                                  if (_isEnroll &&
+                                      _phase == _Phase.scanning) ...[
+                                    _enrollDots(),
+                                    const SizedBox(height: 16),
+                                  ],
+                                  _hintText(),
+                                  if (_phase == _Phase.scanning &&
+                                      _cameraReady) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Tap the circle to capture now',
+                                      style: TextStyle(
+                                        color: LiquidColors.textTertiary,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 22),
+                                  _stateButtons(),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -860,43 +894,56 @@ class _FaceScanScreenState extends State<FaceScanScreen>
     required String label,
     required VoidCallback onTap,
   }) {
+    final accent = LiquidColors.indigo;
     return _PressableScale(
       onTap: onTap,
       borderRadius: 16,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 15),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [_kGreenBright, _kGreenDeep],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: _kGreen.withValues(alpha: 0.4),
-              blurRadius: 18,
-              spreadRadius: -3,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 19),
-            const SizedBox(width: 9),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.3,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  accent.withValues(alpha: LiquidColors.isDark ? 0.34 : 0.16),
+                  LiquidColors.surface.withValues(
+                    alpha: LiquidColors.isDark ? 0.62 : 0.76,
+                  ),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: accent.withValues(alpha: 0.48)),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.16),
+                  blurRadius: 20,
+                  spreadRadius: -4,
+                  offset: const Offset(0, 6),
+                ),
+              ],
             ),
-          ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: LiquidColors.textPrimary, size: 19),
+                const SizedBox(width: 9),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: LiquidColors.textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -952,7 +999,7 @@ class _FaceScanScreenState extends State<FaceScanScreen>
       child: Text(
         label,
         style: TextStyle(
-          color: muted ? LiquidColors.textTertiary : _kGreen,
+          color: muted ? LiquidColors.textTertiary : LiquidColors.indigo,
           fontSize: 13.5,
           fontWeight: FontWeight.w700,
         ),

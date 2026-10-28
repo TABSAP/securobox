@@ -434,8 +434,6 @@ class _AppLockScreenState extends State<AppLockScreen>
       if (!mounted) return;
       if (result == BiometricAuthResult.authenticated) {
         VaultContext.instance.exitDecoy();
-        // Show the unlocking loader immediately so the hand-off from the
-        // fingerprint/Face ID sheet into the vault never looks frozen.
         setState(() => _isUnlocking = true);
         await _unlockApp();
         return;

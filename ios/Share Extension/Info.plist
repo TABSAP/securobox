@@ -17,9 +17,7 @@
         </array>
         <key>NSExtensionActivationRule</key>
         <dict>
-          <!-- Appear in the iOS share sheet for every supported kind: text,
-               URLs, images, videos and any other file (documents, archives,
-               code, ebooks, fonts). High max counts enable multi-file sharing. -->
+
           <key>NSExtensionActivationSupportsText</key>
           <true/>
           <key>NSExtensionActivationSupportsWebURLWithMaxCount</key>

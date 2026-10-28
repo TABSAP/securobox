@@ -8,24 +8,9 @@ import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
 
-/// A fully offline, self-contained font previewer for the secure vault.
-///
-/// It is handed an ALREADY-DECRYPTED font file on disk (the caller decrypts
-/// first) and renders a live specimen locally — nothing is ever shared with
-/// other apps or the network.
-///
-/// Live specimens are supported for `.ttf` and `.otf`, which are registered at
-/// runtime via Flutter's [FontLoader]. Compressed web-font wrappers
-/// (`.woff` / `.woff2`, the latter Brotli-compressed) cannot be parsed by
-/// [FontLoader], so they fall back to a graceful "preview unavailable" state
-/// that still surfaces the file metadata. Any load failure also falls back to
-/// that state rather than crashing.
 class FontViewerScreen extends StatefulWidget {
-  /// Absolute path to the decrypted font file on disk. The real extension is
-  /// derived from this path (not [fileName], which is only a display title).
   final String filePath;
 
-  /// Display title shown in the AppBar. May lack a file extension.
   final String fileName;
 
   const FontViewerScreen({
@@ -38,28 +23,19 @@ class FontViewerScreen extends StatefulWidget {
   State<FontViewerScreen> createState() => _FontViewerScreenState();
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Load result models
-// ─────────────────────────────────────────────────────────────────────────
-
 abstract class _FontResult {
   const _FontResult();
 }
 
-/// A font that was successfully registered and can render a live specimen.
 class _LoadedFont extends _FontResult {
-  /// The runtime family name the font was registered under.
   final String family;
 
-  /// Size on disk, in bytes.
   final int sizeBytes;
 
   const _LoadedFont(this.family, this.sizeBytes);
 }
 
-/// A font that can't be previewed live (woff/woff2, or any parse failure).
 class _UnsupportedFont extends _FontResult {
-  /// Size on disk in bytes, or null if it could not be read.
   final int? sizeBytes;
 
   const _UnsupportedFont(this.sizeBytes);
@@ -79,8 +55,6 @@ class _FontViewerScreenState extends State<FontViewerScreen> {
   Future<_FontResult> _load() async {
     final ext = p.extension(widget.filePath).toLowerCase();
 
-    // Compressed web-font wrappers cannot be parsed by FontLoader — default to
-    // the graceful state, but still surface the file size when available.
     if (ext == '.woff' || ext == '.woff2') {
       int? size;
       try {
@@ -103,8 +77,6 @@ class _FontViewerScreenState extends State<FontViewerScreen> {
 
     try {
       final bytes = await File(widget.filePath).readAsBytes();
-      // Unique per screen instance to avoid FontLoader cache collisions across
-      // multiple previews of different files.
       final family = 'previewFont_${identityHashCode(this)}';
       final loader = FontLoader(family)
         ..addFont(Future.value(ByteData.view(bytes.buffer)));
@@ -135,10 +107,7 @@ class _FontViewerScreenState extends State<FontViewerScreen> {
         scrolledUnderElevation: 0,
         systemOverlayStyle: LiquidColors.systemOverlayStyle,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_rounded,
-            color: LiquidColors.textPrimary,
-          ),
+          icon: Icon(Icons.arrow_back_rounded, color: LiquidColors.textPrimary),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         title: Text(
@@ -166,7 +135,6 @@ class _FontViewerScreenState extends State<FontViewerScreen> {
     );
   }
 
-  // ── Specimen ───────────────────────────────────────────────────────────
   Widget _buildSpecimen(_LoadedFont font) {
     final family = font.family;
     final inset = context.contentInset(phone: 16);
@@ -289,7 +257,6 @@ class _FontViewerScreenState extends State<FontViewerScreen> {
     );
   }
 
-  // ── Graceful unavailable state ───────────────────────────────────────────
   Widget _buildUnavailable(_UnsupportedFont result) {
     final inset = context.contentInset(phone: 16);
     return Center(

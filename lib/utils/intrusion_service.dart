@@ -106,11 +106,13 @@ class IntrusionService {
       await prefs.setStringList(_kLogKey, log);
       logCount.value = log.length;
 
-      unawaited(NotificationService.instance.addEvent(
-        title: 'Break-in attempt detected',
-        body: 'A photo was captured after a failed unlock attempt.',
-        kind: 'security',
-      ));
+      unawaited(
+        NotificationService.instance.addEvent(
+          title: 'Break-in attempt detected',
+          body: 'A photo was captured after a failed unlock attempt.',
+          kind: 'security',
+        ),
+      );
 
       return true;
     } catch (_) {
@@ -126,9 +128,7 @@ class IntrusionService {
   Future<List<IntrusionEntry>> getLog() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getStringList(_kLogKey) ?? [];
-    return raw
-        .map(IntrusionEntry.fromStorageString)
-        .toList()
+    return raw.map(IntrusionEntry.fromStorageString).toList()
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
   }
 

@@ -111,7 +111,7 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
     if (diff.inSeconds < 45) return 'Just now';
     if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
     if (diff.inHours < 24) {
-      return '${diff.inHours} ${diff.inHours == 1 ? 'hour' : 'hours'} ago';
+      return '${diff.inHours} ${diff.inHours == 1 ? 'hou' : 'hours'} ago';
     }
     if (diff.inDays < 7) {
       return '${diff.inDays} ${diff.inDays == 1 ? 'day' : 'days'} ago';

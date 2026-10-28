@@ -37,6 +37,9 @@
         android:usesCleartextTraffic="false"
         android:networkSecurityConfig="@xml/network_security_config"
         android:enableOnBackInvokedCallback="true">
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -55,10 +58,7 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Share to SecuroBox: appear in the Android Sharesheet for a
-                 single shared file (ACTION_SEND) across every supported type.
-                 The category wildcards cover images/videos/audio/text and all
-                 application/* documents, archives, code, ebooks and fonts. -->
+
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>
                 <category android:name="android.intent.category.DEFAULT"/>
@@ -70,7 +70,7 @@
                 <data android:mimeType="application/*"/>
             </intent-filter>
 
-            <!-- Share to SecuroBox: multiple files at once (ACTION_SEND_MULTIPLE). -->
+
             <intent-filter>
                 <action android:name="android.intent.action.SEND_MULTIPLE"/>
                 <category android:name="android.intent.category.DEFAULT"/>
@@ -83,12 +83,9 @@
             </intent-filter>
         </activity>
 
-        <!-- Disguise launcher entries. Each is a real <activity> (not an
-             <activity-alias>) so it can declare its own android:theme, which is
-             what carries the disguise icon onto the launch/splash screen. Only
-             one is ever enabled at a time; disguise_service toggles them. -->
 
-        <!-- Disguise: Calculator -->
+
+
         <activity
             android:name=".CalculatorActivity"
             android:exported="true"
@@ -110,7 +107,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Disguise: Notes -->
+
         <activity
             android:name=".NotesActivity"
             android:exported="true"
@@ -132,7 +129,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Disguise: Weather -->
+
         <activity
             android:name=".WeatherActivity"
             android:exported="true"
@@ -154,7 +151,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Disguise: Compass -->
+
         <activity
             android:name=".CompassActivity"
             android:exported="true"
@@ -176,7 +173,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Disguise: Utilities -->
+
         <activity
             android:name=".UtilitiesActivity"
             android:exported="true"

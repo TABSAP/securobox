@@ -8,7 +8,7 @@ class MediaHelper {
     "Photos",
     "Audio",
     "Documents",
-    "Others"
+    "Others",
   ];
 
   static IconData getMediaIcon(String type) {
@@ -40,48 +40,136 @@ class MediaHelper {
     final ext = path.split('.').last.toLowerCase();
 
     if ([
-      'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'm4v', 'mpg', 'mpeg', '3gp',
-      'webm', 'ts', 'mts', 'm2ts'
+      'mp4',
+      'mkv',
+      'avi',
+      'mov',
+      'wmv',
+      'flv',
+      'm4v',
+      'mpg',
+      'mpeg',
+      '3gp',
+      'webm',
+      'ts',
+      'mts',
+      'm2ts',
     ].contains(ext)) {
       return 'Video';
-    }
-
-    else if ([
-      'mp3', 'wav', 'aac', 'flac', 'ogg', 'm4a', 'wma', 'aiff', 'alac', 'opus',
-      'mid', 'midi', 'amr', 'ape', 'ra', 'rm', 'mka', 'm4b', 'm4p', 'ac3', 'dts'
+    } else if ([
+      'mp3',
+      'wav',
+      'aac',
+      'flac',
+      'ogg',
+      'm4a',
+      'wma',
+      'aiff',
+      'alac',
+      'opus',
+      'mid',
+      'midi',
+      'amr',
+      'ape',
+      'ra',
+      'rm',
+      'mka',
+      'm4b',
+      'm4p',
+      'ac3',
+      'dts',
     ].contains(ext)) {
       return 'Audio';
-    }
-
-    else if ([
-      'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif', 'svg', 'ico',
-      'heic', 'heif', 'raw', 'cr2', 'nef', 'arw', 'dng'
+    } else if ([
+      'jpg',
+      'jpeg',
+      'png',
+      'gif',
+      'bmp',
+      'webp',
+      'tiff',
+      'tif',
+      'svg',
+      'ico',
+      'heic',
+      'heif',
+      'raw',
+      'cr2',
+      'nef',
+      'arw',
+      'dng',
     ].contains(ext)) {
       return 'Image';
-    }
-
-    else if ([
-      'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'ppt', 'pptx', 'xls', 'xlsx',
-      'csv', 'md', 'markdown', 'html', 'htm', 'epub', 'mobi', 'azw3', 'tex',
-      'latex', 'xml', 'json', 'yaml', 'yml'
+    } else if ([
+      'pdf',
+      'doc',
+      'docx',
+      'txt',
+      'rtf',
+      'odt',
+      'ppt',
+      'pptx',
+      'xls',
+      'xlsx',
+      'csv',
+      'md',
+      'markdown',
+      'html',
+      'htm',
+      'epub',
+      'mobi',
+      'azw3',
+      'tex',
+      'latex',
+      'xml',
+      'json',
+      'yaml',
+      'yml',
     ].contains(ext)) {
       return 'Document';
-    }
-
-    else if ([
-      'zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'iso', 'dmg', 'pkg',
-      'deb', 'rpm', 'cab'
+    } else if ([
+      'zip',
+      'rar',
+      '7z',
+      'tar',
+      'gz',
+      'bz2',
+      'xz',
+      'iso',
+      'dmg',
+      'pkg',
+      'deb',
+      'rpm',
+      'cab',
     ].contains(ext)) {
       return 'Archive';
-    }
-
-    else if (['exe', 'msi', 'apk', 'dmg', 'app', 'bat', 'sh', 'bash'].contains(ext)) {
+    } else if ([
+      'exe',
+      'msi',
+      'apk',
+      'dmg',
+      'app',
+      'bat',
+      'sh',
+      'bash',
+    ].contains(ext)) {
       return 'Executable';
-    }
-
-    else if ([
-      'dart', 'java', 'cpp', 'c', 'h', 'py', 'js', 'ts', 'php', 'rb', 'go',
-      'rs', 'swift', 'kt', 'cs'
+    } else if ([
+      'dart',
+      'java',
+      'cpp',
+      'c',
+      'h',
+      'py',
+      'js',
+      'ts',
+      'php',
+      'rb',
+      'go',
+      'rs',
+      'swift',
+      'kt',
+      'cs',
     ].contains(ext)) {
       return 'Code';
     } else {

@@ -4,19 +4,17 @@ import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/vault_crypto.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
 
-/// Decrypts an encrypted vault file to a temp path, then renders [builder] with
-/// that plaintext path. Shows a blank surface while preparing (no loader flash)
-/// and a clear error state if decryption fails. Shared by every media viewer so
-/// files open with a consistent, minimal transition.
 class DecryptGate extends StatefulWidget {
   final String source;
   final bool encrypted;
+  final int? encryptionVersion;
   final Widget Function(BuildContext context, String path) builder;
 
   const DecryptGate({
     super.key,
     required this.source,
     required this.encrypted,
+    this.encryptionVersion,
     required this.builder,
   });
 
@@ -40,7 +38,10 @@ class _DecryptGateState extends State<DecryptGate> {
       return;
     }
     try {
-      final decrypted = await VaultCrypto.instance.decryptToTemp(widget.source);
+      final decrypted = await VaultCrypto.instance.decryptToTemp(
+        widget.source,
+        formatVersion: widget.encryptionVersion,
+      );
       if (mounted) setState(() => _path = decrypted);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
@@ -83,8 +84,6 @@ class _DecryptGateState extends State<DecryptGate> {
                   ),
                 ],
               )
-            // A small loader while the file decrypts, so opening a large item
-            // never looks frozen.
             : const AppLoader(size: 34),
       ),
     );

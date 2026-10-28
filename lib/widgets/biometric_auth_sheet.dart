@@ -159,9 +159,6 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       final enrolled = await _auth.getAvailableBiometrics();
       if (!mounted) return;
       setState(() {
-        // isDeviceSupported() can reflect an enrolled screen PIN or password.
-        // This sheet is biometric-only, so require an enrolled biometric that
-        // the platform exposes to app authentication.
         _canAuthenticate = enrolled.isNotEmpty;
         _bioReady = true;
       });

@@ -25,8 +25,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
 
-  // Multi-select state: long-press a card to enter selection mode, then tap
-  // cards to toggle. Bulk restore / permanent-delete act on the selection.
   bool _selectionMode = false;
   final Set<String> _selectedIds = {};
 
@@ -41,8 +39,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
     _loadDeletedVideos();
     _searchController.addListener(_onSearchChanged);
 
-    // _autoDeleteOldFiles surfaces a FlushBar (an overlay route), so it must
-    // never run during build, nor after this screen is disposed.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _autoDeleteOldFiles();
     });
@@ -119,9 +115,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           );
         }
       }
-    } on Object catch (_) {
-      /* ignored */
-    }
+    } on Object catch (_) {}
   }
 
   Future<void> _loadDeletedVideos() async {
@@ -142,9 +136,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             if (video.isDeleted && !video.isHidden) {
               _deletedVideos.add(video);
             }
-          } on Object catch (_) {
-            /* ignored */
-          }
+          } on Object catch (_) {}
         }
 
         _deletedVideos.sort((a, b) {
@@ -171,8 +163,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
           video.type.toLowerCase().contains(query);
     }).toList();
   }
-
-  // ---- Multi-select ---------------------------------------------------------
 
   bool get _allSelected =>
       _filteredVideos.isNotEmpty &&
@@ -304,8 +294,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       _showErrorDialog('Failed to delete files');
     }
   }
-
-  // ---------------------------------------------------------------------------
 
   Future<void> _confirmRestore(VideoItem video) async {
     await _restoreVideo(video);
@@ -1258,8 +1246,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
       ),
     );
 
-    // In selection mode: tap toggles, swipe is disabled. Otherwise: long-press
-    // enters selection, and swipe restores / deletes as before.
     if (_selectionMode) {
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -1358,7 +1344,6 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
             child: SizedBox(
               width: 40,
               height: 40,
-              //alignment: Alignment.center,
               child: Icon(icon, color: color, size: 20),
             ),
           ),

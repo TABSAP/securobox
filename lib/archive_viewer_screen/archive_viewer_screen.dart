@@ -8,10 +8,6 @@ import 'package:video_player_app/utils/responsive.dart';
 import 'package:video_player_app/widgets/app_loader.dart';
 import 'package:video_player_app/widgets/app_spacing.dart';
 
-/// A read-only, offline listing of what's inside an already-decrypted archive
-/// file on disk. Supports listing of zip/tar/gz/tgz/bz2/xz; other formats
-/// (rar/7z/iso) fall back to a graceful "can't preview" state. Never opens or
-/// extracts inner files — it only shows their names/sizes.
 class ArchiveViewerScreen extends StatefulWidget {
   const ArchiveViewerScreen({
     super.key,
@@ -19,17 +15,14 @@ class ArchiveViewerScreen extends StatefulWidget {
     required this.fileName,
   });
 
-  /// Absolute path to the already-decrypted archive on disk.
   final String filePath;
 
-  /// Display title for the AppBar (may lack an extension).
   final String fileName;
 
   @override
   State<ArchiveViewerScreen> createState() => _ArchiveViewerScreenState();
 }
 
-/// One row in the listing.
 class _Entry {
   const _Entry({
     required this.name,
@@ -44,15 +37,14 @@ class _Entry {
 
 enum _Status { loading, loaded, error }
 
-/// Cap the displayed list so huge archives don't hang the UI.
 const int _kMaxEntries = 2000;
 
 class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
   _Status _status = _Status.loading;
   List<_Entry> _entries = const [];
-  int _totalCount = 0; // total entries (files, before display cap)
-  int _totalSize = 0; // total uncompressed size in bytes
-  int _overflow = 0; // how many entries beyond the display cap
+  int _totalCount = 0;
+  int _totalSize = 0;
+  int _overflow = 0;
 
   @override
   void initState() {
@@ -81,7 +73,6 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     final ext = p.extension(widget.filePath).toLowerCase();
     final lowerName = widget.fileName.toLowerCase();
 
-    // Formats we can't list inside the app — bail out gracefully.
     if (ext == '.rar' || ext == '.7z' || ext == '.iso') {
       throw const _UnsupportedArchive();
     }
@@ -125,8 +116,6 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     }
   }
 
-  /// A `.gz`/`.bz2`/`.xz` may wrap a tar (`.tar.gz`, `.tgz`, …) or a single
-  /// file. Decode the tar if it looks like one, otherwise present one entry.
   _ParseResult _fromMaybeTar(
     List<int> inner, {
     required bool isTar,
@@ -145,8 +134,6 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     );
   }
 
-  /// Collect metadata only (name/size/isFile) — never touches entry `.content`,
-  /// so large archives stay light on memory.
   _ParseResult _fromArchive(Archive archive) {
     final all = <_Entry>[];
     var totalSize = 0;
@@ -157,7 +144,6 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
       all.add(_Entry(name: f.name, isDirectory: isDir, size: size));
     }
 
-    // Directories first, then files; each group sorted case-insensitively.
     all.sort((a, b) {
       if (a.isDirectory != b.isDirectory) return a.isDirectory ? -1 : 1;
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
@@ -328,11 +314,8 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
             physics: const BouncingScrollPhysics(),
             padding: EdgeInsets.fromLTRB(inset, 4, inset, inset + 12),
             itemCount: _entries.length + (_overflow > 0 ? 1 : 0),
-            separatorBuilder: (_, _) => Divider(
-              height: 1,
-              thickness: 1,
-              color: LiquidColors.divider,
-            ),
+            separatorBuilder: (_, _) =>
+                Divider(height: 1, thickness: 1, color: LiquidColors.divider),
             itemBuilder: (context, index) {
               if (_overflow > 0 && index == _entries.length) {
                 return _buildOverflowRow();
@@ -347,8 +330,7 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
 
   Widget _buildHeader() {
     final fileCount = _totalCount;
-    final label =
-        '${_countLabel(fileCount)}  ·  ${_formatSize(_totalSize)}';
+    final label = '${_countLabel(fileCount)}  ·  ${_formatSize(_totalSize)}';
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
       child: Text(
@@ -427,7 +409,6 @@ class _ArchiveViewerScreenState extends State<ArchiveViewerScreen> {
     );
   }
 
-  /// Show the last path segment as the primary name for readability.
   static String _displayName(String fullPath) {
     final trimmed = fullPath.endsWith('/')
         ? fullPath.substring(0, fullPath.length - 1)
@@ -470,8 +451,6 @@ class _ParseResult {
   final int overflow;
 }
 
-/// Sentinel thrown for formats we intentionally don't list; caught by [_load]
-/// which flips into the graceful error state.
 class _UnsupportedArchive implements Exception {
   const _UnsupportedArchive();
 }

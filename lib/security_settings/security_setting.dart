@@ -177,8 +177,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
       try {
         availableBiometrics = await _localAuth.getAvailableBiometrics();
       } catch (_) {}
-      // isDeviceSupported() is true for Android screen credentials too. Only
-      // enrolled biometrics exposed to apps can enable the biometric prompt.
       final hasAppBiometric = availableBiometrics.isNotEmpty;
 
       if (mounted) {
@@ -190,9 +188,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             _biometricEnabled = false;
             _saveSetting('biometric', false);
           }
-
-          // Keep an unavailable face preference so legacy face-only users
-          // still reach the PIN lock. The authentication policy rejects it.
         });
       }
     } catch (e) {
@@ -2289,7 +2284,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
                 height: 38,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  // Neutral, theme-adaptive icon (light in Dark, dark in Light).
                   color: LiquidColors.textPrimary.withValues(alpha: 0.06),
                   borderRadius: BorderRadius.circular(11),
                 ),
@@ -2761,7 +2755,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
     final wasEnabled = _recoveryEnabled;
 
     var verified = false;
-    // Only attempt device biometric (fingerprint) if biometric is enabled in SecuroBox.
     if (_biometricAvailable && _biometricEnabled) {
       try {
         verified = await _authenticateOnce(
@@ -2771,7 +2764,6 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
         verified = false;
       }
     }
-    // If biometric is disabled or verification was cancelled, verify via PIN.
     if (!verified && mounted) {
       try {
         verified = await PinUnlockDialog.show(

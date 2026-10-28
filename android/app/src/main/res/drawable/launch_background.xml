@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Default (non-disguised) starting window. Background + logo mirror the
-     Flutter splash (SplashScreen + AppBrandIcon) for a seamless handoff.
-     @color/launch_bg is theme-aware (see values-night/colors.xml). -->
+
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item>
         <color android:color="@color/launch_bg"/>

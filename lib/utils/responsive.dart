@@ -25,11 +25,7 @@ extension Responsive on BuildContext {
 }
 
 class ResponsiveCenter extends StatelessWidget {
-  const ResponsiveCenter({
-    super.key,
-    required this.child,
-    this.maxWidth = 700,
-  });
+  const ResponsiveCenter({super.key, required this.child, this.maxWidth = 700});
 
   final Widget child;
   final double maxWidth;

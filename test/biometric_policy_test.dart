@@ -44,7 +44,6 @@ void main() {
         ),
         isTrue,
       );
-      // Android selects the enrolled modality. The app cannot require face-only.
       expect(auth.calls, 1);
       expect(auth.biometricOnlyReceived, isTrue);
     },

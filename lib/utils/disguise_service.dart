@@ -58,8 +58,10 @@ class DisguiseService extends ChangeNotifier {
   String _currentKey = 'default';
   String get currentKey => _currentKey;
 
-  DisguiseOption get currentOption =>
-      options.firstWhere((o) => o.key == _currentKey, orElse: () => options.first);
+  DisguiseOption get currentOption => options.firstWhere(
+    (o) => o.key == _currentKey,
+    orElse: () => options.first,
+  );
 
   DisguiseOption optionFor(String key) =>
       options.firstWhere((o) => o.key == key, orElse: () => options.first);

@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:video_player_app/models/app_models.dart';
@@ -29,8 +30,6 @@ class PickedMedia {
   final String? identifier;
   final String? galleryAssetId;
   final String? originalName;
-  // Where this file came from: 'gallery' | 'camera' | 'file'. And the device
-  // album relative path to restore it to on unlock (e.g. 'DCIM/Camera').
   final String? origin;
   final String? originAlbum;
   const PickedMedia(
@@ -47,13 +46,9 @@ class MediaImporter {
   MediaImporter._();
   static final MediaImporter instance = MediaImporter._();
 
-  /// Document file extensions (no leading dots, lowercase), exposed so the
-  /// file picker can restrict a Documents import to real document types.
   static List<String> get docExtensions =>
       FileTypeRegistry.documentExtensions.toList()..sort();
 
-  /// The stored item type. Archives, code, ebooks and fonts all collapse to
-  /// `'document'`, so every such file lands in the Documents category.
   String detectTypeFromPath(String path) =>
       FileTypeRegistry.storageTypeForPath(path);
 
@@ -63,7 +58,6 @@ class MediaImporter {
   Future<ImportResult> importFiles({
     required List<PickedMedia> items,
     String? category,
-    bool encrypt = true,
     bool? deleteOriginalsOverride,
     void Function(int done, int total)? onProgress,
   }) async {
@@ -74,28 +68,28 @@ class MediaImporter {
         deleteOriginalsOverride ??
         await ImportSettings.instance.deleteOriginalsEnabled();
     const galleryTypes = {'image', 'audio', 'video'};
-    // Resolved once so previews can be primed synchronously inside the loop.
     final previewDir = await VaultCrypto.instance.previewTempDir();
 
     int added = 0;
     int failed = 0;
     int deletedOriginals = 0;
     final pendingGalleryIds = <String>[];
+    final pendingOriginalDeletes = <File>[];
+    final importedPaths = <String>[];
 
     for (int i = 0; i < items.length; i++) {
       final f = items[i].file;
+      String? storedPath;
       try {
         final originalName = items[i].originalName;
         final typeSource = originalName?.trim().isNotEmpty == true
             ? originalName!
             : f.path;
         final fileType = detectTypeFromPath(typeSource);
-        final storedPath = encrypt
-            ? await VaultCrypto.instance.importEncrypted(
-                f,
-                fileName: originalName,
-              )
-            : await VaultCrypto.instance.importPlain(f, fileName: originalName);
+        storedPath = await VaultCrypto.instance.importEncrypted(
+          f,
+          fileName: originalName,
+        );
         final cat = category ?? defaultCategoryForType(fileType);
         final original = originalName;
         final title = (original != null && original.trim().isNotEmpty)
@@ -109,20 +103,20 @@ class MediaImporter {
           type: fileType,
           isLocked: false,
           category: cat,
-          encrypted: encrypt,
+          encrypted: true,
+          encryptionVersion: 1,
           origin: items[i].origin ?? '',
           originAlbum: items[i].originAlbum ?? '',
         );
-        list.add(item.toStorageString());
-        added++;
-
-        // Prime the preview now (source still in hand) so the thumbnail shows
-        // instantly when the item appears — no refresh or lazy load needed.
-        await ThumbnailCache.instance.primeFromSource(
-          item: item,
-          source: f,
-          previewDir: previewDir,
-        );
+        try {
+          await ThumbnailCache.instance.primeFromSource(
+            item: item,
+            source: f,
+            previewDir: previewDir,
+          );
+        } catch (error) {
+          if (kDebugMode) debugPrint('Thumbnail generation failed: $error');
+        }
 
         if (deleteOriginals && galleryTypes.contains(fileType)) {
           final directId = items[i].galleryAssetId;
@@ -131,24 +125,47 @@ class MediaImporter {
               pendingGalleryIds.add(directId);
             }
           } else {
-            final id = await ImportSettings.instance.findGalleryAssetId(
-              f,
-              identifier: items[i].identifier,
-            );
-            if (id != null && !pendingGalleryIds.contains(id)) {
-              pendingGalleryIds.add(id);
+            try {
+              final id = await ImportSettings.instance.findGalleryAssetId(
+                f,
+                identifier: items[i].identifier,
+              );
+              if (id != null && !pendingGalleryIds.contains(id)) {
+                pendingGalleryIds.add(id);
+              }
+            } catch (error) {
+              if (kDebugMode) debugPrint('Gallery lookup failed: $error');
             }
           }
         }
-        await ImportSettings.instance.deleteOriginal(f);
+        list.add(item.toStorageString());
+        importedPaths.add(storedPath);
+        added++;
+        if (deleteOriginals) pendingOriginalDeletes.add(f);
       } catch (_) {
         failed++;
+        if (storedPath != null) {
+          await VaultCrypto.instance.deleteEncryptedFile(storedPath);
+        }
       }
       onProgress?.call(i + 1, items.length);
     }
 
-    await prefs.setStringList(libKey, list);
+    try {
+      await prefs.setStringList(libKey, list);
+    } catch (_) {
+      for (final path in importedPaths) {
+        await VaultCrypto.instance.deleteEncryptedFile(path);
+      }
+      rethrow;
+    }
     if (added > 0) MediaService.notifyChanged();
+
+    if (deleteOriginals) {
+      for (final original in pendingOriginalDeletes) {
+        await ImportSettings.instance.deleteOriginal(original);
+      }
+    }
 
     if (deleteOriginals && pendingGalleryIds.isNotEmpty) {
       final removed = await ImportSettings.instance.deleteGalleryAssets(
@@ -165,8 +182,6 @@ class MediaImporter {
     );
   }
 
-  /// Lowercased titles of everything currently in the vault, so an import
-  /// preview can flag incoming files whose name already exists.
   Future<Set<String>> existingTitlesLower() async {
     final prefs = await SharedPreferences.getInstance();
     final list = prefs.getStringList(VaultContext.instance.libraryKey) ?? [];
@@ -179,9 +194,6 @@ class MediaImporter {
     return set;
   }
 
-  /// One-time migration: items imported while Archives/Code/eBooks/Fonts were
-  /// separate categories are folded into Documents, so nothing is orphaned now
-  /// that those categories no longer exist. Safe to run on every launch.
   Future<void> migrateLegacyDocumentTypes() async {
     final prefs = await SharedPreferences.getInstance();
     final libKey = VaultContext.instance.libraryKey;

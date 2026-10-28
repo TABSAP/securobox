@@ -3,7 +3,6 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:video_player_app/utils/theme_controller.dart';
 
-/// Theme-aware frosted surface shared by the vault's interactive cards.
 class LiquidGlassSurface extends StatelessWidget {
   final Widget child;
   final double borderRadius;

@@ -77,8 +77,6 @@ class RecoveryQuestionsService {
   }
 
   Future<bool> isEnabled() async {
-    // Retire old Recovery Key verifiers so they cannot remain as a dormant
-    // recovery path after users update the app.
     for (final key in _legacyRecoveryKeys) {
       try {
         await _secure.delete(key: key);
@@ -116,8 +114,6 @@ class RecoveryQuestionsService {
         'hash': base64Encode(hash),
       });
     }
-    // One secure-storage write makes the verifier set atomic. The previous
-    // recovery data remains intact if hashing or this write fails.
     await _secure.write(
       key: _recordKey,
       value: jsonEncode({
@@ -128,15 +124,11 @@ class RecoveryQuestionsService {
     );
     try {
       await _clearThrottle();
-    } catch (_) {
-      // A prior cooldown may survive setup; it cannot make this record partial.
-    }
+    } catch (_) {}
     for (final key in _legacyRecoveryKeys) {
       try {
         await _secure.delete(key: key);
-      } catch (_) {
-        // Legacy key material is never used after the new record is committed.
-      }
+      } catch (_) {}
     }
   }
 

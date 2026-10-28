@@ -1,8 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:video_player_app/utils/vault_context.dart';
 
-/// Optional category gates that reuse SecuroBox's configured biometric/PIN.
-/// Access is checked on every category entry rather than cached for a session.
 class CategoryLockService {
   CategoryLockService._();
   static final instance = CategoryLockService._();

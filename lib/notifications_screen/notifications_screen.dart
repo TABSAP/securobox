@@ -19,7 +19,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
-    // Opening the screen marks everything as read (clears the bell badge).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.instance.markAllRead();
     });

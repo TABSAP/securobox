@@ -58,7 +58,6 @@ open class MainActivity: FlutterFragmentActivity() {
                             Log.e(restoreTag, "saveToDownloads: bad args path=$path name=$fileName")
                             result.success(null)
                         } else {
-                            // Null on failure; {uri, bytes} on verified success.
                             result.success(saveToDownloads(path, fileName, mimeType))
                         }
                     }
@@ -68,16 +67,6 @@ open class MainActivity: FlutterFragmentActivity() {
 
     }
 
-    /**
-     * Copies a file into the public Downloads collection.
-     *
-     * On Android 10+ scoped storage forbids writing to shared storage with the
-     * File API, so we insert through MediaStore — which also indexes the file
-     * so it is immediately visible in the Files app. On older releases we fall
-     * back to a direct copy, which WRITE_EXTERNAL_STORAGE still permits there.
-     *
-     * Returns null unless the bytes are verifiably written.
-     */
     private fun saveToDownloads(
         path: String,
         fileName: String,
@@ -103,7 +92,6 @@ open class MainActivity: FlutterFragmentActivity() {
                     put(MediaStore.Downloads.DISPLAY_NAME, fileName)
                     put(MediaStore.Downloads.MIME_TYPE, mimeType)
                     put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-                    // Hide the row until the bytes are fully written.
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
 
@@ -138,7 +126,6 @@ open class MainActivity: FlutterFragmentActivity() {
                     return null
                 }
 
-                // Publish: clears IS_PENDING so the row is visible to other apps.
                 val done = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
                 resolver.update(uri, done, null, null)
                 Log.i(restoreTag, "saveToDownloads: published uri=$uri bytes=$written")

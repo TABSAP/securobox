@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,10 +41,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     AppNav.tab.value = 0;
     AppNav.onTabSelected = _handleTabSelection;
     AppNav.tab.addListener(_onTabRequested);
-    // The vault is unlocked once we reach the main screen — release any files
-    // that were shared into the app while it was locked. Deferred off the build
-    // phase: this screen is being mounted right now, and the intake may surface
-    // a toast (an overlay route) once the import finishes.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ShareIntake.instance.markUnlocked();
     });
@@ -61,8 +58,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     HapticFeedback.selectionClick();
     SessionManager.instance.markActive();
 
-    // Wherever the user is in the app, pop any pushed sub-screens back to root
-    // so they arrive directly at the target root screen (Library or Settings).
     if (_libraryNavigatorKey.currentState?.canPop() ?? false) {
       _libraryNavigatorKey.currentState?.popUntil((route) => route.isFirst);
     }
@@ -130,8 +125,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       return;
     }
     SessionManager.instance.shouldLock.value = false;
-    // A ValueNotifier callback can fire during a frame, and pushing a route
-    // mutates the Navigator's Overlay. Defer to after the build completes.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _showLockScreen();
     });
@@ -150,24 +143,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
-      // The shield always goes up: it hides content from the app-switcher
-      // snapshot and is cheap/reversible.
       setState(() => _showPrivacyShield = true);
 
-      // Wiping decrypted plaintext is NOT reversible, so it must only happen on
-      // a real backgrounding.
-      //
-      // `inactive` also fires for transient system UI the user deliberately
-      // invoked — the iOS document picker, the photo-library permission alert,
-      // Control Center. Wiping there deletes the very temp file the in-flight
-      // flow is using: the file picker loses its staged files, an open viewer
-      // loses its decrypted source, and a restore loses the file it was about
-      // to write out. `inTrustedInteraction` marks exactly those flows.
       final backgrounded =
           state == AppLifecycleState.paused ||
           state == AppLifecycleState.hidden;
       if (backgrounded && !SessionManager.instance.inTrustedInteraction) {
-        unawaited(VaultCrypto.instance.wipeAllTempCache());
+        unawaited(VaultCrypto.instance.revokeSession());
       }
     }
 
@@ -218,9 +200,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   Future<void> _showLockScreen() async {
     if (!mounted || _isShowingLockScreen) return;
-    // Claim the guard SYNCHRONOUSLY, before the first await. Otherwise the
-    // inactivity timer and the shouldLock listener can both pass the check and
-    // push two lock screens.
     _isShowingLockScreen = true;
 
     final prefs = await SharedPreferences.getInstance();
@@ -233,7 +212,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       return;
     }
 
-    unawaited(VaultCrypto.instance.wipeTempCache());
+    unawaited(VaultCrypto.instance.revokeSession());
     if (!mounted) {
       _isShowingLockScreen = false;
       return;
@@ -248,7 +227,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             FadeTransition(opacity: anim, child: child),
       ),
     );
-    // Always release the guard, even if we were disposed while locked.
     _isShowingLockScreen = false;
     if (mounted) SessionManager.instance.markActive();
   }
@@ -270,9 +248,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             children: [
               Scaffold(
                 backgroundColor: LiquidColors.backgroundDeep,
-                // Preserve the original glass effect: tab content continues
-                // beneath the translucent shared navigation bar.
-                extendBody: true,
+                extendBody: defaultTargetPlatform == TargetPlatform.iOS,
                 body: IndexedStack(
                   index: _selectedIndex,
                   children: [

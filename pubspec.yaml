@@ -38,24 +38,14 @@ dependencies:
   camera: ^0.11.1
   google_mlkit_face_detection: ^0.13.2
   connectivity_plus: ^6.1.0
-  # Must stay in dependencies, not dev_dependencies: flutter_native_splash
-  # ships a native Android plugin. As a dev_dependency the Flutter tool still
-  # writes it into GeneratedPluginRegistrant.java, but Gradle skips building
-  # its module, so the release build fails to compile. It is only used at
-  # build time (splash codegen); the shipped native plugin is a tiny no-op.
+  google_mobile_ads: ^9.2.0
   flutter_native_splash: ^2.4.7
   video_thumbnail: ^0.5.6
-  # Offline document viewing: unzip OOXML (docx/xlsx/pptx) and parse their XML
-  # to render content in-app without external apps.
   archive: ^4.0.9
   xml: ^6.6.1
-  # Pinned to 1.8.1: 1.9.0 requires compileSdk 37 (a preview-only Android SDK
-  # that isn't cleanly installable), which breaks the Gradle build.
   receive_sharing_intent: 1.8.1
 
 dependency_overrides:
-  # Keep native_glass_navbar's iOS 27 tab APIs behind an SDK compiler guard so
-  # Xcode 26 can still build its legacy native UITabBar path.
   native_glass_navbar:
     path: packages/native_glass_navbar
 

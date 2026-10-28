@@ -7,12 +7,7 @@ class AppSkeleton extends StatefulWidget {
   final double height;
   final double radius;
 
-  const AppSkeleton({
-    super.key,
-    this.width,
-    this.height = 14,
-    this.radius = 8,
-  });
+  const AppSkeleton({super.key, this.width, this.height = 14, this.radius = 8});
 
   @override
   State<AppSkeleton> createState() => _AppSkeletonState();
