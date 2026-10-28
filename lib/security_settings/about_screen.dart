@@ -149,8 +149,8 @@ class AboutScreen extends StatelessWidget {
         children: [
           Text(
             'SecuroBox encrypts your videos, photos, audio, and documents on '
-            'this device. Vault files are never sent to our servers. Optional '
-            'non-personalized ads may load when you open Settings online.',
+            'this device. Vault files are never sent to our servers, and the '
+            'app does not show ads or require a subscription.',
             style: TextStyle(
               color: LiquidColors.textSecondary,
               fontSize: 13.5,
@@ -161,7 +161,7 @@ class AboutScreen extends StatelessWidget {
           _factRow(
             Icons.wifi_off_rounded,
             'Vault stays on device',
-            'Ads are requested only from Settings when online.',
+            'No ads, tracking, or subscription required.',
           ),
           AppSpace.h12,
           _factRow(

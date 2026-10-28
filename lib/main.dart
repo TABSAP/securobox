@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:video_player_app/ads/ad_service.dart';
 import 'package:video_player_app/utils/decoy_service.dart';
 import 'package:video_player_app/utils/media_importer.dart';
 import 'package:video_player_app/utils/disguise_service.dart';
@@ -31,8 +30,6 @@ void main() async {
   await PinCrypto.instance.migrateLegacyPinOnStartup();
 
   await NetworkGuard.instance.init();
-
-  unawaited(AdService.instance.initialize());
 
   unawaited(NotificationService.instance.init());
 

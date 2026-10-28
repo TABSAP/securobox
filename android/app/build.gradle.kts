@@ -22,13 +22,6 @@ val validateProductionSigning = tasks.register("validateProductionSigning") {
         if (!file(properties.getProperty("storeFile")).isFile) {
             throw GradleException("The release upload keystore file does not exist.")
         }
-        val adMobAppId = properties.getProperty("admobAppId")
-            ?: project.findProperty("ADMOB_APP_ID")?.toString()
-        if (adMobAppId.isNullOrBlank() || adMobAppId.contains("3940256099942544")) {
-            throw GradleException(
-                "Production AdMob is not configured. Set admobAppId in android/key.properties to your production AdMob app ID."
-            )
-        }
     }
 }
 
@@ -64,8 +57,6 @@ android {
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["admobAppId"] = project.findProperty("ADMOB_APP_ID")
-            ?: "ca-app-pub-3940256099942544~3347511713"
     }
 
     signingConfigs {
@@ -90,11 +81,6 @@ android {
         release {
             if (releaseKeyPropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
-                val keystoreProperties = Properties()
-                keystoreProperties.load(FileInputStream(releaseKeyPropertiesFile))
-                manifestPlaceholders["admobAppId"] = keystoreProperties.getProperty("admobAppId")
-                    ?: project.findProperty("ADMOB_APP_ID")
-                    ?: ""
             }
             isMinifyEnabled = true
             isShrinkResources = true

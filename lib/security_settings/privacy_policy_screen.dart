@@ -54,8 +54,8 @@ class PrivacyPolicyScreen extends StatelessWidget {
             children: [
               Text(
                 'Vault files and PINs stay on your device. SecuroBox has no '
-                'accounts or vault cloud sync. Advertising is disclosed '
-                'below. Here is how your privacy is handled.',
+                'accounts or vault cloud sync, and does not show ads. Here is '
+                'how your privacy is handled.',
                 style: TextStyle(
                   color: LiquidColors.textSecondary,
                   fontSize: 13.5,
@@ -85,12 +85,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
                 title: 'What we collect',
                 body:
                     'SecuroBox does not upload vault files or PINs. The app '
-                    'uses Google Mobile Ads for App Open ads and a banner in '
-                    'Settings. Ad '
-                    'requests are configured as non-personalized; Google may '
-                    'process device, app, and diagnostic data as described in '
-                    'Google’s privacy disclosures. UMP manages consent where '
-                    'required.',
+                    'does not use advertising SDKs or show advertisements. '
+                    'Network access occurs only when you explicitly request '
+                    'an online action, such as downloading a URL you provide.',
               ),
               _section(
                 title: 'How your files are stored',
@@ -118,23 +115,11 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     'No other permissions are requested.',
               ),
               _section(
-                title: 'Third-party services',
-                body:
-                    'Google Mobile Ads is used for App Open ads when the app '
-                    'launches or returns to the foreground, and a clearly '
-                    'labeled banner on the Settings screen. App Open ads are '
-                    'subject to a 30-minute frequency cap. The app also '
-                    'connects when you explicitly request a network action '
-                    '(for example, downloading a URL you paste yourself). '
-                    'Vault files remain in app-private storage.',
-              ),
-              _section(
                 title: 'Children\'s privacy',
                 body:
                     'SecuroBox is not designed for or directed at '
                     'children under 13. We do not knowingly collect children’s '
-                    'personal information. Google Mobile Ads may process data '
-                    'as described above when an ad is requested.',
+                    'personal information.',
               ),
               _section(
                 title: 'Changes to this policy',

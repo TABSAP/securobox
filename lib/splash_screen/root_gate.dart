@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:video_player_app/ads/ad_service.dart';
 import 'package:video_player_app/splash_screen/splash_screen.dart';
 import 'package:video_player_app/utils/liquid_colors.dart';
 import 'package:video_player_app/utils/startup_router.dart';
@@ -33,9 +32,7 @@ class _RootGateState extends State<RootGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_ready && state == AppLifecycleState.resumed) {
-      unawaited(AdService.instance.showAppOpenAd());
-    }
+    if (_ready && state == AppLifecycleState.resumed) {}
   }
 
   Future<Widget> _resolve() async {
@@ -55,9 +52,7 @@ class _RootGateState extends State<RootGate> with WidgetsBindingObserver {
         _ready = true;
         if (!_initialAdRequested) {
           _initialAdRequested = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) unawaited(AdService.instance.showAppOpenAd());
-          });
+          WidgetsBinding.instance.addPostFrameCallback((_) {});
         }
         return child;
       },

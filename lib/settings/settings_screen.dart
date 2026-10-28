@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'package:video_player_app/ads/ad_service.dart';
-import 'package:video_player_app/ads/settings_banner_ad.dart';
 import 'package:video_player_app/security_settings/about_screen.dart';
 import 'package:video_player_app/security_settings/security_setting.dart';
 import 'package:video_player_app/security_settings/safety_center_screen.dart';
@@ -61,9 +59,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final showSettingsAds =
-        TickerMode.valuesOf(context).enabled &&
-        ModalRoute.of(context)?.isCurrent == true;
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -202,34 +197,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: _chevron(),
                 onTap: () => _open(const SupportScreen()),
               ),
-              _privacyOptionsEntry(),
             ]),
-            if (showSettingsAds) const SettingsBannerAd(),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _privacyOptionsEntry() {
-    return ValueListenableBuilder<bool>(
-      valueListenable: AdService.instance.privacyOptionsRequired,
-      builder: (context, required, _) {
-        if (!required) return const SizedBox.shrink();
-        return Column(
-          children: [
-            _divider(),
-            _tile(
-              icon: Icons.privacy_tip_outlined,
-              color: LiquidColors.accentBlue,
-              title: 'Privacy choices',
-              subtitle: 'Review your advertising privacy options',
-              trailing: _chevron(),
-              onTap: AdService.instance.showPrivacyOptions,
-            ),
-          ],
-        );
-      },
     );
   }
 

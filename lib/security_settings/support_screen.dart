@@ -154,10 +154,8 @@ class SupportScreen extends StatelessWidget {
       _Faq(
         q: 'Does SecuroBox work without internet?',
         a:
-            'Your vault and security features work offline. Ads may appear '
-            'when the app launches or returns to the foreground, and a clearly '
-            'labeled banner may load in Settings when internet is available. '
-            'Advertising is separate from vault storage and security.',
+            'Your vault and security features work offline. SecuroBox does not '
+            'show ads or require a subscription.',
       ),
       _Faq(
         q: 'Can someone see my files if my phone is unlocked?',
