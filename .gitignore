@@ -56,3 +56,4 @@ docs/
 
 # Markdown files remain local and are not published to GitHub.
 *.md
+!/README.md
