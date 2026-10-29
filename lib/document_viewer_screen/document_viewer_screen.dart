@@ -151,7 +151,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     }
 
     if (truncated) {
-      content = '$content\n\n… (truncated — showing the first 500 KB)';
+      content = '$content\n\n… (truncated. Showing the first 500 KB.)';
     }
     return _TextContent(content);
   }
@@ -585,7 +585,7 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
             Padding(
               padding: const EdgeInsets.only(top: AppSpace.sm),
               child: Text(
-                'Large sheet — showing the first $_maxRows rows and $_maxCols columns.',
+                'Large sheet. Showing the first $_maxRows rows and $_maxCols columns.',
                 style: TextStyle(
                   fontSize: 12.5,
                   color: LiquidColors.textTertiary,

@@ -110,7 +110,7 @@ class _DeletedVideosScreenState extends State<DeletedVideosScreen>
 
         if (mounted) {
           FlushBarHelper.flushBarErrorMessage(
-            'Old files (30+ days) hidden — recoverable via email',
+            'Files older than 30 days are hidden. Recover them by email.',
             context,
           );
         }

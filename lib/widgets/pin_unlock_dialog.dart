@@ -121,7 +121,7 @@ class _PinUnlockDialogState extends State<PinUnlockDialog> {
               ),
               const SizedBox(height: 6),
               Text(
-                _error ? 'Incorrect PIN — try again' : widget.subtitle,
+                _error ? 'Incorrect PIN. Try again.' : widget.subtitle,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12.5,

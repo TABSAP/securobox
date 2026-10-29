@@ -88,7 +88,7 @@ class _FontViewerScreenState extends State<FontViewerScreen> {
   }
 
   String _formatBytes(int? bytes) {
-    if (bytes == null) return '—';
+    if (bytes == null) return 'N/A';
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) {
       return '${(bytes / 1024).toStringAsFixed(1)} KB';

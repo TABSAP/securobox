@@ -6,4 +6,4 @@ First release of SecuroBox.
 • Built-in video, audio, image and PDF players
 • Auto-organized categories with quick search
 • Recycle bin for safe deletion
-• 100% offline — no ads, no trackers, no account needed
+• Works offline. No ads, tracking or account required.

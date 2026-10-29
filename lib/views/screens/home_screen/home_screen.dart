@@ -1028,7 +1028,7 @@ class HomeScreenState extends State<HomeScreen>
       if (!mounted) return;
       if (removed) {
         FlushBarHelper.flushBarSuccessMessage(
-          'Removed from SecuroBox — the file stays on your device',
+          'Removed from SecuroBox. The file stays on your device.',
           context,
         );
         await _loadMedia(silent: true);
@@ -1101,7 +1101,7 @@ class HomeScreenState extends State<HomeScreen>
         await _loadMedia(silent: true);
       } else {
         FlushBarHelper.flushBarErrorMessage(
-          'Could not restore the file — it is still safe in SecuroBox',
+          'Could not restore the file. It is still safe in SecuroBox.',
           context,
         );
       }
@@ -1109,7 +1109,7 @@ class HomeScreenState extends State<HomeScreen>
       closeLoader();
       if (!mounted) return;
       FlushBarHelper.flushBarErrorMessage(
-        'Could not restore the file — it is still safe in SecuroBox',
+        'Could not restore the file. It is still safe in SecuroBox.',
         context,
       );
     } finally {
@@ -1587,7 +1587,7 @@ class HomeScreenState extends State<HomeScreen>
                 ? 'Media you mark as a favorite will appear here.'
                 : hasFilters
                 ? 'Try a different search term or category to find what you\'re looking for.'
-                : 'Files you import are encrypted and stored only on this device — never in the cloud.',
+                : 'Files you import are encrypted and stored only on this device. They are never sent to the cloud.',
             actionLabel: favoritesOnly
                 ? 'Browse all files'
                 : hasFilters

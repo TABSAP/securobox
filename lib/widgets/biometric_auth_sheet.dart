@@ -323,7 +323,7 @@ class _BiometricAuthSheetState extends State<BiometricAuthSheet>
       case LocalAuthExceptionCode.noCredentialsSet:
         return 'Set a screen lock on your device to use biometric unlock.';
       case LocalAuthExceptionCode.noBiometricsEnrolled:
-        return 'No fingerprint or face is enrolled — add one in your device settings.';
+        return 'No fingerprint or face is enrolled. Add one in your device settings.';
       case LocalAuthExceptionCode.noBiometricHardware:
         return 'This device doesn\'t have biometric hardware.';
       case LocalAuthExceptionCode.temporaryLockout:

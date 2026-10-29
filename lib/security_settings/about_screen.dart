@@ -174,8 +174,8 @@ class AboutScreen extends StatelessWidget {
             Platform.isIOS ? Icons.phone_iphone_rounded : Icons.android_rounded,
             Platform.isIOS ? 'Built for iPhone' : 'Built for Android & iOS',
             Platform.isIOS
-                ? 'Designed for everyday iPhones — requires iOS 15.5 or later.'
-                : 'Designed for everyday phones — minimum Android 5.0.',
+                ? 'Designed for iPhone. Requires iOS 15.5 or later.'
+                : 'Designed for phones. Requires Android 5.0 or later.',
           ),
         ],
       ),
@@ -188,7 +188,7 @@ class AboutScreen extends StatelessWidget {
       'PIN hashed with PBKDF2-HMAC-SHA256 (600,000 rounds)',
       'Hash and master key stored in the OS Keychain / Keystore',
       'PIN controls app access; it does not wrap the vault key',
-      'Random UUID filenames — originals are never exposed',
+      'Random UUID filenames. Original filenames are not exposed.',
       'Vault files excluded from system backup; encrypted export is available',
       'Biometric verification via the OS BiometricPrompt',
       'Escalating cooldown after repeated wrong PINs',

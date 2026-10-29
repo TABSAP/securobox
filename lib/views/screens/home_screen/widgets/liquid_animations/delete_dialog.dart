@@ -16,7 +16,7 @@ class DeleteDialog extends StatelessWidget {
       accent: LiquidColors.error,
       title: 'Move to Trash?',
       message:
-          '"$title" moves to the Recycle Bin — you can restore it within 30 days.',
+          '"$title" moves to the Recycle Bin. You can restore it within 30 days.',
       confirmLabel: 'Move to Trash',
       onConfirm: onConfirm,
     );

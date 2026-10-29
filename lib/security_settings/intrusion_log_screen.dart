@@ -712,7 +712,7 @@ class IntrusionLogScreenState extends State<IntrusionLogScreen>
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text(
-                      'No failed unlock attempts have been recorded. If someone enters a wrong PIN, a silent front-camera photo will be captured and stored here — encrypted, never in your gallery.',
+                      'No failed unlock attempts have been recorded. If someone enters a wrong PIN, a silent front-camera photo will be captured and stored here, encrypted and never in your gallery.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: LiquidColors.textSecondary,

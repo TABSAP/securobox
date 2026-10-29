@@ -214,7 +214,7 @@ class _FaceScanScreenState extends State<FaceScanScreen>
         } else {
           setState(
             () => _hint =
-                'Captured ${_samples.length}/${FaceRecognitionService.enrollSamples} — hold still',
+                'Captured ${_samples.length} of ${FaceRecognitionService.enrollSamples}. Hold still.',
           );
         }
       } else {
@@ -228,7 +228,7 @@ class _FaceScanScreenState extends State<FaceScanScreen>
             _toSuccess();
             return;
           }
-          setState(() => _hint = 'Almost there — hold steady…');
+          setState(() => _hint = 'Almost there. Hold steady…');
         } else {
           _verifyHits = 0;
           _verifyAttempts++;
@@ -238,14 +238,14 @@ class _FaceScanScreenState extends State<FaceScanScreen>
             );
           } else {
             setState(
-              () => _hint = 'Not recognized — keep looking at the camera',
+              () => _hint = 'Not recognized. Keep looking at the camera.',
             );
           }
         }
       }
     } catch (_) {
       if (mounted && !_finished) {
-        setState(() => _hint = 'Camera hiccup — trying again…');
+        setState(() => _hint = 'Camera hiccup. Trying again…');
       }
     } finally {
       if (shot != null) {
@@ -274,7 +274,7 @@ class _FaceScanScreenState extends State<FaceScanScreen>
       _finished = false;
       if (!mounted) return;
       setState(
-        () => _hint = 'Those readings didn\'t match — let\'s try once more.',
+        () => _hint = 'Those readings did not match. Let\'s try once more.',
       );
       _beginTicking(38);
     }

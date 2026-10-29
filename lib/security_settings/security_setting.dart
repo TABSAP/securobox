@@ -1587,7 +1587,7 @@ class _SecuritySettingsScreenState extends State<SecuritySettingsScreen>
             'While this is on, the vault stays sealed whenever the device is '
             'online. The moment Wi-Fi or mobile data connects, the encryption '
             'session is revoked and the app locks.\n\n'
-            'You will only be able to unlock the vault in Airplane Mode — with '
+            'You will only be able to unlock the vault in Airplane Mode, with '
             'Wi-Fi and mobile data fully off.',
             style: TextStyle(color: LiquidColors.textSecondary, height: 1.45),
           ),

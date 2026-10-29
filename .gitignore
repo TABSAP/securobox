@@ -44,12 +44,15 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Android signing — never commit these
+# Android signing files. Never commit these.
 /android/key.properties
 /android/app/upload-keystore.jks
 /android/upload-keystore.jks
 *.jks
 *.keystore
 
-# Internal team docs — local only
+# Internal team docs. Keep these local.
 docs/
+
+# Markdown files remain local and are not published to GitHub.
+*.md

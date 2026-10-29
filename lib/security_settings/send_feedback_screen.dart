@@ -164,7 +164,7 @@ class _SendFeedbackScreenState extends State<SendFeedbackScreen> {
         if (hasMailtoHandler && await _tryMailto(subject, body)) {
           if (!mounted) return;
           FlushBarHelper.flushBarWarningMessage(
-            'Email app opened — attachments couldn\'t be carried over. '
+            'Email app opened, but attachments couldn\'t be carried over. '
             'Add them manually before tapping Send.',
             context,
           );

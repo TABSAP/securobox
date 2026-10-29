@@ -292,8 +292,8 @@ class _SecureMediaPickerScreenState extends State<SecureMediaPickerScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'To move photos and videos into your vault — and remove the '
-              'originals from your gallery — SecuroBox needs access to your '
+              'To move photos and videos into your vault and remove the '
+              'originals from your gallery, SecuroBox needs access to your '
               'media. You can grant it in Settings.',
               textAlign: TextAlign.center,
               style: TextStyle(

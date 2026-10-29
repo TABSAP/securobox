@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy Policy — SecuroBox</title>
+<title>SecuroBox Privacy Policy</title>
 <meta name="description" content="SecuroBox is an on-device encrypted media vault. We do not collect personal data or upload files automatically. Optional backups are passphrase-encrypted before export.">
 <style>
   :root {
@@ -91,7 +91,7 @@
 </head>
 <body>
 <main>
-  <h1>Privacy Policy — SecuroBox</h1>
+  <h1>SecuroBox Privacy Policy</h1>
   <p class="meta"><strong>Effective date:</strong> 2026-05-29 &nbsp;·&nbsp; <strong>Contact:</strong> <a href="mailto:info@tabsap.com">info@tabsap.com</a></p>
 
   <h2>Summary</h2>
@@ -120,7 +120,7 @@
     <tbody>
       <tr>
         <td>Internet</td>
-        <td>Optional — only used when you paste a URL and ask the app to download a file into the vault (HTTPS only).</td>
+        <td>Optional. Used only when you paste a URL and ask the app to download a file into the vault (HTTPS only).</td>
       </tr>
       <tr>
         <td>Photos / Videos / Audio (<code>READ_MEDIA_*</code>)</td>
@@ -132,7 +132,7 @@
       </tr>
       <tr>
         <td>Biometric / Fingerprint</td>
-        <td>To let you unlock the vault with fingerprint or face, processed locally by the OS — never seen by the app.</td>
+        <td>To let you unlock the vault with fingerprint or face. The OS processes biometrics locally; the app never sees them.</td>
       </tr>
       <tr>
         <td>Camera</td>
@@ -145,7 +145,7 @@
   <h2>Where your data lives</h2>
   <ul>
     <li><strong>Files you import</strong>: AES-256-CTR encrypted with a per-device master key, stored in the app's private application documents directory. Filenames on disk are random UUIDs.</li>
-    <li><strong>PIN</strong>: hashed with PBKDF2-HMAC-SHA256 (100,000 iterations) using a 16-byte random salt. The hash and salt are stored in OS-backed secure storage — Android EncryptedSharedPreferences (Keystore-backed) and iOS Keychain. The PIN itself is never persisted.</li>
+    <li><strong>PIN</strong>: hashed with PBKDF2-HMAC-SHA256 (600,000 iterations) using a 16-byte random salt. The hash and salt are stored in OS-backed secure storage: Android Keystore-backed storage and iOS Keychain. The PIN itself is never persisted.</li>
     <li><strong>Master encryption key</strong>: 32 random bytes generated on first launch, stored in the same OS-backed secure storage.</li>
     <li><strong>Break-in photos</strong>: encrypted with the same master key and stored under <code>vault/intrusions/</code> in the app's private sandbox.</li>
     <li><strong>Face Unlock data</strong>: a numeric geometric face signature (not a photo), stored in OS-backed secure storage. No face image is kept.</li>

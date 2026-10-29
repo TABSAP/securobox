@@ -180,7 +180,7 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
       _hasFake = true;
       _doneMessage =
           'Decoy mode is active. Entering this PIN at the lock screen opens a '
-          'separate, harmless vault — your real files stay hidden and isolated.';
+          'separate, harmless vault. Your real files stay hidden and isolated.';
       _stage = _Stage.done;
     });
   }
@@ -323,7 +323,7 @@ class _DecoySetupScreenState extends State<DecoySetupScreen>
                 Text(
                   'A Decoy Vault is a second, fake vault with its own separate '
                   'PIN. If someone forces you to open the app, enter your decoy '
-                  'PIN — it shows a harmless vault while your real, private '
+                  'PIN. It shows a harmless vault while your real, private '
                   'files stay hidden and fully protected. The app never reveals '
                   'that a decoy exists.',
                   style: TextStyle(

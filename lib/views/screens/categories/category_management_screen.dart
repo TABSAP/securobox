@@ -78,7 +78,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       return 'Keep it under $_maxLength characters';
     }
     if (!_allowed.hasMatch(trimmed)) {
-      return 'Only letters, numbers, spaces, - and _';
+      return 'Use only letters, numbers, spaces, hyphens and underscores.';
     }
     final lower = trimmed.toLowerCase();
     if (_reserved.any((r) => r.toLowerCase() == lower)) {

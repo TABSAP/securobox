@@ -309,7 +309,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       if (import.added == 0) {
         FlushBarHelper.flushBarErrorMessage(
           import.failed > 0
-              ? 'Import failed — ${import.failed} file${import.failed == 1 ? '' : 's'} could not be encrypted. Your originals were left untouched.'
+              ? 'Import failed. ${import.failed} file${import.failed == 1 ? '' : 's'} could not be encrypted. Your originals were left untouched.'
               : 'Nothing was imported.',
           context,
         );
@@ -387,7 +387,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
       if (name.isEmpty) return 'Enter a name';
       if (name.length > 24) return 'Max 24 characters';
       if (!RegExp(r'^[A-Za-z0-9 _\-]+$').hasMatch(name)) {
-        return 'Letters, numbers, spaces, _ and - only';
+        return 'Use only letters, numbers, spaces, underscores and hyphens.';
       }
       final lower = name.toLowerCase();
       final all = [
@@ -708,7 +708,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     if (!mounted) return;
     FlushBarHelper.flushBarSuccessMessage(
       moved > 0
-          ? 'Renamed to "$newName" — $moved item${moved == 1 ? '' : 's'} moved'
+          ? 'Renamed to "$newName". Moved $moved item${moved == 1 ? '' : 's'}.'
           : 'Renamed to "$newName"',
       context,
     );
@@ -758,7 +758,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
               const SizedBox(height: 6),
               Text(
                 'The category is removed. Any files still inside it stay '
-                'safely in your vault and move to "Others" — nothing is '
+                'safely in your vault and move to "Others". Nothing is '
                 'deleted.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -825,7 +825,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
     if (!mounted) return;
     FlushBarHelper.flushBarSuccessMessage(
       moved > 0
-          ? 'Category deleted — $moved item${moved == 1 ? '' : 's'} moved to Others'
+          ? 'Category deleted. Moved $moved item${moved == 1 ? '' : 's'} to Others.'
           : 'Category deleted',
       context,
     );
@@ -930,7 +930,7 @@ class _AddToVaultSheetState extends State<AddToVaultSheet> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      'Encrypted on this device — never uploaded',
+                      'Encrypted on this device. Never uploaded.',
                       style: TextStyle(
                         color: LiquidColors.textTertiary,
                         fontSize: 12,

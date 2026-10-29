@@ -69,7 +69,7 @@ class FaceRecognitionService {
       return (vector: null, error: 'Could not analyse the camera image.');
     }
     if (faces.isEmpty) {
-      return (vector: null, error: 'No face detected — center your face.');
+      return (vector: null, error: 'No face detected. Center your face.');
     }
     faces.sort(
       (a, b) => (b.boundingBox.width * b.boundingBox.height).compareTo(

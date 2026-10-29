@@ -140,7 +140,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final pin = _newPin;
     if (_isWeakPin(pin)) {
       setState(() {
-        _error = 'PIN too weak — try something less obvious';
+        _error = 'PIN is too weak. Try something less obvious.';
         _newPin = '';
       });
       return;
@@ -194,7 +194,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       });
 
       setState(() {
-        _error = 'PINs do not match — try again';
+        _error = 'PINs do not match. Try again.';
         _newPin = '';
         _confirmPin = '';
         _step = _Step.setPin;
@@ -240,7 +240,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       HapticFeedback.heavyImpact();
       setState(() {
         _saving = false;
-        _error = 'Something went wrong — please try again';
+        _error = 'Something went wrong. Please try again.';
         _newPin = '';
         _confirmPin = '';
         _step = _Step.setPin;
@@ -373,7 +373,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     ),
                     SizedBox(height: compact ? 8 : 12),
                     Text(
-                      'A private on-device vault for your videos, photos, audio and documents. Files stay on your device — protected by a PIN you control.',
+                      'A private on-device vault for your videos, photos, audio and documents. Files stay on your device, protected by a PIN you control.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14.5,
@@ -519,7 +519,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
           const SizedBox(height: 10),
           Text(
-            'Choose your PIN length — longer is stronger',
+            'Choose your PIN length. Longer PINs are stronger.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 13, color: LiquidColors.textSecondary),
           ),
@@ -527,14 +527,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           _lengthOption(
             digits: 6,
             label: '6-digit PIN',
-            sub: '1,000,000 combinations — recommended for a vault',
+            sub: '1,000,000 combinations. Recommended for a vault.',
             recommended: true,
           ),
           const SizedBox(height: 14),
           _lengthOption(
             digits: 4,
             label: '4-digit PIN',
-            sub: '10,000 combinations — quick to enter',
+            sub: '10,000 combinations. Quick to enter.',
           ),
           const Spacer(flex: 3),
           SizedBox(

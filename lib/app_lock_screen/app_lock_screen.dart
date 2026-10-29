@@ -205,7 +205,7 @@ class _AppLockScreenState extends State<AppLockScreen>
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Incorrect PIN — try again',
+                          'Incorrect PIN. Try again.',
                           style: TextStyle(
                             color: LiquidColors.error,
                             fontSize: 12,
@@ -628,7 +628,7 @@ class _AppLockScreenState extends State<AppLockScreen>
     final String status = _isAuthenticating
         ? 'Checking your identity…'
         : _padDisabled
-        ? 'Your PIN is locked for now — tap to unlock.'
+        ? 'Your PIN is locked for now. Tap to unlock.'
         : isFace
         ? 'Tap or look at the camera to scan your face.'
         : _androidPlatform

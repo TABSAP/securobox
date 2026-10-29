@@ -144,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Storage used',
                 subtitle: 'Encrypted files in this vault',
                 trailing: _valueOnly(
-                  _vaultBytes < 0 ? '—' : _fmtBytes(_vaultBytes),
+                  _vaultBytes < 0 ? 'N/A' : _fmtBytes(_vaultBytes),
                 ),
               ),
               _divider(),

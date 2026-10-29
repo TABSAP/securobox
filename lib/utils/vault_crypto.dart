@@ -602,7 +602,9 @@ void _decryptIsolate(Map<String, dynamic> args) {
     final computed = Uint8List(32);
     mac.doFinal(computed, 0);
     if (!_ctEqual(computed, Uint8List.fromList(tag))) {
-      throw StateError('Integrity check failed — file was modified.');
+      throw StateError(
+        'Integrity check failed. The file may have been modified.',
+      );
     }
     ok = true;
   } finally {

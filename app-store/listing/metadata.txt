@@ -1,4 +1,4 @@
-SECUROBOX — APP STORE LISTING METADATA
+SECUROBOX APP STORE LISTING METADATA
 (iOS-accurate. Copy each field into App Store Connect → your app → "App Information" / version page.)
 
 ================================================================
@@ -14,7 +14,7 @@ SUBTITLE (max 30 chars)
 Private offline media vault
 
 ================================================================
-PROMOTIONAL TEXT (max 170 chars — editable anytime without review)
+PROMOTIONAL TEXT (max 170 chars, editable anytime without review)
 ================================================================
 Lock your private videos, photos, audio and documents behind a PIN or Face ID. AES-256 encrypted on-device storage, optional passphrase-protected backup, no accounts or tracking.
 
@@ -30,7 +30,7 @@ SecuroBox is an on-device private media vault. Keep your videos, photos, audio a
 
 ★ Why SecuroBox
 
-• Offline vault storage by default — no accounts, tracking, or automatic uploads
+• Offline vault storage by default, with no accounts, tracking, or automatic uploads
 • PIN + Face ID / Touch ID lock for the entire app
 • AES-256 encryption for every file at rest
 • Protected by iOS Data Protection (hardware-backed)
@@ -54,7 +54,7 @@ SecuroBox is an on-device private media vault. Keep your videos, photos, audio a
 
 ★ Organized library
 
-• Imported media is filed by type — Videos, Photos, Audio, Documents
+• Imported media is filed by type: Videos, Photos, Audio and Documents
 • Extra built-in categories you can sort into: Educational, Personal, Work, Sports, Travel
 • Create your own custom folders
 • Quick search across your vault
@@ -66,7 +66,7 @@ SecuroBox is an on-device private media vault. Keep your videos, photos, audio a
 
 • Capture photos and videos straight into the vault with the in-app Secure Camera
 • Import existing photos, videos and audio from your library
-• Move-to-vault: imported photos and videos are removed from your library and kept safely in the vault — move them back out anytime
+• Move-to-vault: imported photos and videos are removed from your library and kept safely in the vault. Move them back out anytime.
 • Foreground album rules with a review queue and an option to keep library originals
 • Files are encrypted into a private app container, isolated from the rest of your phone
 
@@ -80,9 +80,9 @@ SecuroBox is an on-device private media vault. Keep your videos, photos, audio a
 
 ★ Advanced protection
 
-• Break-in detection — silently captures a photo of anyone who enters the wrong PIN, saved only inside your vault
-• Decoy PIN — open a separate decoy vault under duress while your real vault stays hidden
-• Offline Integrity Lock — optionally seal the vault whenever the device is connected to a network
+• Break-in detection: silently captures a photo after a wrong PIN. The photo stays inside your vault.
+• Decoy PIN: opens a separate decoy vault while your real vault stays hidden.
+• Offline Integrity Lock: optionally seals the vault whenever the device connects to a network.
 • Optional PIN recovery using a one-time code you set up
 • Guest View lets you show only selected photos or videos and requires authentication to exit
 
@@ -96,7 +96,7 @@ SecuroBox is an on-device private media vault. Keep your videos, photos, audio a
 
 We do not collect analytics or upload files automatically. Exported backups are passphrase-encrypted before being saved to the location you choose.
 We have no servers. We do not see your files.
-You are in control — always.
+You are always in control.
 
 ================================================================
 SUPPORT URL
@@ -127,7 +127,7 @@ gambling, no user-generated content shared online). The app shows only the
 user's own private files. Result: 4+.
 
 ================================================================
-APP PRIVACY — "DATA NOT COLLECTED"
+APP PRIVACY: "DATA NOT COLLECTED"
 ================================================================
 In App Store Connect → App Privacy, select:
   "Data Not Collected"

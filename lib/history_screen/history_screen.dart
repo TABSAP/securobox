@@ -1079,7 +1079,7 @@ class _HistoryScreenState extends State<HistoryScreen>
         withSize++;
       }
     }
-    final sizeText = withSize > 0 ? _formatBytes(totalBytes) : '—';
+    final sizeText = withSize > 0 ? _formatBytes(totalBytes) : 'N/A';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),

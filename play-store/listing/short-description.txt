@@ -1,1 +1,1 @@
-Private offline vault for videos, audio, photos & PDFs — PIN & biometric lock.
+Private offline vault for videos, audio, photos and PDFs. Protected by PIN and biometrics.

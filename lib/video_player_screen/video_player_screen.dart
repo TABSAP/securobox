@@ -393,7 +393,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 children: [
                   _seekControl(
                     Icons.replay_10_rounded,
-                    '−10 sec',
+                    'Back 10 sec',
                     _seekBackward,
                   ),
                   const SizedBox(width: 24),

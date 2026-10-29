@@ -115,7 +115,7 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Page 1 – $_totalPages',
+              'Page 1 of $_totalPages',
               style: TextStyle(color: LiquidColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 12),
@@ -289,12 +289,12 @@ class _PDFReaderScreenState extends State<PDFReaderScreen> {
             _infoRow('Pages', '$_totalPages'),
             _infoRow(
               'Size',
-              size > 0 ? '${(size / 1048576).toStringAsFixed(2)} MB' : '—',
+              size > 0 ? '${(size / 1048576).toStringAsFixed(2)} MB' : 'N/A',
             ),
             _infoRow(
               'Modified',
               modified == null
-                  ? '—'
+                  ? 'N/A'
                   : '${modified.day}/${modified.month}/${modified.year}',
             ),
           ],

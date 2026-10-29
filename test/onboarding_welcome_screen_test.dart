@@ -38,7 +38,7 @@ void main() {
 
       expect(find.text('Set a Strong PIN'), findsOneWidget);
       expect(
-        find.text('Choose your PIN length — longer is stronger'),
+        find.text('Choose your PIN length. Longer PINs are stronger.'),
         findsOneWidget,
       );
     },

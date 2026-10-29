@@ -744,7 +744,7 @@ class MediaService {
             'downloads: MediaStore uri=$uri bytes=$bytes expected=$sourceSize',
           );
           if (bytes == sourceSize) return true;
-          _log('downloads: byte-count mismatch — treating as failure');
+          _log('downloads: byte-count mismatch. Treating as failure.');
         } else {
           _log(
             'downloads: MediaStore returned null (see SecuroBoxRestore tag)',
@@ -758,7 +758,7 @@ class MediaService {
         _log('downloads: unexpected $e');
       }
 
-      _log('downloads: FAILED — vault copy will be kept');
+      _log('downloads: FAILED. Vault copy will be kept.');
       return false;
     }
 
@@ -802,7 +802,7 @@ class MediaService {
       );
     } catch (_) {}
     _log(
-      'downloads: non-Android share sheet — not treated as a verified write',
+      'downloads: non-Android share sheet. Not treated as a verified write.',
     );
     return false;
   }
@@ -826,12 +826,12 @@ class MediaService {
       size = await file.length();
       _log('restore: decrypted source=$decryptedPath size=$size');
       if (!await _exportToDevice(media, file, fileName)) {
-        _log('restore ABORT: export failed — vault copy KEPT');
+        _log('restore ABORT: export failed. Vault copy KEPT.');
         return false;
       }
       _log('restore: export VERIFIED on device');
     } catch (e) {
-      _log('restore ABORT: exception during export ($e) — vault copy KEPT');
+      _log('restore ABORT: exception during export ($e). Vault copy KEPT.');
       return false;
     }
 
@@ -852,7 +852,7 @@ class MediaService {
     }
 
     if (!removed || await _libraryContains(media.id)) {
-      _log('restore: entry survived first delete — retrying');
+      _log('restore: entry survived first delete. Retrying.');
       try {
         removed = await permanentlyDeleteMedia(media.id);
       } catch (e) {

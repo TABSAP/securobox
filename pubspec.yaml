@@ -1,5 +1,5 @@
 name: video_player_app
-description: "SecuroBox — offline media vault for videos, audio, photos & documents with PIN and biometric lock."
+description: "SecuroBox is an offline media vault for videos, audio, photos and documents, protected by a PIN and biometrics."
 publish_to: 'none'
 version: 1.0.0+6
 
