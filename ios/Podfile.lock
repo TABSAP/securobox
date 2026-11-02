@@ -269,7 +269,7 @@ SPEC CHECKSUMS:
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_email_sender: 2397f5e84aaacfb61af569637a963e7c687858d8
   flutter_screenshot_blocker: 87493b3202126286ddce134a2703fdfc1f9267ea
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
@@ -306,6 +306,6 @@ SPEC CHECKSUMS:
   video_thumbnail: b637e0ad5f588ca9945f6e2c927f73a69a661140
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556
 
-PODFILE CHECKSUM: f15d2638a21f5d8ad3ae8a37f02699ea138873ae
+PODFILE CHECKSUM: a3386672fc5e2457dfddcd237283fea57c7e807c
 
 COCOAPODS: 1.17.0
